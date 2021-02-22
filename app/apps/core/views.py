@@ -14,9 +14,9 @@ from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView
 
 from core.models import (Document, DocumentPart, Metadata,
-                         OcrModel, AlreadyProcessingException)
+                         OcrModel, AlreadyProcessingException, Tag)
 from core.forms import (DocumentForm, MetadataFormSet, DocumentShareForm,
-                        UploadImageForm, DocumentProcessForm)
+                        UploadImageForm, DocumentProcessForm, DocumentTagForm)
 from imports.forms import ImportForm, ExportForm
 
 
@@ -37,11 +37,35 @@ class DocumentsList(LoginRequiredMixin, ListView):
     model = Document
     paginate_by = 10
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tags_doc = Tag.objects.filter(category='D')
+        tags_img = Tag.objects.filter(category='P')
+        context['tags'] = tags_doc
+        context['tagsimg'] = tags_img
+        context['formtag'] =  DocumentTagForm(self.request.user)
+        try:
+            if self.kwargs["chain"] is not None:
+                context['chainflt'] = self.kwargs["chain"]
+        except:
+            return context
+        return context
+
+
     def get_queryset(self):
-        return (Document.objects
-                .for_user(self.request.user)
-                .select_related('owner', 'main_script')
-                .annotate(parts_updated_at=Max('parts__updated_at')))
+        try:
+            if self.kwargs["chain"] is not None:
+                return (Document.objects
+                        .for_user(self.request.user)
+                        .select_related('owner', 'main_script')
+                        .annotate(parts_updated_at=Max('parts__updated_at'))
+                        .filter(documenttag__tag__id__in=list(map(int, self.kwargs["chain"].split(',')))))
+        except:
+            return (Document.objects
+                    .for_user(self.request.user)
+                    .select_related('owner', 'main_script')
+                    .annotate(parts_updated_at=Max('parts__updated_at')))
+
 
 
 class DocumentMixin():
@@ -321,3 +345,20 @@ class ModelCancelTraining(LoginRequiredMixin, SuccessMessageMixin, DetailView):
                                 content_type="application/json")
         else:
             return HttpResponseRedirect(self.get_success_url())
+
+class CreateTagDocument(LoginRequiredMixin, SuccessMessageMixin, CreateView):
+    model = Tag
+    form_class = DocumentTagForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+
+    def post(self, request, *args, **kwargs):
+        form = DocumentTagForm(self.request.user, request.POST)
+        self.object = None
+        if form.is_valid():
+            form.save(self.request.user, request.POST)
+        return self.get_success_url()
+    def get_success_url(self):
+            return redirect('documents-list')

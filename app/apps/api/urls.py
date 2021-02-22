@@ -11,13 +11,15 @@ from api.views import (DocumentViewSet,
                        BlockTypeViewSet,
                        LineTypeViewSet,
                        LineTranscriptionViewSet,
-                       OcrModelViewSet)
+                       OcrModelViewSet,
+                       DocumentTagViewSet)
 
 router = routers.DefaultRouter()
 router.register(r'documents', DocumentViewSet)
 router.register(r'user', UserViewSet)
 router.register(r'types/block', BlockTypeViewSet)
 router.register(r'types/line', LineTypeViewSet)
+router.register(r'documentstags', DocumentTagViewSet)
 documents_router = routers.NestedSimpleRouter(router, r'documents', lookup='document')
 documents_router.register(r'parts', PartViewSet, basename='part')
 documents_router.register(r'transcriptions', DocumentTranscriptionViewSet, basename='transcription')

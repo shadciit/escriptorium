@@ -13,11 +13,13 @@ from core.views import (Home,
                         ModelCancelTraining,
                         PublishDocument,
                         ShareDocument,
-                        DocumentPartsProcessAjax)
+                        DocumentPartsProcessAjax,
+                        CreateTagDocument)
 
 urlpatterns = [
     path('', Home.as_view(), name='home'),
     path('documents/', DocumentsList.as_view(), name='documents-list'),
+    path('documents/<str:chain>/filter/', DocumentsList.as_view(), name='documents-list-filter'),
     path('document/<int:pk>/', DocumentDetail.as_view(), name='document-detail'),
     path('document/create/', CreateDocument.as_view(), name='document-create'),
     path('document/<int:pk>/edit/', UpdateDocument.as_view(), name='document-update'),
@@ -36,4 +38,5 @@ urlpatterns = [
          name='document-parts-process'),
 
     path('test/', TemplateView.as_view(template_name='core/test.html')),
+    path('documenttag/manage/', CreateTagDocument.as_view(), name='documenttag-manage'),
 ]

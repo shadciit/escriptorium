@@ -19,7 +19,9 @@ from core.models import (Document,
                          LineTranscription,
                          BlockType,
                          LineType,
-                         OcrModel)
+                         OcrModel,
+                         DocumentTag,
+                         Tag)
 from core.tasks import (segtrain, train, segment, transcribe)
 
 logger = logging.getLogger(__name__)
@@ -439,3 +441,11 @@ class TranscribeSerializer(ProcessSerializerMixin, serializers.Serializer):
                               model_pk=model.pk,
                               user_pk=self.user.pk)
             )
+
+class TagDocumentSerializer(serializers.ModelSerializer):
+    document = serializers.IntegerField(default=0)
+    #docid = serializers.IntegerField()
+    class Meta:
+        model = Tag
+        fields = ("id","name", "shortcode", "priority", "category", "document")
+        depth = 1

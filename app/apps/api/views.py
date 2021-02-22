@@ -4,7 +4,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -30,7 +30,8 @@ from api.serializers import (UserOnboardingSerializer,
                              TrainSerializer,
                              SegTrainSerializer,
                              TranscribeSerializer,
-                             OcrModelSerializer)
+                             OcrModelSerializer,
+                             TagDocumentSerializer)
 
 from core.models import (Document,
                          DocumentPart,
@@ -41,13 +42,18 @@ from core.models import (Document,
                          Transcription,
                          LineTranscription,
                          OcrModel,
-                         AlreadyProcessingException)
+                         AlreadyProcessingException,
+                         DocumentTag,
+                         Tag)
 
 from core.tasks import recalculate_masks
 from users.models import User
 from imports.forms import ImportForm, ExportForm
 from imports.parsers import ParseError
 from versioning.models import NoChangeException
+from django.http import JsonResponse
+from rest_framework.views import APIView
+from rest_framework import generics
 
 
 logger = logging.getLogger(__name__)
@@ -454,3 +460,16 @@ class OcrModelViewSet(DocumentPermissionMixin, ModelViewSet):
             logger.exception(e)
             return Response({'status': 'failed'}, status=400)
         return Response({'status': 'canceled'})
+
+class DocumentTagViewSet(ModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagDocumentSerializer
+    lookup_field = 'id'
+
+    @action(detail=True, methods=['GET'])
+    def remove(self, request, id=None):
+        self.get_object().delete()
+        return redirect('tags_list')
+    
+    def get_success_url(self):
+            return redirect('documents-list')

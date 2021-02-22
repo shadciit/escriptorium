@@ -36,7 +36,7 @@ WORKDIR /usr/src/app
 RUN pip install --upgrade pip
 
 COPY ./app/requirements.txt /usr/src/app/requirements.txt
-RUN pip install -U -r requirements.txt
+RUN pip install -U -r requirements.txt --no-cache-dir
 
 COPY ./app/entrypoint.sh /usr/src/app/entrypoint.sh
 COPY ./app /usr/src/app/

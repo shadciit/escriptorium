@@ -10,6 +10,29 @@
 
 {% block body %}
 <div class="row">
+  <div class="col-lg-12">
+    <a href="{% url 'document-create' %}" class="btn btn-success float-sm-right">{% trans 'Create new' %}</a>
+    <h2>{% trans "My Documents" %}</h2>
+  </div>
+</div>
+
+<div id="appdoc">
+  <div class="row">
+    <documentmanage :tags="'{{tags}}'"
+                    :tagsimg="'{{tagsimg}}'"
+                    :chainflt="'{{chainflt}}'"
+    >
+    </documentmanage>
+  </div>
+</div>
+
+
+
+
+
+
+
+<div class="row">
   <div class="col-md-12 col-md-offset-4">
     <a href="{% url 'document-create' %}" class="btn btn-success float-sm-right">{% trans 'Create new' %}</a>
     <h2>{% trans "My Documents" %}</h2>
@@ -58,5 +81,11 @@
 
 
 </div>
-{% include 'includes/pagination.html' %}
+
+{% endblock %}
+
+{% block scripts %}
+
+  {{ block.super }}
+  <script src="{% static 'doclist.js' %}" type="text/javascript"></script>
 {% endblock %}

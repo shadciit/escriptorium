@@ -574,3 +574,48 @@ class UploadImageForm(BootstrapFormMixin, forms.ModelForm):
         if commit:
             part.save()
         return part
+
+class DocumentTagForm(BootstrapFormMixin, forms.ModelForm):
+    tag_set = Tag.objects.filter(category='D')
+    tag = forms.ModelChoiceField(
+            widget=forms.Select,
+            queryset=tag_set,
+            required=False,
+            empty_label="-- Choose tag --",
+    )
+    document = forms.IntegerField()
+    class Meta:
+        model = Tag
+        fields = ['name', 'category','priority']
+    def __init__(self, user, *args, **kwargs):
+        super(DocumentTagForm, self).__init__(*args, **kwargs)
+        self.fields['tag'].queryset = Tag.objects.filter(category='D', owner=user)
+        self.fields['name'].required = False
+        self.fields['tag'].widget.attrs.update({'class' : 'form-control'})
+        self.fields['name'].widget.attrs.update({'class' : 'form-control'})
+    def save(self, user):
+        if self.cleaned_data.get('tag', False) is None:
+            if len(self.cleaned_data.get('name', False).strip()) != 0:
+                try:
+                    doc = get_object_or_404(Document, pk=self.cleaned_data.get("document"))
+                    tag = Tag.objects.create(
+                        name=self.cleaned_data.get("name"), 
+                        shortcode=self.cleaned_data.get("name"), 
+                        priority=self.cleaned_data.get("priority"), 
+                        category=self.cleaned_data.get("category"), 
+                        owner=user)
+                    tag.save()
+                    newtag = DocumentTag.objects.create(tag=tag, document=doc)
+                    newtag.save()
+                    return newtag
+                except:
+                    self._errors['name'] = self.error_class(['Assign tag error'])
+        else:
+            try:
+                tag = get_object_or_404(Tag, pk=self.cleaned_data.get("id"))
+                doc = get_object_or_404(Document, pk=self.cleaned_data.get("document"))
+                newtag = DocumentTag.objects.create(tag=tag, document=doc)
+                newtag.save()
+                return newtag
+            except:
+                self._errors['name'] = self.error_class(['Assign tag error'])
