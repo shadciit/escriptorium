@@ -133,6 +133,39 @@ class DocumentMetadata(models.Model):
     def __str__(self):
         return '%s:%s' % (self.document.name, self.key.name)
 
+class Tag(models.Model):
+    name = models.CharField(max_length=100, blank=False)
+    PRIORITY_VERY_HIGH = 5
+    PRIORITY_HIGH = 4
+    PRIORITY_MEDIUM = 3
+    PRIORITY_LOW = 2
+    PRIORITY_VERY_LOW = 1
+    priorityitems = (
+        (PRIORITY_VERY_HIGH, "Very high"),
+		(PRIORITY_HIGH, "High"),
+		(PRIORITY_MEDIUM, 'Medium'),
+        (PRIORITY_LOW, 'Low'),
+        (PRIORITY_VERY_LOW, 'Very low'),
+	)
+    priority = models.PositiveSmallIntegerField(choices=priorityitems, default=PRIORITY_VERY_LOW)
+    owner = models.ForeignKey(User, null=False, on_delete=models.CASCADE)
+    
+    
+    class Meta:
+        abstract = True
+    
+    def __str__(self):
+        return self.name
+
+class DocumentTag(Tag):
+    shared_document_tag_with = models.ManyToManyField(Group, blank=True,
+                                                verbose_name=_("Share tags with"),
+                                                related_name='shared_document_tags')
+
+class PartTag(Tag):
+    shared_part_tag_with = models.ManyToManyField(Group, blank=True,
+                                                verbose_name=_("Share tags with"),
+                                                related_name='shared_part_tags')
 
 class DocumentManager(models.Manager):
     def get_queryset(self):
@@ -147,7 +180,7 @@ class DocumentManager(models.Manager):
                            & (Q(shared_with_users=user)
                               | Q(shared_with_groups__in=user.groups.all()))))
                 .exclude(workflow_state=Document.WORKFLOW_STATE_ARCHIVED)
-                .prefetch_related('shared_with_groups', 'transcriptions')
+                .prefetch_related('shared_with_groups', 'transcriptions', 'tags')
                 .select_related('typology')
                 .distinct())
 
@@ -199,7 +232,7 @@ class Document(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     metadatas = models.ManyToManyField(Metadata, through=DocumentMetadata, blank=True)
-
+    tags = models.ManyToManyField(DocumentTag, blank=True)
     objects = DocumentManager()
 
     class Meta:
@@ -1176,45 +1209,3 @@ def delete_thumbnails(sender, instance, using, **kwargs):
     thumbnailer.delete_thumbnails()
     thumbnailer = get_thumbnailer(instance.bw_image)
     thumbnailer.delete_thumbnails()
-
-class Tag(models.Model):
-    id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100, blank=False)
-    shortcode = models.CharField(max_length=20)
-    PRIORITY_VERY_HIGH = 5
-    PRIORITY_HIGH = 4
-    PRIORITY_MEDIUM = 3
-    PRIORITY_LOW = 2
-    PRIORITY_VERY_LOW = 1
-    priorityitems = (
-        (PRIORITY_VERY_HIGH, "Very high"),
-		(PRIORITY_HIGH, "High"),
-		(PRIORITY_MEDIUM, 'Medium'),
-        (PRIORITY_LOW, 'Low'),
-        (PRIORITY_VERY_LOW, 'Very low'),
-	)
-    priority = models.PositiveSmallIntegerField(max_length=1,choices=priorityitems, default=PRIORITY_VERY_LOW)
-    typeitems = (
-		('C', "Collection"),
-		('D', 'Document'),
-        ('P', 'Document Part')
-	)
-    category = models.CharField(max_length=1, choices=typeitems, default='D')
-    owner = models.ForeignKey(User, null=False, on_delete=models.CASCADE)
-    
-    def __str__(self):
-        return self.name
-    
-    class Meta:
-        db_table = 'core_tag'
-        abstract = True
-
-class DocumentTag(Tag):
-    id = models.AutoField(primary_key=True)
-    document = models.ForeignKey(Document, null=False, on_delete=models.CASCADE)
-    tag = models.ForeignKey(Tag, null=False, on_delete=models.CASCADE)
-
-class PartTag(Tag):
-    id = models.AutoField(primary_key=True)
-    part = models.ForeignKey(Part, null=False, on_delete=models.CASCADE)
-    tag = models.ForeignKey(Tag, null=False, on_delete=models.CASCADE)

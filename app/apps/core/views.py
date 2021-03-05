@@ -14,11 +14,13 @@ from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView
 
 from core.models import (Document, DocumentPart, Metadata,
-                         OcrModel, AlreadyProcessingException, Tag)
+                         OcrModel, AlreadyProcessingException, DocumentTag, PartTag)
 from core.forms import (DocumentForm, MetadataFormSet, DocumentShareForm,
-                        UploadImageForm, DocumentProcessForm, DocumentTagForm)
+                        UploadImageForm, DocumentProcessForm)
 from imports.forms import ImportForm, ExportForm
-
+from api.serializers import TagDocumentSerializer
+from django.core.serializers import serialize
+from django.contrib.humanize.templatetags.humanize import naturalday
 
 logger = logging.getLogger(__name__)
 
@@ -32,40 +34,44 @@ class Home(TemplateView):
         context['KRAKEN_VERSION'] = settings.KRAKEN_VERSION
         return context
 
-
 class DocumentsList(LoginRequiredMixin, ListView):
     model = Document
     paginate_by = 10
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        tags_doc = Tag.objects.filter(category='D')
-        tags_img = Tag.objects.filter(category='P')
-        context['tags'] = tags_doc
-        context['tagsimg'] = tags_img
-        context['formtag'] =  DocumentTagForm(self.request.user)
+        context['tags'] = list(DocumentTag.objects.all().values('pk', 'name', 'priority'))
+        context['tagsimg'] = list(PartTag.objects.all().values('pk', 'name', 'priority'))
+        context['docslist'] =  list(self.get_queryset().values('pk', 'name', 'owner'))
+        context['docslistdumps'] =  self.get_formated_document()
         try:
             if self.kwargs["chain"] is not None:
                 context['chainflt'] = self.kwargs["chain"]
         except:
+            context['chainflt'] = '0'
             return context
         return context
-
-
+    
     def get_queryset(self):
         try:
             if self.kwargs["chain"] is not None:
-                return (Document.objects
-                        .for_user(self.request.user)
-                        .select_related('owner', 'main_script')
-                        .annotate(parts_updated_at=Max('parts__updated_at'))
-                        .filter(documenttag__tag__id__in=list(map(int, self.kwargs["chain"].split(',')))))
+                documents = Document.objects.for_user(self.request.user).select_related('owner', 'main_script').annotate(parts_updated_at=Max('parts__updated_at')).filter(tags__pk__in=list(map(int, self.kwargs["chain"].split(','))))
+            return documents
         except:
-            return (Document.objects
-                    .for_user(self.request.user)
-                    .select_related('owner', 'main_script')
-                    .annotate(parts_updated_at=Max('parts__updated_at')))
-
+            return Document.objects.for_user(self.request.user).select_related('owner', 'main_script').annotate(parts_updated_at=Max('parts__updated_at'))
+    
+    def get_formated_document(self):
+        list_document = []
+        for doc in self.get_queryset():
+            item = {'pk': doc.pk, 'part': doc.parts.first().image.url,'name': doc.name, 'owner': doc.owner.username.title(), 'shared': ', '.join(doc.shared_with_groups.all().reverse()), 'partcount': doc.parts.all().count(), 'modif': naturalday(doc.parts_updated_at, "%b. %d %Y").replace('%', '').title(), 'tags': self.get_list_linked_objects(doc.tags.all())}
+            list_document.append(item)
+        return list_document
+    
+    def get_list_linked_objects(self, list):
+        tab_names = []
+        for item in list:
+            tab_names.append(item.name+'¤'+str(item.priority))
+        return ', '.join(tab_names)
 
 
 class DocumentMixin():
@@ -114,8 +120,6 @@ class CreateDocument(LoginRequiredMixin, SuccessMessageMixin, DocumentMixin, Cre
         if form.is_valid() and metadata_form.is_valid():
             return self.form_valid(form, metadata_form)
         else:
-            print(form.errors)
-            print(metadata_form.errors)
             return self.form_invalid(form)
 
     def form_valid(self, form, metadata_form):
@@ -347,18 +351,19 @@ class ModelCancelTraining(LoginRequiredMixin, SuccessMessageMixin, DetailView):
             return HttpResponseRedirect(self.get_success_url())
 
 class CreateTagDocument(LoginRequiredMixin, SuccessMessageMixin, CreateView):
-    model = Tag
-    form_class = DocumentTagForm
+    model = PartTag
+    #form_class = DocumentTagForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         return context
-
+    '''
     def post(self, request, *args, **kwargs):
         form = DocumentTagForm(self.request.user, request.POST)
         self.object = None
         if form.is_valid():
             form.save(self.request.user, request.POST)
-        return self.get_success_url()
+        return self.get_success_url()'''
+
     def get_success_url(self):
             return redirect('documents-list')

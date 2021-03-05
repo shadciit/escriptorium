@@ -13,7 +13,7 @@ from django.utils.translation import gettext_lazy as _
 from bootstrap.forms import BootstrapFormMixin
 from core.models import (Document, Metadata, DocumentMetadata,
                          DocumentPart, OcrModel, Transcription,
-                         BlockType, LineType, AlreadyProcessingException)
+                         BlockType, LineType, AlreadyProcessingException, Tag)
 from users.models import User
 
 logger = logging.getLogger(__name__)
@@ -574,7 +574,7 @@ class UploadImageForm(BootstrapFormMixin, forms.ModelForm):
         if commit:
             part.save()
         return part
-
+'''
 class DocumentTagForm(BootstrapFormMixin, forms.ModelForm):
     tag_set = Tag.objects.filter(category='D')
     tag = forms.ModelChoiceField(
@@ -619,3 +619,4 @@ class DocumentTagForm(BootstrapFormMixin, forms.ModelForm):
                 return newtag
             except:
                 self._errors['name'] = self.error_class(['Assign tag error'])
+'''

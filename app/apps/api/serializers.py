@@ -444,8 +444,18 @@ class TranscribeSerializer(ProcessSerializerMixin, serializers.Serializer):
 
 class TagDocumentSerializer(serializers.ModelSerializer):
     document = serializers.IntegerField(default=0)
-    #docid = serializers.IntegerField()
+    tags = serializers.CharField(read_only=True, default="")
     class Meta:
-        model = Tag
-        fields = ("id","name", "shortcode", "priority", "category", "document")
-        depth = 1
+        model = DocumentTag
+        fields = ("pk","name", "priority", "document", "tags")
+
+    def save(self, user):
+        tag = DocumentTag.objects.create(name=self.validated_data['name'], priority=self.validated_data['priority'], owner=user)
+        Document.objects.get(pk=self.validated_data['document']).tags.add(tag)
+        return tag
+    
+    def validate_document(self, value):
+        return int(value)
+    
+    def validate_priority(self, value):
+        return int(value)

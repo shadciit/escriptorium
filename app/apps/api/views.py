@@ -44,7 +44,7 @@ from core.models import (Document,
                          OcrModel,
                          AlreadyProcessingException,
                          DocumentTag,
-                         Tag)
+                         PartTag)
 
 from core.tasks import recalculate_masks
 from users.models import User
@@ -54,6 +54,7 @@ from versioning.models import NoChangeException
 from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework import generics
+from django.db import transaction
 
 
 logger = logging.getLogger(__name__)
@@ -462,14 +463,60 @@ class OcrModelViewSet(DocumentPermissionMixin, ModelViewSet):
         return Response({'status': 'canceled'})
 
 class DocumentTagViewSet(ModelViewSet):
-    queryset = Tag.objects.all()
+    queryset = DocumentTag.objects.all()
     serializer_class = TagDocumentSerializer
-    lookup_field = 'id'
+    lookup_field = 'pk'
 
     @action(detail=True, methods=['GET'])
     def remove(self, request, id=None):
         self.get_object().delete()
-        return redirect('tags_list')
+        #return redirect('tags_list')
+        return JsonResponse({'status': status.HTTP_200_OK})
     
-    def get_success_url(self):
-            return redirect('documents-list')
+    @action(detail=False, methods=['get', 'post'])
+    def gettags(self, request):
+        tags = Document.objects.get(pk=self.request.data.get('document')).tags
+        listtags = []
+        for tag in tags.all():
+            item = {'label': tag.name, 'value': tag.id, "priority": tag.priority}
+            listtags.append(item)
+        return JsonResponse({'result': listtags, 'status': status.HTTP_200_OK})
+    
+    @action(detail=False, methods=['get', 'post'])
+    def getcustomtags(self, request):
+        return JsonResponse({'tag': list(DocumentTag.objects.all().values('id', 'name')), 'tagi': list(PartTag.objects.all().values('id', 'name')), 'status': status.HTTP_200_OK})
+    
+    @action(detail=False, methods=['get', 'post'])
+    def getunlinktags(self, request):
+        tags = DocumentTag.objects.all()
+        dtags = get_object_or_404(Document, pk=self.request.data.get('document')).tags
+        tagexcudes = tags.exclude(pk__in=list(dtags.values_list('pk', flat=True)))
+        listtags = []
+        for tag in tagexcudes:
+            item = {'label': tag.name, 'value': tag.id, "priority": tag.priority}
+            listtags.append(item)
+        return JsonResponse({'tags': listtags, 'status': status.HTTP_200_OK})
+    
+    @action(detail=False, methods=['get', 'post'])
+    def unassign(self, request):
+        dict_data = json.loads(list(self.request.data)[0])
+        document = Document.objects.get(pk=int(dict_data['document']))
+        dtags = DocumentTag.objects.filter(pk__in=list(map(int, dict_data['tags'].split(','))))
+        with transaction.atomic():
+            for tag in dtags:
+                document.tags.remove(tag)
+        return JsonResponse({'status': status.HTTP_200_OK})
+    
+    @action(detail=False, methods=['get', 'post'])
+    def assign(self, request):
+        dict_data = json.loads(list(self.request.data)[0])
+        serializer = self.get_serializer(data=dict_data)
+        document = get_object_or_404(Document, pk=int(dict_data['document']))
+        if len(dict_data['pk'].strip()) != 0:
+            document.tags.add(get_object_or_404(DocumentTag, pk=int(dict_data['pk'])))
+            return JsonResponse({'action': 'assign', 'status': status.HTTP_200_OK})
+        else:
+            if serializer.is_valid():
+                dtag = serializer.save(user=self.request.user)
+            return JsonResponse({'result': {'label': dtag.name, 'value': dtag.id, 'priority': dtag.priority}, 'action': 'add', 'status': status.HTTP_200_OK})
+

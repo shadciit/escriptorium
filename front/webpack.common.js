@@ -41,7 +41,9 @@ module.exports = {
 
   resolve: {
     alias: {
-      'vue$': 'vue/dist/vue'
+      'vue$': 'vue/dist/vue',
+      'select-pure': 'select-pure/dist/bundle.min',
+      'ag-grid-vue': 'ag-grid-community/dist/ag-grid-community'
     }
   }
 };
