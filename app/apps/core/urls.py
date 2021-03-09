@@ -13,8 +13,7 @@ from core.views import (Home,
                         ModelCancelTraining,
                         PublishDocument,
                         ShareDocument,
-                        DocumentPartsProcessAjax,
-                        CreateTagDocument)
+                        DocumentPartsProcessAjax)
 
 urlpatterns = [
     path('', Home.as_view(), name='home'),
@@ -38,5 +37,4 @@ urlpatterns = [
          name='document-parts-process'),
 
     path('test/', TemplateView.as_view(template_name='core/test.html')),
-    path('documenttag/manage/', CreateTagDocument.as_view(), name='documenttag-manage'),
 ]

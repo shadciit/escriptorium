@@ -10,8 +10,9 @@ export const initialState = () => ({
     status_request: 0,
     documentID: 0,
     field_errors: '',
-    documents: []
-
+    documents: [],
+    basehosturl: "",
+    multiselectvalues: []
 })
 
 export const mutations = {
@@ -39,7 +40,9 @@ export const mutations = {
         state.chainflt = chain
     },
     setStatusRequest (state, status) {
-        state.status_request = status
+        console.log('avant 1');
+        state.status_request = status;
+        console.log('après1');
     },
     setDocumentID (state, idd) {
         state.documentID = idd
@@ -49,6 +52,12 @@ export const mutations = {
     },
     setDocuments (state, docs) {
         assign(state.documents, docs)
+    },
+    setBaseUrl (state, baseurl) {
+        state.basehosturl = baseurl
+    },
+    setMultiselected (state, selected) {
+        state.multiselectvalues = selected
     },
 }
 
@@ -67,14 +76,13 @@ export const actions = {
     },
     async unassigntags ({state, commit}, data) {
         commit('setStatusRequest', 0);
-        const resp = await api.unassignTagOnDocument(JSON.stringify(data));
+        const resp = await api.unassignTagOnDocument(data);
         commit('setStatusRequest', resp.data.status);
     },
     async assigntags ({state, commit}, data) {
         commit('setStatusRequest', 0);
         const resp = await api.assignTagOnDocument(data);
-        if((resp.data.action = 'add') && (resp.data.status = 200)) {
-            //state.maptags.push(resp.data.result);
+        if((resp.data.action == 'add') && (resp.data.status == 200)) {
             state.tags.push(resp.data.result);
         }
         commit('setStatusRequest', resp.data.status);

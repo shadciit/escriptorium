@@ -501,7 +501,7 @@ class DocumentTagViewSet(ModelViewSet):
     def unassign(self, request):
         dict_data = json.loads(list(self.request.data)[0])
         document = Document.objects.get(pk=int(dict_data['document']))
-        dtags = DocumentTag.objects.filter(pk__in=list(map(int, dict_data['tags'].split(','))))
+        dtags = DocumentTag.objects.filter(pk__in=list(map(int, dict_data['selectedtags'].split(','))))
         with transaction.atomic():
             for tag in dtags:
                 document.tags.remove(tag)

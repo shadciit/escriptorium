@@ -6,16 +6,17 @@
             <div class="modal-body">
             
                 <input type="hidden" class="form-control" id="docidrmv" name="document" value="0">
-                <div class="form-row form-group justify-content-center">
-                <label class="col-form-label">Select tag :</label>
-                <select v-bind:name="'tags'" v-bind:id="'tag'" v-model="valuesselected" multiple>
+                <input type="hidden" class="form-control" id="selectedtags" name="selectedtags" value="0">
+
+
+            <div class="form-row form-group justify-content-center">
+                <select v-bind:name="'tags'" v-bind:id="'multiple-checkboxes'" v-model="valuesselected" multiple="multiple">
                     <option v-for="ctag in docustomstagsrmid" :key="ctag.value" v-bind:value="ctag.value">
                         {{ ctag.label }}
                     </option>
                 </select>
-                
-
             </div>
+
             </div>
             <div><h5 id="errortag">{{ form_field_errors}}</h5></div>
             <div class="modal-footer">
@@ -33,7 +34,8 @@ export default {
     data () {
         return {
             valuesselected: [],
-            docustomstagsrmid: []
+            docustomstagsrmid: [],
+            scoope: this
         }
     },
     computed: {
@@ -46,10 +48,10 @@ export default {
     },
     methods: {
         resetTagsList(tab, bool){
-            //this.instanceAutocomplete.reset();
+            this.instanceAutocomplete.reset();
         },
         async removetaglist(){
-            await this.$store.dispatch('documentslist/unassigntags', buildjsondata(document.getElementById("formrmtag").elements));
+            await this.$store.dispatch('documentslist/unassigntags', this.buildjsondata(document.getElementById("formrmtag").elements));
             $("#tagRemoveModal").modal('hide');
         },
         buildjsondata(el){
@@ -57,9 +59,9 @@ export default {
             let tabindex = [];
             for(let i = 0; i < el.length; i++){
                 if((el[i].value.toLowerCase() != "button") && (el[i].value.toLowerCase() != "submit") && (el[i].value != "")){
-                    Object.defineProperty(element, el[i].name, {
-                        value: el[i].value
-                    });
+                    if(!tabindex.includes(el[i].name.toString())){
+                        Object.defineProperty(element, el[i].name, { value: el[i].value });
+                    }
                     tabindex.push(el[i].name.toString());
                 }
             }

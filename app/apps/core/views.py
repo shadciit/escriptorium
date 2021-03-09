@@ -42,7 +42,6 @@ class DocumentsList(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['tags'] = list(DocumentTag.objects.all().values('pk', 'name', 'priority'))
         context['tagsimg'] = list(PartTag.objects.all().values('pk', 'name', 'priority'))
-        context['docslist'] =  list(self.get_queryset().values('pk', 'name', 'owner'))
         context['docslistdumps'] =  self.get_formated_document()
         try:
             if self.kwargs["chain"] is not None:
@@ -350,20 +349,3 @@ class ModelCancelTraining(LoginRequiredMixin, SuccessMessageMixin, DetailView):
         else:
             return HttpResponseRedirect(self.get_success_url())
 
-class CreateTagDocument(LoginRequiredMixin, SuccessMessageMixin, CreateView):
-    model = PartTag
-    #form_class = DocumentTagForm
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        return context
-    '''
-    def post(self, request, *args, **kwargs):
-        form = DocumentTagForm(self.request.user, request.POST)
-        self.object = None
-        if form.is_valid():
-            form.save(self.request.user, request.POST)
-        return self.get_success_url()'''
-
-    def get_success_url(self):
-            return redirect('documents-list')

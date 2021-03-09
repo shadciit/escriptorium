@@ -48,11 +48,11 @@ export default {
         return {
                 selected: 1,
                 priorityTags: [
-                        { text: 'Very high', value: 1 },
-                        { text: 'High', value: 2 },
+                        { text: 'Very high', value: 5 },
+                        { text: 'High', value: 4 },
                         { text: 'Medium', value: 3 },
-                        { text: 'Low', value: 4 },
-                        { text: 'Very low', value: 5 }
+                        { text: 'Low', value: 2 },
+                        { text: 'Very low', value: 1 }
                     ]
                 }
     },

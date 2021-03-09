@@ -23,7 +23,7 @@
               <td v-html="formattag(document.tags)">
               </td>
               <td class="text-right">
-                <a v-bind:href="'document/' + document.pk +'/edit/'" class="btn btn-info" title="Edit"><i class="fas fa-edit"></i></a>
+                <a v-bind:href="'/document/' + document.pk +'/edit/'" class="btn btn-info" title="Edit"><i class="fas fa-edit"></i></a>
                 <a href="#" v-bind:name="document.pk" title="Assign tag" class="btn btn-info set-tag-meta btn-primary" data-toggle="modal" data-target="#tagAssignModal" v-on:click="launchmodal(document.pk)"><i class="fas fa fa-tags"></i></a>
                 <a href="#" v-bind:name="document.pk" title="Remove tag" class="btn btn-info remove-tag-meta btn-danger" v-on:click="launchmodalunassign(document.pk)"><i class="fas fa fa-tag"></i></a>
               </td>
@@ -40,6 +40,9 @@ export default {
     computed: {
       object_list() {
         return this.$store.state.documentslist.documents
+      },
+      baseurl(){
+        return this.$store.state.documentslist.basehosturl
       }
     },
     methods: {
@@ -49,9 +52,21 @@ export default {
              },
         async launchmodalunassign(idd){
             $('#docidrmv').val(idd);
+            $('#multiple-checkboxes').multiselect('destroy');
             this.$store.commit('documentslist/setDocumentID', idd);
             await this.$store.dispatch('documentslist/gettagbydocumentrm', this.$store.state.documentslist.documentID);
             setTimeout(() => {
+                $('#multiple-checkboxes').multiselect({
+                    includeSelectAllOption: true,
+                    onChange: function(element, checked) {
+                      let brands = $('#multiple-checkboxes option:selected');
+                      let selected = [];
+                      $(brands).each(function(index, brand){
+                          selected.push([$(this).val()]);
+                      });
+                      $('#selectedtags').val(selected.join(','));
+                    }
+                });
                 $("#tagRemoveModal").modal('show');
             }, 1000);
         },
@@ -69,9 +84,6 @@ export default {
 </script>
 
 <style scoped>
-.text-muted + .text-muted:before {
-  content: ", ";
-}
 .table-hover td 
 {
     text-align: center; 

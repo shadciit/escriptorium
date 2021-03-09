@@ -13,3 +13,4 @@ front/node_modules
 front/dist
 variables.env
 *.DS_Store
+.vscode/

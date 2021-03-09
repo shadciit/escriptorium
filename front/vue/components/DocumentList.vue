@@ -70,13 +70,20 @@ export default {
         'chainflt',
         'instanceAutocomplete',
         'documents', 
-        'testdocs'
+        'basehosturl'
     ],
     created(){
         this.$store.commit('documentslist/setChainFilter', this.chainflt);
         this.$store.commit('documentslist/setDocTags', this.tags);
         this.$store.commit('documentslist/setPartsTags', this.tagsimg);
         this.$store.commit('documentslist/setDocuments', this.documents);
+        //this.$store.commit('documentslist/setBaseUrl', this.basehosturl);
+        
+    },
+    mounted: function () {
+        $('#multiple-checkboxes').multiselect({
+            includeSelectAllOption: true
+        });
     },
     components: {
         'modaltagadd': ModalAddTags,

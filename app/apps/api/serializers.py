@@ -20,8 +20,7 @@ from core.models import (Document,
                          BlockType,
                          LineType,
                          OcrModel,
-                         DocumentTag,
-                         Tag)
+                         DocumentTag)
 from core.tasks import (segtrain, train, segment, transcribe)
 
 logger = logging.getLogger(__name__)
