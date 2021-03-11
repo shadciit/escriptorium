@@ -67,15 +67,6 @@ export default {
             return this.$store.state.documentslist.form_field_errors;
         }
     },
-    /*
-    watch: {
-        "$store.state.documentslist.customstags": {
-        handler: function(nv) {
-            this.docustomstagscid = this.$store.state.documentslist.maptags
-        },
-        immediate: true 
-        }
-    },*/
     methods: {
         async assigntag(){
             await this.$store.dispatch('documentslist/assigntags', this.buildjsondata());
