@@ -2,12 +2,10 @@
 <div>
     <div class="row">
         <div v-bind:class="'col-12 col-sm-4 col-md-3 col-lg-2'">
-
             <div v-bind:class="'accordion'">
                 <div v-bind:class="'title'">
                     <h3>"Tags"</h3>
                 </div>
-
                 <div v-bind:class="'item item-accordion'" v-bind:id="'item1'">
                     <h2>Document tags</h2>
                     <i v-bind:class="'fas fa-chevron-down'" v-bind:id="'j'" v-on:click="animatefunction('j')"></i>
@@ -17,14 +15,12 @@
                             <div v-bind:class="'checkbox'">
                             <input v-if="parseliststr(tagd.value)" type="checkbox" v-bind:class="'filterdoc'" v-bind:id="tagd.value" v-on:click="getFilterDocument" v-bind:name="'categorytag-D'" checked>
                             <input v-else type="checkbox" v-bind:class="'filterdoc'" v-bind:id="tagd.value" v-on:click="getFilterDocument" v-bind:name="'categorytag-D'">
-                            
                             <label><span v-bind:class="'badge badge-pill badge-' + definepriority(tagd.priority)">{{tagd.label}}</span></label>
                             </div>
                         </li>
                     </ul>
                     </div>
                 </div>
-                
                 <div v-bind:class="'item item-accordion'" v-bind:id="'item2'">
                     <h2>Document-part tags</h2>
                     <i v-bind:class="'fas fa-chevron-down'" v-bind:id="'p'" v-on:click="animatefunction('p')"></i>
@@ -46,12 +42,11 @@
                         <div v-bind:class="'col-6'"><h6 v-bind:id="'selectall'" v-on:click="toggleselect('true')">Select all </h6></div>
                         <div v-bind:class="'col-6'"><h6 v-bind:id="'deselectall'" v-on:click="toggleselect('false')">Deselect all </h6></div>
                     </div>
-                    
                     </div>
                 </div>
             </div>
         </div>
-        <doclist></doclist>
+        <ag-grid></ag-grid>
     </div>
     <modaltagadd></modaltagadd>
     <modaltagremove></modaltagremove>
@@ -59,7 +54,7 @@
 </template>
 
 <script>
-import DocList from './DocList.vue';
+import AgGrid from './AgGrid.vue';
 import ModalAddTags from './ModalAddTags.vue';
 import ModalRemoveTags from './ModalRemoveTags.vue';
 
@@ -69,16 +64,13 @@ export default {
         'tagsimg',
         'chainflt',
         'instanceAutocomplete',
-        'documents', 
-        'basehosturl'
+        'documents'
     ],
-    created(){
+    async created(){
         this.$store.commit('documentslist/setChainFilter', this.chainflt);
         this.$store.commit('documentslist/setDocTags', this.tags);
         this.$store.commit('documentslist/setPartsTags', this.tagsimg);
-        this.$store.commit('documentslist/setDocuments', this.documents);
-        //this.$store.commit('documentslist/setBaseUrl', this.basehosturl);
-        
+        await this.$store.dispatch('documentslist/getFilteredDocuments');
     },
     mounted: function () {
         $('#multiple-checkboxes').multiselect({
@@ -88,7 +80,7 @@ export default {
     components: {
         'modaltagadd': ModalAddTags,
         'modaltagremove': ModalRemoveTags,
-        'doclist': DocList,
+        'ag-grid': AgGrid,
     },
     computed: {
         doctagscid() {
@@ -115,16 +107,16 @@ export default {
             return tab;
         },
         getFilterDocument(){
-        //let chainfilter = getTabFilters('categorytag-D').join(',') + '¤' + getTabFilters('categorytag-P').join(',');
-        let chainfilter = this.getTabFilters('categorytag-D').join(',');
-        let baseUrlDoc = '/documents/';
-        if(this.IsNullOrEmptyOrUdf(chainfilter)){
-            let url = baseUrlDoc + chainfilter + '/filter/';
-            document.location.href = url;
-        }
-        else {
-            document.location.href = baseUrlDoc;
-        }
+            //let chainfilter = getTabFilters('categorytag-D').join(',') + '¤' + getTabFilters('categorytag-P').join(',');
+            let chainfilter = this.getTabFilters('categorytag-D').join(',');
+            let baseUrlDoc = '/documents/';
+            if(this.IsNullOrEmptyOrUdf(chainfilter)){
+                let url = baseUrlDoc + chainfilter + '/filter/';
+                document.location.href = url;
+            }
+            else {
+                document.location.href = baseUrlDoc;
+            }
         },
         activateFields(tab, bool){
             tab.forEach(function(item){

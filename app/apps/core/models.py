@@ -148,7 +148,6 @@ class Tag(models.Model):
         (PRIORITY_VERY_LOW, 'Very low'),
 	)
     priority = models.PositiveSmallIntegerField(choices=priorityitems, default=PRIORITY_VERY_LOW)
-    owner = models.ForeignKey(User, null=False, on_delete=models.CASCADE)
     
     
     class Meta:
@@ -158,14 +157,10 @@ class Tag(models.Model):
         return self.name
 
 class DocumentTag(Tag):
-    shared_document_tag_with = models.ManyToManyField(Group, blank=True,
-                                                verbose_name=_("Share tags with"),
-                                                related_name='shared_document_tags')
+    pass
 
 class PartTag(Tag):
-    shared_part_tag_with = models.ManyToManyField(Group, blank=True,
-                                                verbose_name=_("Share tags with"),
-                                                related_name='shared_part_tags')
+    pass
 
 class DocumentManager(models.Manager):
     def get_queryset(self):
@@ -328,6 +323,7 @@ class DocumentPart(OrderedModel):
 
     # this is denormalized because it's too heavy to calculate on the fly
     transcription_progress = models.PositiveSmallIntegerField(default=0)
+    tags = models.ManyToManyField(PartTag, blank=True)
 
     class Meta(OrderedModel.Meta):
         pass

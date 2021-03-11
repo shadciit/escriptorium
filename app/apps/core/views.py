@@ -36,13 +36,13 @@ class Home(TemplateView):
 
 class DocumentsList(LoginRequiredMixin, ListView):
     model = Document
-    paginate_by = 10
+    queryset = Document.objects.all()
+    #paginate_by = 10
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['tags'] = list(DocumentTag.objects.all().values('pk', 'name', 'priority'))
         context['tagsimg'] = list(PartTag.objects.all().values('pk', 'name', 'priority'))
-        context['docslistdumps'] =  self.get_formated_document()
         try:
             if self.kwargs["chain"] is not None:
                 context['chainflt'] = self.kwargs["chain"]
@@ -50,28 +50,6 @@ class DocumentsList(LoginRequiredMixin, ListView):
             context['chainflt'] = '0'
             return context
         return context
-    
-    def get_queryset(self):
-        try:
-            if self.kwargs["chain"] is not None:
-                documents = Document.objects.for_user(self.request.user).select_related('owner', 'main_script').annotate(parts_updated_at=Max('parts__updated_at')).filter(tags__pk__in=list(map(int, self.kwargs["chain"].split(','))))
-            return documents
-        except:
-            return Document.objects.for_user(self.request.user).select_related('owner', 'main_script').annotate(parts_updated_at=Max('parts__updated_at'))
-    
-    def get_formated_document(self):
-        list_document = []
-        for doc in self.get_queryset():
-            item = {'pk': doc.pk, 'part': doc.parts.first().image.url,'name': doc.name, 'owner': doc.owner.username.title(), 'shared': ', '.join(doc.shared_with_groups.all().reverse()), 'partcount': doc.parts.all().count(), 'modif': naturalday(doc.parts_updated_at, "%b. %d %Y").replace('%', '').title(), 'tags': self.get_list_linked_objects(doc.tags.all())}
-            list_document.append(item)
-        return list_document
-    
-    def get_list_linked_objects(self, list):
-        tab_names = []
-        for item in list:
-            tab_names.append(item.name+'¤'+str(item.priority))
-        return ', '.join(tab_names)
-
 
 class DocumentMixin():
     def get_success_url(self):

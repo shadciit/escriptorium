@@ -5,10 +5,11 @@
         <form method="post" action="#" id="formrmtag">
             <div class="modal-body">
             
-                <input type="hidden" class="form-control" id="docidrmv" name="document" value="0">
+                <input type="hidden" class="form-control" id="docidrmv" name="document" value="0" v-model="docidrmv">
                 <input type="hidden" class="form-control" id="selectedtags" name="selectedtags" value="0">
-
-
+            <div class="form-row form-group justify-content-center">
+                <h3> Select tags to unassign</h3>
+            </div>
             <div class="form-row form-group justify-content-center">
                 <select v-bind:name="'tags'" v-bind:id="'multiple-checkboxes'" v-model="valuesselected" multiple="multiple">
                     <option v-for="ctag in docustomstagsrmid" :key="ctag.value" v-bind:value="ctag.value">
@@ -47,12 +48,10 @@ export default {
         }
     },
     methods: {
-        resetTagsList(tab, bool){
-            this.instanceAutocomplete.reset();
-        },
         async removetaglist(){
             await this.$store.dispatch('documentslist/unassigntags', this.buildjsondata(document.getElementById("formrmtag").elements));
             $("#tagRemoveModal").modal('hide');
+            await this.$store.dispatch('documentslist/getFilteredDocuments');
         },
         buildjsondata(el){
             let element = {};

@@ -3,7 +3,7 @@ import logging
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Max
 from django.shortcuts import get_object_or_404, redirect
 
 from rest_framework.decorators import action
@@ -55,7 +55,7 @@ from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework import generics
 from django.db import transaction
-
+from django.contrib.humanize.templatetags.humanize import naturalday
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +171,31 @@ class DocumentViewSet(ModelViewSet):
     @action(detail=True, methods=['post'])
     def transcribe(self, request, pk=None):
         return self.get_process_response(request, TranscribeSerializer)
+    
+    @action(detail=False, methods=['post', 'get'])
+    def get_document_by_tags(self, request):
+       return Response(status=status.HTTP_200_OK, data={'documents': self.get_formated_document(self.request.data.get('chain'))})
 
+    def get_custom_queryset(self, chain=None):
+        if (len(chain.strip()) != 0) and (chain != '0'):
+            documents = Document.objects.for_user(self.request.user).select_related('owner', 'main_script').annotate(parts_updated_at=Max('parts__updated_at')).filter(tags__pk__in=list(map(int, chain.split(','))))
+        else:
+            documents = Document.objects.for_user(self.request.user).select_related('owner', 'main_script').annotate(parts_updated_at=Max('parts__updated_at'))
+        return documents
+
+    def get_formated_document(self, chain=None):
+        list_document = []
+        documents = self.get_custom_queryset(chain)
+        for doc in documents:
+            item = {'pk': doc.pk, 'part_image': doc.parts.first().image.url,'name': doc.name, 'owner': doc.owner.username.title(), 'shared': ', '.join(doc.shared_with_groups.all().reverse()), 'part_count': doc.parts.all().count(), 'updated_at': naturalday(doc.parts_updated_at, "%b. %d %Y").replace('%', '').title(), 'tags': self.get_list_linked_objects(doc.tags.all())}
+            list_document.append(item)
+        return list_document
+
+    def get_list_linked_objects(self, list):
+        tab_names = []
+        for item in list:
+            tab_names.append(item.name+'¤'+str(item.priority))
+        return ', '.join(tab_names)
 
 class DocumentPermissionMixin():
     def get_queryset(self):
@@ -474,7 +498,7 @@ class DocumentTagViewSet(ModelViewSet):
         return JsonResponse({'status': status.HTTP_200_OK})
     
     @action(detail=False, methods=['get', 'post'])
-    def gettags(self, request):
+    def get_tags(self, request):
         tags = Document.objects.get(pk=self.request.data.get('document')).tags
         listtags = []
         for tag in tags.all():
@@ -483,11 +507,11 @@ class DocumentTagViewSet(ModelViewSet):
         return JsonResponse({'result': listtags, 'status': status.HTTP_200_OK})
     
     @action(detail=False, methods=['get', 'post'])
-    def getcustomtags(self, request):
+    def get_custom_tags(self, request):
         return JsonResponse({'tag': list(DocumentTag.objects.all().values('id', 'name')), 'tagi': list(PartTag.objects.all().values('id', 'name')), 'status': status.HTTP_200_OK})
     
     @action(detail=False, methods=['get', 'post'])
-    def getunlinktags(self, request):
+    def get_unlink_tags(self, request):
         tags = DocumentTag.objects.all()
         dtags = get_object_or_404(Document, pk=self.request.data.get('document')).tags
         tagexcudes = tags.exclude(pk__in=list(dtags.values_list('pk', flat=True)))
@@ -517,6 +541,6 @@ class DocumentTagViewSet(ModelViewSet):
             return JsonResponse({'action': 'assign', 'status': status.HTTP_200_OK})
         else:
             if serializer.is_valid():
-                dtag = serializer.save(user=self.request.user)
+                dtag = serializer.save()
             return JsonResponse({'result': {'label': dtag.name, 'value': dtag.id, 'priority': dtag.priority}, 'action': 'add', 'status': status.HTTP_200_OK})
 

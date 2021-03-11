@@ -80,6 +80,7 @@ export default {
         async assigntag(){
             await this.$store.dispatch('documentslist/assigntags', this.buildjsondata());
             $("#tagAssignModal").modal('hide');
+            await this.$store.dispatch('documentslist/getFilteredDocuments');
         },
         buildjsondata(){
             let element = {};

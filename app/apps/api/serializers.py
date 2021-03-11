@@ -448,8 +448,8 @@ class TagDocumentSerializer(serializers.ModelSerializer):
         model = DocumentTag
         fields = ("pk","name", "priority", "document", "tags")
 
-    def save(self, user):
-        tag = DocumentTag.objects.create(name=self.validated_data['name'], priority=self.validated_data['priority'], owner=user)
+    def save(self):
+        tag = DocumentTag.objects.create(name=self.validated_data['name'], priority=self.validated_data['priority'])
         Document.objects.get(pk=self.validated_data['document']).tags.add(tag)
         return tag
     

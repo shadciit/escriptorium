@@ -11,7 +11,6 @@ export const initialState = () => ({
     documentID: 0,
     field_errors: '',
     documents: [],
-    basehosturl: "",
     multiselectvalues: []
 })
 
@@ -40,9 +39,7 @@ export const mutations = {
         state.chainflt = chain
     },
     setStatusRequest (state, status) {
-        console.log('avant 1');
         state.status_request = status;
-        console.log('après1');
     },
     setDocumentID (state, idd) {
         state.documentID = idd
@@ -51,10 +48,7 @@ export const mutations = {
         state.field_errors = val
     },
     setDocuments (state, docs) {
-        assign(state.documents, docs)
-    },
-    setBaseUrl (state, baseurl) {
-        state.basehosturl = baseurl
+        state.documents = docs
     },
     setMultiselected (state, selected) {
         state.multiselectvalues = selected
@@ -86,6 +80,12 @@ export const actions = {
             state.tags.push(resp.data.result);
         }
         commit('setStatusRequest', resp.data.status);
+    },
+    async getFilteredDocuments ({state, commit}) {
+        commit('setStatusRequest', 0);
+        const resp = await api.getDocumentsByTags({chain: state.chainflt});
+        if(resp.data.documents.length > 0) commit('setDocuments', resp.data.documents);
+        commit('setStatusRequest', resp.status);
     }
 }
 

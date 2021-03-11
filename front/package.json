@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ag-grid-community/all-modules": "^25.1.0",
+    "@ag-grid-community/vue": "^25.1.0",
     "@fortawesome/fontawesome-free": "^5.7.0",
     "ag-grid-community": "^25.1.0",
     "ag-grid-vue": "^25.1.0",
