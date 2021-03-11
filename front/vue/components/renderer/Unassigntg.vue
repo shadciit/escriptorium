@@ -20,20 +20,18 @@
                 $('#multiple-checkboxes').multiselect('destroy');
                 this.$store.commit('documentslist/setDocumentID', idd);
                 await this.$store.dispatch('documentslist/gettagbydocumentrm', this.$store.state.documentslist.documentID);
-                setTimeout(() => {
-                    $('#multiple-checkboxes').multiselect({
-                        includeSelectAllOption: true,
-                        onChange: function(element, checked) {
-                        let brands = $('#multiple-checkboxes option:selected');
-                        let selected = [];
-                        $(brands).each(function(index, brand){
-                            selected.push([$(this).val()]);
-                        });
-                        $('#selectedtags').val(selected.join(','));
-                        }
+                $('#multiple-checkboxes').multiselect({
+                    includeSelectAllOption: true,
+                    onChange: function(element, checked) {
+                    let brands = $('#multiple-checkboxes option:selected');
+                    let selected = [];
+                    $(brands).each(function(index, brand){
+                        selected.push([$(this).val()]);
                     });
-                    $("#tagRemoveModal").modal('show');
-                }, 1000);
+                    $('#selectedtags').val(selected.join(','));
+                    }
+                });
+                $("#tagRemoveModal").modal('show');
             }
         }
     }
