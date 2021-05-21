@@ -26,6 +26,8 @@ tests:
     - schedules
 
   before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends libvips
     - pip install -r app/requirements.txt
 
   script:
