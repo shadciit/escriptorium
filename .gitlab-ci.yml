@@ -3,6 +3,34 @@ stages:
   - build
   - deploy
 
+tests:
+  stage: test
+  image: python:3.7
+
+  services:
+    - postgres:latest
+
+  variables:
+    # For the postgres image
+    POSTGRES_DB: escriptorium
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    # Pip cache
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+  cache:
+    paths:
+      - .cache/pip
+
+  except:
+    - schedules
+
+  before_script:
+    - pip install -r app/requirements.txt
+
+  script:
+    - python app/manage.py test apps
+
 build:
   stage: build
   image: node:12-alpine
