@@ -9,9 +9,11 @@ tests:
 
   services:
     - postgres:latest
+    - redis:alpine
 
   variables:
-    # For the postgres image
+    # Databases settings
+    REDIS_HOST: redis
     SQL_HOST: postgres
     POSTGRES_DB: escriptorium
     POSTGRES_USER: postgres
