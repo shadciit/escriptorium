@@ -12,9 +12,11 @@ tests:
 
   variables:
     # For the postgres image
+    SQL_HOST: postgres
     POSTGRES_DB: escriptorium
     POSTGRES_USER: postgres
     POSTGRES_PASSWORD: postgres
+
     # Pip cache
     PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
