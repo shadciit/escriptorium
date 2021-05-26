@@ -6,7 +6,6 @@ import os.path
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-from django.utils import timezone
 
 from django_redis import get_redis_connection
 from kraken.lib import vgsl
@@ -16,7 +15,8 @@ from core.models import (Document,
                          Transcription,
                          Line,
                          LineTranscription,
-                         OcrModel)
+                         OcrModel,
+                         Project)
 from users.models import User
 
 
@@ -42,9 +42,19 @@ class CoreFactory():
             email='%s@test.com' % name
         )
 
+    def make_project(self):
+        project, _ = Project.objects.get_or_create(
+            slug="test",
+            defaults={
+                "name": "Unit test"
+            }
+        )
+        return project
+
     def make_document(self, **kwargs):
         attrs = kwargs.copy()
         attrs['owner'] = attrs.get('owner') or self.make_user()
+        attrs['project'] = attrs.get('project') or self.make_project()
         attrs.setdefault('name', 'test doc')
         return Document.objects.create(**attrs)
 
