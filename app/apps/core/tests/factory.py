@@ -42,10 +42,11 @@ class CoreFactory():
             email='%s@test.com' % name
         )
 
-    def make_project(self):
+    def make_project(self, **kwargs):
         project, _ = Project.objects.get_or_create(
             slug="test",
             defaults={
+                "owner": kwargs.get('owner') or self.make_user(),
                 "name": "Unit test"
             }
         )
@@ -54,7 +55,7 @@ class CoreFactory():
     def make_document(self, **kwargs):
         attrs = kwargs.copy()
         attrs['owner'] = attrs.get('owner') or self.make_user()
-        attrs['project'] = attrs.get('project') or self.make_project()
+        attrs['project'] = attrs.get('project') or self.make_project(owner=attrs['owner'])
         attrs.setdefault('name', 'test doc')
         return Document.objects.create(**attrs)
 

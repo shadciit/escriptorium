@@ -40,7 +40,7 @@ class OcrModelViewSetTestCase(CoreFactoryTestCase):
     def test_list(self):
         self.client.force_login(self.user)
         uri = reverse('api:model-list', kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(6):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -49,7 +49,7 @@ class OcrModelViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:model-detail',
                       kwargs={'document_pk': self.part.document.pk,
                               'pk': self.model.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(5):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -100,7 +100,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
     def test_list(self):
         self.client.force_login(self.doc.owner)
         uri = reverse('api:document-list')
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(12):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -208,7 +208,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:part-list',
                       kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(5):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -226,7 +226,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:part-detail',
                       kwargs={'document_pk': self.part.document.pk,
                               'pk': self.part.pk})
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(8):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -257,11 +257,11 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:part-detail',
                       kwargs={'document_pk': self.part.document.pk,
                               'pk': self.part.pk})
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(6):
             resp = self.client.patch(
                 uri, {'transcription_progress': 50},
                 content_type='application/json')
-            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_move(self):
         self.client.force_login(self.user)
@@ -293,7 +293,7 @@ class BlockViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.block.pk})
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(4):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -302,7 +302,7 @@ class BlockViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:block-list',
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(5):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -328,7 +328,7 @@ class BlockViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.block.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(5):
             resp = self.client.patch(uri, {
                 'box': '[[100,100], [150,150]]'
             }, content_type='application/json')
@@ -379,7 +379,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.line.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(5):
             resp = self.client.patch(uri, {
                 'baseline': '[[100,100], [150,150]]'
             }, content_type='application/json')
@@ -401,7 +401,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:line-bulk-update',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(7):
             resp = self.client.put(uri, {'lines': [
                 {'pk': self.line.pk,
                  'mask': '[[60, 40], [60, 50], [90, 50], [90, 40]]',
@@ -449,7 +449,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(6):
             resp = self.client.patch(uri, {
                 'content': 'update'
             }, content_type='application/json')
@@ -476,7 +476,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
 
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(8):
             resp = self.client.put(uri, {'content': 'test',
                                          'transcription': self.lt.transcription.pk,
                                          'line': self.lt.line.pk},
