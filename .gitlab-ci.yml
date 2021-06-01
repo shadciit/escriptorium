@@ -7,9 +7,6 @@ tests:
   stage: test
   image: python:3.7
 
-  # Remove once tests execution is fixed
-  allow_failure: true
-
   services:
     - postgres:latest
     - redis:alpine
