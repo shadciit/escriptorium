@@ -13,3 +13,4 @@ app/homepage/
 front/node_modules
 front/dist
 variables.env
+.vscode

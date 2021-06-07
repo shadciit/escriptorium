@@ -632,7 +632,8 @@ class IIIFManifestParser(ParserDocument):
     def total(self):
         return len(self.canvases)
 
-    def get_image(self, url: str, current_retry: int=0) -> requests.Response:
+    @staticmethod
+    def get_image(url: str, retry_limit: int) -> requests.Response:
         """Retrieve a iiif image from a iiif server
 
         This method will retry on certain 5XX errors that are likely to
@@ -643,19 +644,22 @@ class IIIFManifestParser(ParserDocument):
         ParseError as well.
         """
 
-        if current_retry > IIIFManifestParser.__max_retries:
-                raise ParseError(f"After {IIIFManifestParser.__max_retries} tries, the server still errors out loading: {url}")
+        current_retry = 0
+        while current_retry < retry_limit:
+            time.sleep(0.1 * current_retry)  # avoid being throttled; add a little backoff
+            r = requests.get(url, stream=True, verify=False)
+            if r.status_code == 200:
+                return r
 
-        time.sleep(0.1 * current_retry)  # avoid being throttled; add a little backodd
-        r = requests.get(url, stream=True, verify=False)
-        if r.status_code == 200:
-            return r
+            if r.status_code in [500, 502, 503, 504, 507, 508]: # retry on transient 5XX errors, but keep a record of the retry count
+                current_retry = current_retry + 1
+                continue
+            
+            # We probably got a 4XX error, so raise it
+            raise ParseError("Invalid image url: %s" % url)
 
-        if r.status_code in [500, 502, 503, 504, 507, 508]: # retry on transient 5XX errors, but keep a record of the retry count
-            return self.get_image(self, url, current_retry + 1)
-        
-        # We probably got a 4XX error, so raise it
-        raise ParseError("Invalid image url: %s" % url)
+        # Max retries has been exceeded
+        raise ParseError(f"After {current_retry} tries, the server still errors out loading: {url}")
 
     def parse(self, start_at=0, override=False, user=None):
         try:
@@ -686,7 +690,7 @@ class IIIFManifestParser(ParserDocument):
                 )  # we could gain some time by fetching png, but it's not implemented everywhere.
                 # TODO, we should probably grab the iiif image manifest, it will tell
                 # us important things about the supported file types and the available sizing.
-                r = self.get_image(url)
+                r = self.get_image(url, IIIFManifestParser.__max_retries)
                 part = DocumentPart(document=self.document, source=url)
                 if "label" in resource:
                     part.name = resource["label"]
