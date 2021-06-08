@@ -139,12 +139,18 @@ class ProjectManager(models.Manager):
     def for_user(self, user):
         # return the list of editable projects
         # Note: Monitor this query
-        return (Project.objects
-                .filter(Q(owner=user)
-                        | (Q(shared_with_users=user)
-                           | Q(shared_with_groups__in=user.groups.all())))
-                .prefetch_related('shared_with_groups')
-                .distinct())
+        if user.is_anonymous:
+            return (Project.objects
+                    .filter(slug='admins-project')
+                    .prefetch_related('shared_with_groups')
+                    .distinct())
+        else:
+            return (Project.objects
+                    .filter(Q(owner=user)
+                            | (Q(shared_with_users=user)
+                            | Q(shared_with_groups__in=user.groups.all())))
+                    .prefetch_related('shared_with_groups')
+                    .distinct())
 
 
 class Project(models.Model):
@@ -193,7 +199,7 @@ class DocumentManager(models.Manager):
         return super().get_queryset().select_related('typology')
 
     def for_user(self, user):
-        return Document.objects.filter(project__in=Project.objects.for_user(user))
+        return (Document.objects.filter(workflow_state=Document.WORKFLOW_STATE_PUBLISHED).prefetch_related('shared_with_groups', 'transcriptions').select_related('typology').distinct() if user.is_anonymous else Document.objects.filter(project__in=Project.objects.for_user(user)))
 
 
 class Document(models.Model):

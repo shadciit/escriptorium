@@ -13,10 +13,24 @@ class BootstrapFormMixin():
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             if not field.widget.is_hidden:
-                field.widget.attrs.update({
-                    'placeholder': field.label or name.capitalize(),
-                    'title': field.label or name.capitalize()
-                })
+                try:
+                    if self.user.is_anonymous:
+                        field.widget.attrs.update({
+                            'placeholder': field.label or name.capitalize(),
+                            'title': field.label or name.capitalize(),
+                            'readonly': True,
+                            'disabled': True
+                        })
+                    else:
+                        field.widget.attrs.update({
+                            'placeholder': field.label or name.capitalize(),
+                            'title': field.label or name.capitalize()
+                        })
+                except:
+                    field.widget.attrs.update({
+                        'placeholder': field.label or name.capitalize(),
+                        'title': field.label or name.capitalize()
+                    })
                 class_ = field.widget.attrs.get('class', '')
                 if issubclass(field.widget.__class__, forms.CheckboxInput):
                     class_ += ' form-check-input'
