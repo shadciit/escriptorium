@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import logging
 import os.path
@@ -8,6 +9,7 @@ import uuid
 import zipfile
 import pyvips
 from lxml import etree
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -32,6 +34,9 @@ OWN_RISK = "the validity of the data can not be automaatically checked, use at y
 
 
 class ParseError(Exception):
+    pass
+
+class DownloadError(ParseError):
     pass
 
 
@@ -631,15 +636,15 @@ class IIIFManifestParser(ParserDocument):
         return len(self.canvases)
 
     @staticmethod
-    def get_image(url: str, retry_limit: int=10) -> requests.Response:
+    def get_image(url: str, retry_limit: int=4) -> requests.Response:
         """Retrieve a iiif image from a iiif server
 
         This method will retry on certain 5XX errors that are likely to
         be transient.  It will only retry a fixed number of times (default 10),
         and it backs off a little more on each retry. Failure to retrieve
-        the image within the retry limit will result in a ParseError
+        the image within the retry limit will result in a DownloadError
         being raised. All other unsuccessful requests will raise a 
-        ParseError as well.
+        DownloadError as well.
         """
 
         current_retry = 0
@@ -650,28 +655,24 @@ class IIIFManifestParser(ParserDocument):
                 r.raise_for_status()
                 return r
 
-            except requests.exceptions.RequestException as request_error:
-                raise ParseError(request_error)
-
             except requests.exceptions.HTTPError as http_error:
-                if http_error.response.status_code in [500, 502, 503, 504, 507, 508]: # retry on transient 5XX errors, but keep a record of the retry count
+                # retry on transient 5XX errors, but keep a record of the retry count
+                if http_error.response.status_code in [500, 502, 503, 504, 507, 508]: 
                     current_retry = current_retry + 1
                     continue
                 
                 # We probably got a 4XX error, but whatever it is just raise it
-                raise ParseError(http_error)
+                raise DownloadError(http_error)
 
             except requests.exceptions.ConnectionError as connection_error:
-                raise ParseError(connection_error)
+                raise DownloadError(connection_error)
 
             except requests.exceptions.Timeout as timeout_error:
-                raise ParseError(timeout_error)
-
-            except Exception as error:
-                raise ParseError(error)
+                raise DownloadError(timeout_error)
 
         # Max retries has been exceeded
-        raise ParseError(f"After {current_retry + 1} tries, the server still errors out loading: {url}")
+        raise DownloadError(f"After {current_retry + 1} tries, the server still errors out loading"
+            f": {url}")
 
     def parse(self, start_at=0, override=False, user=None):
         try:
@@ -685,12 +686,17 @@ class IIIFManifestParser(ParserDocument):
         except KeyError:
             pass
 
+        max_url_fails = 5
+        failed_url_requests = defaultdict(lambda: 0) # Keep a record of urls that fail too often
         for i, canvas in enumerate(self.canvases):
             if i < start_at:
                 continue
             try:
                 resource = canvas["images"][0]["resource"]
                 url = resource["@id"]
+                base_url = urlparse(url).hostname
+                if failed_url_requests[base_url] > max_url_fails: # Give up on really flaky servers
+                    continue
                 uri_template = "{image}/{region}/{size}/{rotation}/{quality}.{format}"
                 url = uri_template.format(
                     image=resource["service"]["@id"],
@@ -703,6 +709,8 @@ class IIIFManifestParser(ParserDocument):
                 # TODO, we should probably grab the iiif image manifest, it will tell
                 # us important things about the supported file types and the available sizing.
                 r = self.get_image(url)
+                failed_url_requests[base_url] = 0 # Reset fail counter after successful downloads
+
                 part = DocumentPart(document=self.document, source=url)
                 if "label" in resource:
                     part.name = resource["label"]
@@ -713,10 +721,12 @@ class IIIFManifestParser(ParserDocument):
                 part.save()
                 yield part
                 time.sleep(0.1)  # avoid being throttled
-            except (KeyError, IndexError) as e:
+            except (KeyError, IndexError, DownloadError) as e:
                 if self.report:
                     self.report.append(_('Error while fetching {filename}: {error}').format(
                         filename=name, error=e))
+                if isinstance(e, DownloadError):
+                    failed_url_requests[base_url] += 1
 
 
 class TranskribusPageXmlParser(PagexmlParser):
