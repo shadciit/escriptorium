@@ -686,8 +686,6 @@ class IIIFManifestParser(ParserDocument):
         except KeyError:
             pass
 
-        max_url_fails = 5
-        failed_url_requests = defaultdict(lambda: 0) # Keep a record of urls that fail too often
         for i, canvas in enumerate(self.canvases):
             if i < start_at:
                 continue
@@ -695,8 +693,6 @@ class IIIFManifestParser(ParserDocument):
                 resource = canvas["images"][0]["resource"]
                 url = resource["@id"]
                 base_url = urlparse(url).hostname
-                if failed_url_requests[base_url] > max_url_fails: # Give up on really flaky servers
-                    continue
                 uri_template = "{image}/{region}/{size}/{rotation}/{quality}.{format}"
                 url = uri_template.format(
                     image=resource["service"]["@id"],
@@ -709,7 +705,6 @@ class IIIFManifestParser(ParserDocument):
                 # TODO, we should probably grab the iiif image manifest, it will tell
                 # us important things about the supported file types and the available sizing.
                 r = self.get_image(url)
-                failed_url_requests[base_url] = 0 # Reset fail counter after successful downloads
 
                 part = DocumentPart(document=self.document, source=url)
                 if "label" in resource:
@@ -726,7 +721,9 @@ class IIIFManifestParser(ParserDocument):
                     self.report.append(_('Error while fetching {filename}: {error}').format(
                         filename=name, error=e))
                 if isinstance(e, DownloadError):
-                    failed_url_requests[base_url] += 1
+                    error_msg = f"Could not download image: {url}"
+                    user.notify(error_msg)
+                    self.report.append(error_msg)
 
 
 class TranskribusPageXmlParser(PagexmlParser):
