@@ -8,7 +8,8 @@
                     title="Toggle sorting mode."
                     class="btn btn-sm ml-3 btn-info fas fa-sort"
                     @click="toggleSort"
-                    autocomplete="off"></button>
+                    autocomplete="off"
+                    v-if="$store.state.document.isAnonymousUser == 'true'"></button>
         </div>
         <div :class="'content-container ' + $store.state.document.readDirection" ref="contentContainer">
 

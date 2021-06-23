@@ -2,7 +2,7 @@
     <div class="col panel">
         <div class="tools">
             <i title="Segmentation Panel" class="panel-icon fas fa-align-left"></i>
-            <div class="btn-group">
+            <div class="btn-group" v-if="$store.state.document.isAnonymousUser == 'true'">
                 <button id="undo"
                         ref="undo"
                         title="Undo. (Ctrl+Z)"
@@ -76,13 +76,13 @@
                         title="Toggle line masks and stroke width. (M)"
                         class="btn btn-sm btn-info fas fa-mask"></button>
             </div>
-            <div class="btn-group">
+            <div class="btn-group" v-if="$store.state.document.isAnonymousUser == 'true'">
                 <button id="be-split-lines"
                         title="Cut through lines. (C)"
                         class="btn btn-sm btn-warning fas fa-cut"></button>
             </div>
 
-            <button v-if="!$store.getters['lines/hasMasks'] && $store.state.lines.all.length > 0"
+            <button v-if="!$store.getters['lines/hasMasks'] && $store.state.lines.all.length > 0 && $store.state.document.isAnonymousUser == 'true'"
                     @click="processLines"
                     class="btn btn-sm btn-success fas fa-thumbs-up ml-auto"
                     title="Segmentation is ready for mask calculation!">
@@ -91,7 +91,8 @@
                     data-toggle="collapse"
                     data-target="#segmentation-help"
                     title="Help."
-                    class="btn btn-sm btn-info fas fa-question help nav-item ml-2">
+                    class="btn btn-sm btn-info fas fa-question help nav-item ml-2"
+                    v-if="$store.state.document.isAnonymousUser == 'true'">
             </button>
             <div id="segmentation-help" class="alert alert-primary help-text collapse">
                 <button type="button" data-toggle="collapse" data-target="#segmentation-help" class="close" aria-label="Close">
@@ -205,7 +206,7 @@ export default Vue.extend({
           baselinesColor: beSettings["color-baselines"] || null,
           regionColors: beSettings["color-regions"] || null,
           directionHintColors: beSettings["color-directions"] || null,
-        });
+        }, this.$store.state.document.isAnonymousUser);
         // we need to move the baseline editor canvas up one tag so that it doesn't get caught by wheelzoom.
         let canvas = this.segmenter.canvas;
         canvas.parentNode.parentNode.appendChild(canvas);
@@ -296,7 +297,7 @@ export default Vue.extend({
       }.bind(this)
     );
 
-    // history
+    history
     this.$refs.undo.addEventListener(
       "click",
       function (ev) {

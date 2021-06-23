@@ -132,7 +132,8 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['project'].queryset = Project.objects.for_user(self.context['user'])
+        if not self.context['user'].is_anonymous:
+            self.fields['project'].queryset = Project.objects.for_user(self.context['user'])
 
     def get_parts_count(self, document):
         return document.parts.count()

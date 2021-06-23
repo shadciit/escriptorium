@@ -34,7 +34,7 @@ function openWizard(proc) {
 }
 
 class partCard {
-    constructor(part) {
+    constructor(part, isAnonymous) {
         this.pk = part.pk;
         this.order = part.order;
         this.name = part.name;
@@ -49,7 +49,7 @@ class partCard {
         this.locked = false;
 
         this.api = API.part.replace('{part_pk}', this.pk);
-
+        this.isAnonymous = isAnonymous.toLowerCase();
         var $new = $('.card', '#card-template').clone();
         this.$element = $new;
         this.domElement = this.$element.get(0);
@@ -92,25 +92,32 @@ class partCard {
         this.editButton.click(function(ev) {
             document.location.replace(url);
         });
-        this.cancelTasksButton.click($.proxy(function(ev) {
-            this.cancelTasks();
-        }, this));
+        if(this.isAnonymous == 'true'){
+            this.cancelTasksButton.click($.proxy(function(ev) {
+                this.cancelTasks();
+            }, this));
 
-        this.binarizedButton.click($.proxy(function(ev) {
-            this.select();
-            partCard.refreshSelectedCount();
-            openWizard('binarize');
-        }, this));
-        this.segmentedButton.click($.proxy(function(ev) {
-            this.select();
-            partCard.refreshSelectedCount();
-            openWizard('segment');
-        }, this));
-        this.transcribeButton.click($.proxy(function(ev) {
-            this.select();
-            partCard.refreshSelectedCount();
-            openWizard('transcribe');
-        }, this));
+            this.binarizedButton.click($.proxy(function(ev) {
+                this.select();
+                partCard.refreshSelectedCount();
+                openWizard('binarize');
+            }, this));
+            this.segmentedButton.click($.proxy(function(ev) {
+                this.select();
+                partCard.refreshSelectedCount();
+                openWizard('segment');
+            }, this));
+            this.transcribeButton.click($.proxy(function(ev) {
+                this.select();
+                partCard.refreshSelectedCount();
+                openWizard('transcribe');
+            }, this));
+            this.deleteButton.on('click', $.proxy(function(ev) {
+                if (!confirm("Do you really want to delete this image?")) { return; }
+                this.delete();
+                partCard.refreshSelectedCount();
+            }, this));
+        }
 
         this.index = $('.card', '#cards-container').index(this.$element);
         // save a reference to this object in the card dom element
@@ -133,12 +140,6 @@ class partCard {
             } else {
                 this.toggleSelect();
             }
-            partCard.refreshSelectedCount();
-        }, this));
-
-        this.deleteButton.on('click', $.proxy(function(ev) {
-            if (!confirm("Do you really want to delete this image?")) { return; }
-            this.delete();
             partCard.refreshSelectedCount();
         }, this));
 
@@ -327,12 +328,13 @@ class partCard {
         return pks;
     }
     static refreshSelectedCount() {
-        $('#selected-counter').text(partCard.getSelectedPks().length+'/'+$('#cards-container .card').length).parent().show();
+        if(this.isAnonymous = 'false') $('#selected-counter').text($('#cards-container .card').length).parent().show();
+        else $('#selected-counter').text(partCard.getSelectedPks().length+'/'+$('#cards-container .card').length).parent().show();
     }
 }
 
 
-export function bootImageCards(documentId) {
+export function bootImageCards(documentId, isAnonymous) {
     DOCUMENT_ID = documentId;
     API = {
         'document': '/api/documents/' + DOCUMENT_ID,
@@ -340,34 +342,36 @@ export function bootImageCards(documentId) {
         'part': '/api/documents/' + DOCUMENT_ID + '/parts/{part_pk}/'
     };
     //************* Card ordering *************
-    $('#cards-container').on('dragover', '.js-drop', function(ev) {
-        var index = $('#cards-container .js-drop').index(ev.target);
-        var elementId = ev.originalEvent.dataTransfer.getData("text/card-id");
-        if (!elementId && g_dragged != null) { elementId = g_dragged; }  // for chrome
-        var dragged_index = $('#cards-container .card').index(document.getElementById(elementId));
-        var isCard = ev.originalEvent.dataTransfer.types.indexOf("text/card-id") != -1;
-        if (isCard && index != dragged_index && index != dragged_index + 1) {
-            $(ev.target).addClass('drop-accept');
+    if(isAnonymous.toLowerCase() == 'true'){
+        $('#cards-container').on('dragover', '.js-drop', function(ev) {
+            var index = $('#cards-container .js-drop').index(ev.target);
+            var elementId = ev.originalEvent.dataTransfer.getData("text/card-id");
+            if (!elementId && g_dragged != null) { elementId = g_dragged; }  // for chrome
+            var dragged_index = $('#cards-container .card').index(document.getElementById(elementId));
+            var isCard = ev.originalEvent.dataTransfer.types.indexOf("text/card-id") != -1;
+            if (isCard && index != dragged_index && index != dragged_index + 1) {
+                $(ev.target).addClass('drop-accept');
+                ev.preventDefault();
+            }
+        });
+
+        $('#cards-container').on('dragleave','.js-drop', function(ev) {
             ev.preventDefault();
-        }
-    });
+            $(ev.target).removeClass('drop-accept');
+        });
 
-    $('#cards-container').on('dragleave','.js-drop', function(ev) {
-        ev.preventDefault();
-        $(ev.target).removeClass('drop-accept');
-    });
-
-    $('#cards-container').on('drop', '.js-drop', function(ev) {
-        ev.preventDefault();
-        $(ev.target).removeClass('drop-accept');
-        var elementId = ev.originalEvent.dataTransfer.getData("text/card-id");
-        if (!elementId) { elementId = g_dragged; }  // for chrome
-        var dragged = document.getElementById(elementId);
-        var card = $(dragged).data('partCard');
-        var index = $('#cards-container .js-drop').index(ev.target);
-        card.moveTo(index);
-        g_dragged = null;
-    });
+        $('#cards-container').on('drop', '.js-drop', function(ev) {
+            ev.preventDefault();
+            $(ev.target).removeClass('drop-accept');
+            var elementId = ev.originalEvent.dataTransfer.getData("text/card-id");
+            if (!elementId) { elementId = g_dragged; }  // for chrome
+            var dragged = document.getElementById(elementId);
+            var card = $(dragged).data('partCard');
+            var index = $('#cards-container .js-drop').index(ev.target);
+            card.moveTo(index);
+            g_dragged = null;
+        });
+    }
 
     // update workflow icons, send by notification through web socket
     var workflow_order = ['pending', 'ongoing', 'error', 'done'];
@@ -401,7 +405,7 @@ export function bootImageCards(documentId) {
             if (!card) {
                 var uri = API.part.replace('{part_pk}', data.id);
                 $.get(uri, function(data) {
-                    new partCard(data);
+                    new partCard(data, isAnonymous);
                     partCard.refreshSelectedCount();
                 });
             }
@@ -526,7 +530,7 @@ export function bootImageCards(documentId) {
 
     //************* New card creation **************
     imageDropzone.on("success", function(file, data) {
-        var card = new partCard(data);
+        var card = new partCard(data, isAnonymous);
         card.domElement.scrollIntoView(false);
         // cleanup the dropzone if previews are pilling up
         if (imageDropzone.files.length > 7) {  // a bit arbitrary, depends on the screen but oh well
@@ -600,7 +604,7 @@ export function bootImageCards(documentId) {
             counter += data.results.length;
             $('#loading-counter').html(counter+'/'+data.count);
             for (var i=0; i<data.results.length; i++) {
-                var pc = new partCard(data.results[i]);
+                var pc = new partCard(data.results[i], isAnonymous);
                 if (select == pc.pk) pc.select();
             }
             if (data.next) {

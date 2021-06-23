@@ -74,6 +74,15 @@ class DocumentsList(LoginRequiredMixin, ListView):
             context['share_form'] = ProjectShareForm(instance=self.project, request=self.request)
         return context
 
+class PublicDocumentsList(ListView):
+    model = Document
+    paginate_by = 10
+
+    def get_queryset(self):
+        return (Document.objects
+                .filter(workflow_state=Document.WORKFLOW_STATE_PUBLISHED)
+                .select_related('owner', 'main_script')
+                .annotate(parts_updated_at=Max('parts__updated_at')))
 
 class DocumentMixin():
     def get_success_url(self):
@@ -97,9 +106,14 @@ class DocumentMixin():
         obj = super().get_object()
         try:
             # we fetched the object already, now we check that the user has perms to edit it
-            (Document.objects
-             .filter(project__in=Project.objects.for_user(self.request.user))
-             .get(pk=obj.pk))
+            if self.request.user.is_anonymous:
+                (Document.objects
+                 .filter(workflow_state=2)
+                 .get(pk=obj.pk))
+            else:
+                (Document.objects
+                 .filter(project__in=Project.objects.for_user(self.request.user))
+                 .get(pk=obj.pk))
         except Document.DoesNotExist:
             raise PermissionDenied
         return obj
@@ -141,7 +155,7 @@ class CreateDocument(LoginRequiredMixin, SuccessMessageMixin, DocumentMixin, Cre
         return response
 
 
-class UpdateDocument(LoginRequiredMixin, SuccessMessageMixin, DocumentMixin, UpdateView):
+class UpdateDocument(SuccessMessageMixin, DocumentMixin, UpdateView):
     model = Document
     form_class = DocumentForm
     success_message = _("Document saved successfully!")
@@ -174,7 +188,7 @@ class UpdateDocument(LoginRequiredMixin, SuccessMessageMixin, DocumentMixin, Upd
         return response
 
 
-class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
+class DocumentImages(DocumentMixin, DetailView):
     model = Document
     template_name = "core/document_images.html"
 
@@ -255,7 +269,7 @@ class DocumentDetail(DetailView):
     model = Document
 
 
-class EditPart(LoginRequiredMixin, DetailView):
+class EditPart(DetailView):
     model = DocumentPart
     pk_url_kwarg = 'part_pk'
     template_name = "core/document_part_edit.html"
@@ -265,7 +279,10 @@ class EditPart(LoginRequiredMixin, DetailView):
         obj = super().get_object()
         try:
             # we fetched the object already, now we check that the user has perms to edit it
-            Document.objects.for_user(self.request.user).get(pk=obj.document.pk)
+            if self.request.user.is_anonymous:
+                Document.objects.filter(workflow_state=2).get(pk=obj.document.pk)
+            else:
+                Document.objects.for_user(self.request.user).get(pk=obj.document.pk)
         except Document.DoesNotExist:
             raise PermissionDenied
         return obj

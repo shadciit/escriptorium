@@ -10,6 +10,7 @@ export const initialState = () => ({
     readDirection: null,
     types: {},
     blockShortcuts: false,
+    isAnonymousUser: 'false',
 
     // Manage panels visibility through booleans
     // Those values are initially populated by localStorage
@@ -51,6 +52,9 @@ export const mutations = {
     },
     reset (state) {
         assign(state, initialState())
+    },
+    setisAnonymousUser (state, isAnonymous) {
+        state.isAnonymousUser = isAnonymous
     }
 }
 

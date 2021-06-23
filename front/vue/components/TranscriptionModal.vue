@@ -80,7 +80,8 @@
                                 class="form-control mb-2"
                                 v-model.lazy="localTranscription"
                                 autocomplete="off"
-                                autofocus/>
+                                autofocus
+                                :disabled="$store.state.document.isAnonymousUser == 'false'" />
                         <!--Hidden input for ttb text: -->
                         <input v-else
                                 id="trans-input"
@@ -88,7 +89,8 @@
                                 name="content"
                                 type="hidden"
                                 v-model.lazy="localTranscription"
-                                autocomplete="off" />
+                                autocomplete="off" 
+                                :disabled="$store.state.document.isAnonymousUser == 'false'" />
                         <!-- in this case, input field is replaced by: -->
                         <div v-if="$store.state.document.mainTextDirection == 'ttb'"
                             id="textInputWrapper">
@@ -144,7 +146,7 @@
                     </div>
 
                     <!-- versioning/history -->
-                    <div v-if="line.currentTrans && line.currentTrans.versions && line.currentTrans.versions.length"
+                    <div v-if="line.currentTrans && line.currentTrans.versions && line.currentTrans.versions.length && $store.state.document.isAnonymousUser == 'false'"
                             class="card history-block mt-2">
                         <div class="card-header">
                             <a href="#"

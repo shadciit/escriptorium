@@ -33,6 +33,7 @@ class ProjectForm(BootstrapFormMixin, forms.ModelForm):
 class DocumentForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request')
+        self.user = self.request.user
         super().__init__(*args, **kwargs)
         if self.request.method == "POST":
             # we need to accept all types when posting for added ones
@@ -49,7 +50,8 @@ class DocumentForm(BootstrapFormMixin, forms.ModelForm):
             self.initial['valid_block_types'] = BlockType.objects.filter(default=True)
             self.initial['valid_line_types'] = LineType.objects.filter(default=True)
 
-        self.fields['project'].queryset = Project.objects.for_user(self.request.user)
+        if not self.request.user:
+            self.fields['project'].queryset = Project.objects.for_user(self.request.user)
         self.fields['project'].empty_label = None
         if self.instance.pk and self.instance.owner != self.request.user:
             self.fields['project'].disabled = True
@@ -474,11 +476,12 @@ class DocumentProcessForm(BootstrapFormMixin, forms.Form):
         self.fields['binarizer'].widget.attrs['disabled'] = True
 
         # Limit querysets to models owned by the user or already linked to this document
-        for field in ['train_model', 'segtrain_model', 'seg_model', 'ocr_model']:
-            self.fields[field].queryset = self.fields[field].queryset.filter(
-                Q(owner=self.user)
-                | Q(documents=self.document)
-            )
+        if not self.user.is_anonymous:
+            for field in ['train_model', 'segtrain_model', 'seg_model', 'ocr_model']:
+                self.fields[field].queryset = self.fields[field].queryset.filter(
+                    Q(owner=self.user)
+                    | Q(documents=self.document)
+                )
 
         self.fields['transcription'].queryset = Transcription.objects.filter(document=self.document)
 

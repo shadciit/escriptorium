@@ -27,6 +27,7 @@ export default {
         'defaultTextDirection',
         'mainTextDirection',
         'readDirection',
+        'isAnonymousUser',
     ],
     computed: {
         navEditActive() {
@@ -80,6 +81,7 @@ export default {
         this.$store.commit('document/setDefaultTextDirection', this.defaultTextDirection);
         this.$store.commit('document/setMainTextDirection', this.mainTextDirection);
         this.$store.commit('document/setReadDirection', this.readDirection);
+        this.$store.commit('document/setisAnonymousUser', this.isAnonymousUser.toLowerCase());
         try {
             await this.$store.dispatch('parts/fetchPart', {pk: this.partId});
             let tr = userProfile.get('initialTranscriptions')

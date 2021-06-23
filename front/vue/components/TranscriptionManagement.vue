@@ -13,7 +13,8 @@
               class="btn btn-primary fas fa-cog ml-1"
               title="Transcription management"
               data-toggle="modal"
-              data-target="#transcriptionsManagement"></button>
+              data-target="#transcriptionsManagement"
+              v-if="$store.state.document.isAnonymousUser == 'true'"></button>
       <div id="transcriptionsManagement"
            class="modal ui-draggable"
            tabindex="-1"

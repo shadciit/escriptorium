@@ -85,6 +85,9 @@
           </li>
         {% else %}
           <li class="nav-item">
+            <a class="nav-link" href="{% url 'public-documents-list' %}">{% trans "Public documents" %}</a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link" href="{% url 'login' %}">{% trans 'Login' %}</a>
           </li>
         {% endif %}

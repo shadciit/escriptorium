@@ -54,6 +54,7 @@ from users.models import User
 from imports.forms import ImportForm, ExportForm
 from imports.parsers import ParseError
 from versioning.models import NoChangeException
+from rest_framework import permissions
 
 
 logger = logging.getLogger(__name__)
@@ -87,12 +88,19 @@ class DocumentViewSet(ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     paginate_by = 10
+    permission_classes = (permissions.DjangoModelPermissionsOrAnonReadOnly,)
 
     def get_queryset(self):
-        return Document.objects.for_user(self.request.user).prefetch_related(
-            Prefetch('valid_block_types', queryset=BlockType.objects.order_by('name')),
-            Prefetch('valid_line_types', queryset=LineType.objects.order_by('name')),
-        )
+        if self.request.user.is_anonymous:
+            return Document.objects.filter(workflow_state=2).prefetch_related(
+                Prefetch('valid_block_types', queryset=BlockType.objects.order_by('name')),
+                Prefetch('valid_line_types', queryset=LineType.objects.order_by('name')),
+            )
+        else:
+            return Document.objects.for_user(self.request.user).prefetch_related(
+                Prefetch('valid_block_types', queryset=BlockType.objects.order_by('name')),
+                Prefetch('valid_line_types', queryset=LineType.objects.order_by('name')),
+            )
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -192,7 +200,10 @@ class DocumentViewSet(ModelViewSet):
 class DocumentPermissionMixin():
     def get_queryset(self):
         try:
-            Document.objects.for_user(self.request.user).get(pk=self.kwargs.get('document_pk'))
+            if self.request.user.is_anonymous:
+                Document.objects.get(pk=self.kwargs.get('document_pk'), workflow_state=Document.WORKFLOW_STATE_PUBLISHED)
+            else:
+                Document.objects.for_user(self.request.user).get(pk=self.kwargs.get('document_pk'))
         except Document.DoesNotExist:
             raise PermissionDenied
         return super().get_queryset()
@@ -200,6 +211,7 @@ class DocumentPermissionMixin():
 
 class PartViewSet(DocumentPermissionMixin, ModelViewSet):
     queryset = DocumentPart.objects.all().select_related('document')
+    permission_classes = (permissions.DjangoModelPermissionsOrAnonReadOnly,)
 
     def get_queryset(self):
         qs = super().get_queryset()

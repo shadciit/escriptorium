@@ -139,18 +139,12 @@ class ProjectManager(models.Manager):
     def for_user(self, user):
         # return the list of editable projects
         # Note: Monitor this query
-        if user.is_anonymous:
-            return (Project.objects
-                    .filter(slug='admins-project')
-                    .prefetch_related('shared_with_groups')
-                    .distinct())
-        else:
-            return (Project.objects
-                    .filter(Q(owner=user)
-                            | (Q(shared_with_users=user)
-                            | Q(shared_with_groups__in=user.groups.all())))
-                    .prefetch_related('shared_with_groups')
-                    .distinct())
+        return (Project.objects
+                .filter(Q(owner=user)
+                        | (Q(shared_with_users=user)
+                        | Q(shared_with_groups__in=user.groups.all())))
+                .prefetch_related('shared_with_groups')
+                .distinct())
 
 
 class Project(models.Model):

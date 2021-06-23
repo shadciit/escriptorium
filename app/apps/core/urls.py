@@ -17,7 +17,8 @@ from core.views import (Home,
                         PublishDocument,
                         ShareProject,
                         DocumentPartsProcessAjax,
-                        ModelUpload)
+                        ModelUpload,
+                        PublicDocumentsList)
 
 urlpatterns = [
     path('', Home.as_view(), name='home'),
@@ -28,6 +29,7 @@ urlpatterns = [
     path('project/<str:slug>/documents/', DocumentsList.as_view(), name='documents-list'),
     path('project/<str:slug>/document/create/', CreateDocument.as_view(), name='document-create'),
     path('project/<int:pk>/share/', ShareProject.as_view(), name='project-share'),
+    path('documents/', PublicDocumentsList.as_view(template_name='core/public_document_list.html'), name='public-documents-list'),
 
     # path('document/<int:pk>/', DocumentDetail.as_view(), name='document-detail'),
     path('document/<int:pk>/edit/', UpdateDocument.as_view(), name='document-update'),
@@ -44,6 +46,6 @@ urlpatterns = [
     path('document/<int:pk>/publish/', PublishDocument.as_view(), name='document-publish'),
     path('document/<int:pk>/process/', DocumentPartsProcessAjax.as_view(),
          name='document-parts-process'),
-
+   
     path('test/', TemplateView.as_view(template_name='core/test.html')),
 ]

@@ -2,11 +2,11 @@
     <div class="col panel">
         <div class="tools">
             <i title="Source Panel" class="panel-icon fas fa-eye"></i>
-            <a v-bind:href="$store.state.parts.image.uri" target="_blank">
+            <a v-bind:href="$store.state.parts.image.uri" target="_blank" v-if="$store.state.document.isAnonymousUser == 'true'">
                 <button class="btn btn-sm btn-info ml-3 fas fa-download"
                         title="Download full size image" download></button>
             </a>
-            <div class="btn-group">
+            <div class="btn-group" v-if="$store.state.document.isAnonymousUser == 'true'">
                 <button id="rotate-counter-clock"
                         @click="rotate(360-90)"
                         title="Rotate 90° counter-clockwise."

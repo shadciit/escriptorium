@@ -35,7 +35,7 @@ function isRightClick(event) {
 }
 
 class SegmenterRegion {
-    constructor(order, polygon, type, context, segmenter_) {
+    constructor(order, polygon, type, context, segmenter_, is_anonymous) {
         this.id = generateUniqueId();
         this.order = order;
         this.segmenter = segmenter_;
@@ -58,10 +58,11 @@ class SegmenterRegion {
 
         this.tooltipText = this.type;
         this.segmenter.attachTooltip(this, this.polygonPath);
+        this.is_anonymous = is_anonymous;
     }
 
     select() {
-        if (this.selected) return;
+        if (this.selected || this.is_anonymous == 'false') return;
         this.polygonPath.selected = true;
         this.polygonPath.bringToFront();
         this.segmenter.addToSelection(this);
@@ -69,7 +70,7 @@ class SegmenterRegion {
     }
 
     unselect() {
-        if (!this.selected) return;
+        if (!this.selected || this.is_anonymous == 'false') return;
         this.polygonPath.selected = false;
         this.segmenter.removeFromSelection(this);
         this.selected = false;
@@ -140,7 +141,7 @@ class SegmenterRegion {
 }
 
 class SegmenterLine {
-    constructor(order, baseline, mask, region, textDirection, type, context, segmenter_) {
+    constructor(order, baseline, mask, region, textDirection, type, context, segmenter_, is_anonymous) {
         this.id = generateUniqueId();
         this.order = order;
         this.segmenter = segmenter_;
@@ -152,6 +153,7 @@ class SegmenterLine {
         this.type = type;
         this.directionHint = null;
         this.hintColor = this.segmenter.directionHintColors[type || 'None'];
+        this.is_anonymous = is_anonymous;
 
         if (baseline) {
             if(baseline.segments) {  // already a paperjs.Path
@@ -227,7 +229,7 @@ class SegmenterLine {
     }
 
     select() {
-        if (this.selected) return;
+        if (this.selected || this.is_anonymous == 'false') return;
         if (this.maskPath && this.maskPath.visible) {
             this.maskPath.selected = true;
             this.maskPath.fillColor = this.segmenter.shadeColor(this.getMaskColor(), -50);
@@ -244,7 +246,7 @@ class SegmenterLine {
     }
 
     unselect() {
-        if (!this.selected) return;
+        if (!this.selected || this.is_anonymous == 'false') return;
         // also unselects any selected segments
         if (this.maskPath) {
             this.maskPath.selected = false;
@@ -497,13 +499,13 @@ export class Segmenter {
                         defaultTextDirection='lr',
                         // field to store and reuse in output from loaded data
                         // can be set to null to disable behavior
-                        idField='id'} = {}) {
+                        idField='id'} = {}, is_anonymous) {
         this.loaded = false;
         this.img = image;
         this.mode = 'lines'; // | 'regions'
         this.lines = [];
         this.regions = [];
-
+        this.is_anonymous = is_anonymous;
         this.regionTypes = ['None'].concat(regionTypes);
         this.lineTypes = ['None'].concat(lineTypes);
 
@@ -902,7 +904,7 @@ export class Segmenter {
         this.linesLayer.activate();
         var line = new SegmenterLine(order, baseline, mask, region,
                                      this.defaultTextDirection, type,
-                                     context, this);
+                                     context, this, this.is_anonymous);
         this.linesGroup.addChild(line.baselinePath);
         if (line.maskPath) {
             if (line.order%2)this.evenMasksGroup.addChild(line.maskPath);
@@ -939,7 +941,7 @@ export class Segmenter {
         }
         if (!order) order = parseInt(this.getMaxRegionOrder()) + 1;
         this.regionsLayer.activate();
-        var region = new SegmenterRegion(order, polygon, type, context, this);
+        var region = new SegmenterRegion(order, polygon, type, context, this, this.is_anonymous);
         if (!postponeEvents) this.bindRegionEvents(region);
         this.regions.push(region);
         this.regionsGroup.addChild(region.polygonPath);
@@ -1207,55 +1209,61 @@ export class Segmenter {
     }
 
     onMouseDrag(event) {
-        if (event.event.ctrlKey) {
-            this.multiMove(event);
-            this.tool.onMouseUp = function(event) {
-                this.resetToolEvents();
-                if (this.mode == 'lines') {
-                    for (let i in this.selection.lines) {
-                        this.selection.lines[i].updateDataFromCanvas();
+        if(this.is_anonymous == 'true'){
+            if (event.event.ctrlKey) {
+                this.multiMove(event);
+                this.tool.onMouseUp = function(event) {
+                    this.resetToolEvents();
+                    if (this.mode == 'lines') {
+                        for (let i in this.selection.lines) {
+                            this.selection.lines[i].updateDataFromCanvas();
+                        }
+                    } else if (this.mode == 'regions') {
+                        for (let i in this.selection.regions) {
+                            this.selection.regions[i].updateDataFromCanvas();
+                        }
                     }
-                } else if (this.mode == 'regions') {
-                    for (let i in this.selection.regions) {
-                        this.selection.regions[i].updateDataFromCanvas();
-                    }
-                }
-            }.bind(this);
+                }.bind(this);
+            }
         }
     }
 
     onMouseDown(event) {
-        if (isRightClick(event.event)) return;
-        if (!this.selecting) {
-            if (event.event.ctrlKey) return;
-            if (this.spliting) {
-                this.startCuter(event);
-            } else if (event.event.shiftKey) {
-                // lasso selection tool
-                this.startLassoSelection(event);
-            }  else if (this.mode == 'regions') {
-                this.startNewRegion(event);
-            }  else {  // mode = 'lines'
-                // create a new line
-                this.startNewLine(event);
+        if(this.is_anonymous == 'true'){
+            if (isRightClick(event.event)) return;
+            if (!this.selecting) {
+                if (event.event.ctrlKey) return;
+                if (this.spliting) {
+                    this.startCuter(event);
+                } else if (event.event.shiftKey) {
+                    // lasso selection tool
+                    this.startLassoSelection(event);
+                }  else if (this.mode == 'regions') {
+                    this.startNewRegion(event);
+                }  else {  // mode = 'lines'
+                    // create a new line
+                    this.startNewLine(event);
+                }
             }
         }
     }
 
     onMouseUp(event) {
-        if (this.selecting) {
-            // selection
-            if (event.event.shiftKey) {
-                this.selecting.toggleSelect();
-                this.startLassoSelection(event);
-            } else {
-                this.selecting.select();
-                this.purgeSelection(this.selecting);
+        if(this.is_anonymous == 'true'){
+            if (this.selecting) {
+                // selection
+                if (event.event.shiftKey) {
+                    this.selecting.toggleSelect();
+                    this.startLassoSelection(event);
+                } else {
+                    this.selecting.select();
+                    this.purgeSelection(this.selecting);
+                }
+                this.trigger('baseline-editor:selection', {target: this.selecting, selection: this.selection});
+                this.selecting = null;
+            } else if (this.hasSelection()) {
+                this.purgeSelection();
             }
-            this.trigger('baseline-editor:selection', {target: this.selecting, selection: this.selection});
-            this.selecting = null;
-        } else if (this.hasSelection()) {
-            this.purgeSelection();
         }
     }
 
