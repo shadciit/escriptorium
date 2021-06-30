@@ -104,7 +104,6 @@ class Tag(models.Model):
     def __str__(self):
         return self.name
 
-
 class DocumentTag(Tag):
     project = models.ForeignKey('core.Project', blank=True,
                                 related_name='document_tags',
