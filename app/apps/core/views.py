@@ -117,7 +117,6 @@ class DocumentsList(LoginRequiredMixin, ListView):
                 context['can_create_document'] = False
 
         context['filters'] = self.request.GET.getlist('tags')
-
         return context
 
 class DocumentMixin():
