@@ -213,7 +213,7 @@
  $(document).ready(function(){
      var scripts = { {% for script in form.fields.main_script.queryset %}
          '{{script.pk}}':'{{script.text_direction}}',{% endfor %} };
-     bootDocumentForm(scripts);
+     bootDocumentForm(scripts, '{{ user.is_authenticated }}');
      bootHelp();
  });
 </script>

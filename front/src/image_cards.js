@@ -34,7 +34,7 @@ function openWizard(proc) {
 }
 
 class partCard {
-    constructor(part, isAnonymous) {
+    constructor(part, is_readonly) {
         this.pk = part.pk;
         this.order = part.order;
         this.name = part.name;
@@ -49,7 +49,7 @@ class partCard {
         this.locked = false;
 
         this.api = API.part.replace('{part_pk}', this.pk);
-        this.isAnonymous = isAnonymous.toLowerCase();
+        this.is_readonly = is_readonly.toLowerCase();
         var $new = $('.card', '#card-template').clone();
         this.$element = $new;
         this.domElement = this.$element.get(0);
@@ -92,7 +92,7 @@ class partCard {
         this.editButton.click(function(ev) {
             document.location.replace(url);
         });
-        if(this.isAnonymous == 'true'){
+        if(this.is_readonly == 'true'){
             this.cancelTasksButton.click($.proxy(function(ev) {
                 this.cancelTasks();
             }, this));
@@ -328,13 +328,13 @@ class partCard {
         return pks;
     }
     static refreshSelectedCount() {
-        if(this.isAnonymous = 'false') $('#selected-counter').text($('#cards-container .card').length).parent().show();
+        if(this.is_readonly = 'false') $('#selected-counter').text($('#cards-container .card').length).parent().show();
         else $('#selected-counter').text(partCard.getSelectedPks().length+'/'+$('#cards-container .card').length).parent().show();
     }
 }
 
 
-export function bootImageCards(documentId, isAnonymous) {
+export function bootImageCards(documentId, is_readonly) {
     DOCUMENT_ID = documentId;
     API = {
         'document': '/api/documents/' + DOCUMENT_ID,
@@ -342,7 +342,7 @@ export function bootImageCards(documentId, isAnonymous) {
         'part': '/api/documents/' + DOCUMENT_ID + '/parts/{part_pk}/'
     };
     //************* Card ordering *************
-    if(isAnonymous.toLowerCase() == 'true'){
+    if(is_readonly.toLowerCase() == 'true'){
         $('#cards-container').on('dragover', '.js-drop', function(ev) {
             var index = $('#cards-container .js-drop').index(ev.target);
             var elementId = ev.originalEvent.dataTransfer.getData("text/card-id");
@@ -405,7 +405,7 @@ export function bootImageCards(documentId, isAnonymous) {
             if (!card) {
                 var uri = API.part.replace('{part_pk}', data.id);
                 $.get(uri, function(data) {
-                    new partCard(data, isAnonymous);
+                    new partCard(data, is_readonly);
                     partCard.refreshSelectedCount();
                 });
             }
@@ -530,7 +530,7 @@ export function bootImageCards(documentId, isAnonymous) {
 
     //************* New card creation **************
     imageDropzone.on("success", function(file, data) {
-        var card = new partCard(data, isAnonymous);
+        var card = new partCard(data, is_readonly);
         card.domElement.scrollIntoView(false);
         // cleanup the dropzone if previews are pilling up
         if (imageDropzone.files.length > 7) {  // a bit arbitrary, depends on the screen but oh well
@@ -604,7 +604,7 @@ export function bootImageCards(documentId, isAnonymous) {
             counter += data.results.length;
             $('#loading-counter').html(counter+'/'+data.count);
             for (var i=0; i<data.results.length; i++) {
-                var pc = new partCard(data.results[i], isAnonymous);
+                var pc = new partCard(data.results[i], is_readonly);
                 if (select == pc.pk) pc.select();
             }
             if (data.next) {

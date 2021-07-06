@@ -11,22 +11,21 @@ class BootstrapFormMixin():
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not hasattr(self, 'user'):
+            is_readonly = False 
+        else:
+            is_readonly = self.user.is_anonymous
+        
         for name, field in self.fields.items():
             if not field.widget.is_hidden:
-                try:
-                    if self.user.is_anonymous:
-                        field.widget.attrs.update({
-                            'placeholder': field.label or name.capitalize(),
-                            'title': field.label or name.capitalize(),
-                            'readonly': True,
-                            'disabled': True
-                        })
-                    else:
-                        field.widget.attrs.update({
-                            'placeholder': field.label or name.capitalize(),
-                            'title': field.label or name.capitalize()
-                        })
-                except:
+                if is_readonly:
+                    field.widget.attrs.update({
+                        'placeholder': field.label or name.capitalize(),
+                        'title': field.label or name.capitalize(),
+                        'readonly': True,
+                        'disabled': True
+                    })
+                else:
                     field.widget.attrs.update({
                         'placeholder': field.label or name.capitalize(),
                         'title': field.label or name.capitalize()

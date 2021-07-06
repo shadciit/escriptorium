@@ -9,7 +9,7 @@
                     class="btn btn-sm ml-3 btn-info fas fa-sort"
                     @click="toggleSort"
                     autocomplete="off"
-                    v-if="$store.state.document.isAnonymousUser == 'true'"></button>
+                    v-if="$store.state.document.readonly == 'true'"></button>
         </div>
         <div :class="'content-container ' + $store.state.document.readDirection" ref="contentContainer">
 

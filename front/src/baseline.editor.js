@@ -35,7 +35,7 @@ function isRightClick(event) {
 }
 
 class SegmenterRegion {
-    constructor(order, polygon, type, context, segmenter_, is_anonymous) {
+    constructor(order, polygon, type, context, segmenter_, is_readonly) {
         this.id = generateUniqueId();
         this.order = order;
         this.segmenter = segmenter_;
@@ -58,11 +58,11 @@ class SegmenterRegion {
 
         this.tooltipText = this.type;
         this.segmenter.attachTooltip(this, this.polygonPath);
-        this.is_anonymous = is_anonymous;
+        this.is_readonly = is_readonly;
     }
 
     select() {
-        if (this.selected || this.is_anonymous == 'false') return;
+        if (this.selected || this.is_readonly == 'false') return;
         this.polygonPath.selected = true;
         this.polygonPath.bringToFront();
         this.segmenter.addToSelection(this);
@@ -70,7 +70,7 @@ class SegmenterRegion {
     }
 
     unselect() {
-        if (!this.selected || this.is_anonymous == 'false') return;
+        if (!this.selected || this.is_readonly == 'false') return;
         this.polygonPath.selected = false;
         this.segmenter.removeFromSelection(this);
         this.selected = false;
@@ -141,7 +141,7 @@ class SegmenterRegion {
 }
 
 class SegmenterLine {
-    constructor(order, baseline, mask, region, textDirection, type, context, segmenter_, is_anonymous) {
+    constructor(order, baseline, mask, region, textDirection, type, context, segmenter_, is_readonly) {
         this.id = generateUniqueId();
         this.order = order;
         this.segmenter = segmenter_;
@@ -153,7 +153,7 @@ class SegmenterLine {
         this.type = type;
         this.directionHint = null;
         this.hintColor = this.segmenter.directionHintColors[type || 'None'];
-        this.is_anonymous = is_anonymous;
+        this.is_readonly = is_readonly;
 
         if (baseline) {
             if(baseline.segments) {  // already a paperjs.Path
@@ -229,7 +229,7 @@ class SegmenterLine {
     }
 
     select() {
-        if (this.selected || this.is_anonymous == 'false') return;
+        if (this.selected || this.is_readonly == 'false') return;
         if (this.maskPath && this.maskPath.visible) {
             this.maskPath.selected = true;
             this.maskPath.fillColor = this.segmenter.shadeColor(this.getMaskColor(), -50);
@@ -246,7 +246,7 @@ class SegmenterLine {
     }
 
     unselect() {
-        if (!this.selected || this.is_anonymous == 'false') return;
+        if (!this.selected || this.is_readonly == 'false') return;
         // also unselects any selected segments
         if (this.maskPath) {
             this.maskPath.selected = false;
@@ -499,13 +499,13 @@ export class Segmenter {
                         defaultTextDirection='lr',
                         // field to store and reuse in output from loaded data
                         // can be set to null to disable behavior
-                        idField='id'} = {}, is_anonymous) {
+                        idField='id'} = {}, is_readonly) {
         this.loaded = false;
         this.img = image;
         this.mode = 'lines'; // | 'regions'
         this.lines = [];
         this.regions = [];
-        this.is_anonymous = is_anonymous;
+        this.is_readonly = is_readonly;
         this.regionTypes = ['None'].concat(regionTypes);
         this.lineTypes = ['None'].concat(lineTypes);
 
@@ -904,7 +904,7 @@ export class Segmenter {
         this.linesLayer.activate();
         var line = new SegmenterLine(order, baseline, mask, region,
                                      this.defaultTextDirection, type,
-                                     context, this, this.is_anonymous);
+                                     context, this, this.is_readonly);
         this.linesGroup.addChild(line.baselinePath);
         if (line.maskPath) {
             if (line.order%2)this.evenMasksGroup.addChild(line.maskPath);
@@ -941,7 +941,7 @@ export class Segmenter {
         }
         if (!order) order = parseInt(this.getMaxRegionOrder()) + 1;
         this.regionsLayer.activate();
-        var region = new SegmenterRegion(order, polygon, type, context, this, this.is_anonymous);
+        var region = new SegmenterRegion(order, polygon, type, context, this, this.is_readonly);
         if (!postponeEvents) this.bindRegionEvents(region);
         this.regions.push(region);
         this.regionsGroup.addChild(region.polygonPath);
@@ -1209,7 +1209,7 @@ export class Segmenter {
     }
 
     onMouseDrag(event) {
-        if(this.is_anonymous == 'true'){
+        if(this.is_readonly == 'true'){
             if (event.event.ctrlKey) {
                 this.multiMove(event);
                 this.tool.onMouseUp = function(event) {
@@ -1229,7 +1229,7 @@ export class Segmenter {
     }
 
     onMouseDown(event) {
-        if(this.is_anonymous == 'true'){
+        if(this.is_readonly == 'true'){
             if (isRightClick(event.event)) return;
             if (!this.selecting) {
                 if (event.event.ctrlKey) return;
@@ -1249,7 +1249,7 @@ export class Segmenter {
     }
 
     onMouseUp(event) {
-        if(this.is_anonymous == 'true'){
+        if(this.is_readonly == 'true'){
             if (this.selecting) {
                 // selection
                 if (event.event.shiftKey) {

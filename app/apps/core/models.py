@@ -193,7 +193,10 @@ class DocumentManager(models.Manager):
         return super().get_queryset().select_related('typology')
 
     def for_user(self, user):
-        return (Document.objects.filter(workflow_state=Document.WORKFLOW_STATE_PUBLISHED).prefetch_related('shared_with_groups', 'transcriptions').select_related('typology').distinct() if user.is_anonymous else Document.objects.filter(project__in=Project.objects.for_user(user)))
+        return Document.objects.filter(project__in=Project.objects.for_user(user))
+    
+    def for_public(self):
+        return (Document.objects.filter(workflow_state=Document.WORKFLOW_STATE_PUBLISHED))
 
 
 class Document(models.Model):

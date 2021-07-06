@@ -1,6 +1,6 @@
 'use strict';
 /**** Metadata stuff ****/
-export function bootDocumentForm(scripts) {
+export function bootDocumentForm(scripts, is_readonly) {
     // delete a metadata row
     $('.js-metadata-delete').click(function(ev) {
         var btn = ev.target;
@@ -60,7 +60,7 @@ export function bootDocumentForm(scripts) {
 
     var submitedForm = false;
     let form = document.querySelector('#document-form');
-    form.addEventListener('submit', ev => submitedForm = true);
+    if(is_readonly == 'true') form.addEventListener('submit', ev => submitedForm = true);
 
     function addTypeOption(parent, pk, name) {
         let checks = document.querySelectorAll(parent + " .form-check");

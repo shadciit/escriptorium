@@ -108,7 +108,7 @@ class DocumentMixin():
             # we fetched the object already, now we check that the user has perms to edit it
             if self.request.user.is_anonymous:
                 (Document.objects
-                 .filter(workflow_state=2)
+                 .for_public()
                  .get(pk=obj.pk))
             else:
                 (Document.objects
@@ -280,7 +280,7 @@ class EditPart(DetailView):
         try:
             # we fetched the object already, now we check that the user has perms to edit it
             if self.request.user.is_anonymous:
-                Document.objects.filter(workflow_state=2).get(pk=obj.document.pk)
+                Document.objects.for_public().get(pk=obj.document.pk)
             else:
                 Document.objects.for_user(self.request.user).get(pk=obj.document.pk)
         except Document.DoesNotExist:
