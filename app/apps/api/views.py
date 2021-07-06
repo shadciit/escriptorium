@@ -200,7 +200,7 @@ class DocumentPermissionMixin():
     def get_queryset(self):
         try:
             if self.request.user.is_anonymous:
-                Document.objects.get(pk=self.kwargs.get('document_pk'), workflow_state=Document.WORKFLOW_STATE_PUBLISHED)
+                Document.objects.for_public().get(pk=self.kwargs.get('document_pk'))
             else:
                 Document.objects.for_user(self.request.user).get(pk=self.kwargs.get('document_pk'))
         except Document.DoesNotExist:
