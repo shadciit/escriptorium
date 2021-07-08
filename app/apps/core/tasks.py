@@ -570,15 +570,19 @@ def done_state(sender=None, body=None, **kwargs):
 
 @task_prerun.connect
 def start_task_reporting(task_id, task, *args, **kwargs):
-    TaskReport = apps.get_model('reporting', 'TaskReport')
-
     # TODO: Remove the three following lines used for debug
     print("----------------------------------------")
     print(f"TASK {task_id} WILL START SOON")
     print("----------------------------------------")
 
     task_kwargs = kwargs.get("kwargs", {})
-    if "user_pk" in task_kwargs and task_kwargs["user_pk"]:
+    # If the reporting is disabled for this task we don't need to execute following code
+    if task_kwargs.get("disable_reporting"):
+        return
+
+    TaskReport = apps.get_model('reporting', 'TaskReport')
+
+    if task_kwargs.get("user_pk"):
         try:
             user = User.objects.get(pk=task_kwargs["user_pk"])
         except User.DoesNotExist:
@@ -597,12 +601,16 @@ def start_task_reporting(task_id, task, *args, **kwargs):
 
 @task_postrun.connect
 def end_task_reporting(task_id, task, *args, **kwargs):
-    TaskReport = apps.get_model('reporting', 'TaskReport')
-
     # TODO: Remove the three following lines used for debug
     print("----------------------------------------")
     print(f"TASK {task_id} JUST ENDED")
     print("----------------------------------------")
+
+    # If the reporting is disabled for this task we don't need to execute following code
+    if kwargs.get("kwargs", {}).get("disable_reporting"):
+        return
+
+    TaskReport = apps.get_model('reporting', 'TaskReport')
 
     try:
         report = TaskReport.objects.get(task_id=task_id)

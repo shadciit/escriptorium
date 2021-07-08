@@ -156,6 +156,5 @@ def document_export(task, file_format, document_pk, part_pks,
                'export/email/ready_message.txt',
                'export/email/ready_html.html',
                (user.email,),
-               user_pk=user.pk,
                context={'domain': Site.objects.get_current().domain,
                         'export_uri': rel_path})
