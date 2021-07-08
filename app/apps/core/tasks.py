@@ -594,6 +594,7 @@ def start_task_reporting(task_id, task, *args, **kwargs):
         logger.error(f"Couldn't create a TaskReport object associated with celery task {task_id}, user attribute is mandatory")
         return
 
+    # TODO: Define an explicit "report_label" kwarg on all tasks
     default_report_label = f"Report the for celery task {task_id} of type {task.name}"
     report = TaskReport.objects.create(user=user, label=task_kwargs.get("report_label", default_report_label))
     report.start(task_id)
