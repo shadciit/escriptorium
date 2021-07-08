@@ -36,6 +36,9 @@ class TaskReport(models.Model):
     # celery task id
     task_id = models.CharField(max_length=64, blank=True, null=True)
 
+    # shared_task method name
+    method = models.CharField(max_length=512, blank=True, null=True)
+
     def append(self, text):
         self.messages += text + '\n'
 
@@ -43,8 +46,9 @@ class TaskReport(models.Model):
     def uri(self):
         return reverse('report-detail', kwargs={'pk': self.pk})
 
-    def start(self, task_id):
+    def start(self, task_id, method):
         self.task_id = task_id
+        self.method = method
         self.workflow_state = self.WORKFLOW_STATE_STARTED
         self.started_at = datetime.now(timezone.utc)
         self.save()

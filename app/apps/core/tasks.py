@@ -570,11 +570,6 @@ def done_state(sender=None, body=None, **kwargs):
 
 @task_prerun.connect
 def start_task_reporting(task_id, task, *args, **kwargs):
-    # TODO: Remove the three following lines used for debug
-    print("----------------------------------------")
-    print(f"TASK {task_id} WILL START SOON")
-    print("----------------------------------------")
-
     task_kwargs = kwargs.get("kwargs", {})
     # If the reporting is disabled for this task we don't need to execute following code
     if task_kwargs.get("disable_reporting"):
@@ -595,18 +590,13 @@ def start_task_reporting(task_id, task, *args, **kwargs):
         return
 
     # TODO: Define an explicit "report_label" kwarg on all tasks
-    default_report_label = f"Report the for celery task {task_id} of type {task.name}"
+    default_report_label = f"Report for celery task {task_id} of type {task.name}"
     report = TaskReport.objects.create(user=user, label=task_kwargs.get("report_label", default_report_label))
-    report.start(task_id)
+    report.start(task_id, task.name)
 
 
 @task_postrun.connect
 def end_task_reporting(task_id, task, *args, **kwargs):
-    # TODO: Remove the three following lines used for debug
-    print("----------------------------------------")
-    print(f"TASK {task_id} JUST ENDED")
-    print("----------------------------------------")
-
     # If the reporting is disabled for this task we don't need to execute following code
     if kwargs.get("kwargs", {}).get("disable_reporting"):
         return
