@@ -15,7 +15,8 @@ from django.utils.text import slugify
 from django.utils.translation import gettext as _
 
 from celery import shared_task
-from celery.signals import before_task_publish, task_prerun, task_success, task_failure
+from celery import states
+from celery.signals import before_task_publish, task_prerun, task_postrun, task_success, task_failure
 from django_redis import get_redis_connection
 from easy_thumbnails.files import get_thumbnailer
 from kraken.lib import train as kraken_train
@@ -42,7 +43,7 @@ def update_client_state(part_id, task, status, task_id=None, data=None):
 
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60)
-def generate_part_thumbnails(instance_pk):
+def generate_part_thumbnails(instance_pk, user_pk=None):
     if not getattr(settings, 'THUMBNAIL_ENABLE', True):
         return
     try:
@@ -565,3 +566,56 @@ def done_state(sender=None, body=None, **kwargs):
     else:
         result = None
     update_client_state(instance_id, sender.name, status, task_id=sender.request.id, data=result)
+
+
+@task_prerun.connect
+def start_task_reporting(task_id, task, *args, **kwargs):
+    TaskReport = apps.get_model('reporting', 'TaskReport')
+
+    # TODO: Remove the three following lines used for debug
+    print("----------------------------------------")
+    print(f"TASK {task_id} WILL START SOON")
+    print("----------------------------------------")
+
+    task_kwargs = kwargs.get("kwargs", {})
+    if "user_pk" in task_kwargs and task_kwargs["user_pk"]:
+        try:
+            user = User.objects.get(pk=task_kwargs["user_pk"])
+        except User.DoesNotExist:
+            user = None
+    else:
+        user = None
+
+    if not user:
+        logger.error(f"Couldn't create a TaskReport object associated with celery task {task_id}, user attribute is mandatory")
+        return
+
+    default_report_label = f"Report the for celery task {task_id} of type {task.name}"
+    report = TaskReport.objects.create(user=user, label=task_kwargs.get("report_label", default_report_label))
+    report.start(task_id)
+
+
+@task_postrun.connect
+def end_task_reporting(task_id, task, *args, **kwargs):
+    TaskReport = apps.get_model('reporting', 'TaskReport')
+
+    # TODO: Remove the three following lines used for debug
+    print("----------------------------------------")
+    print(f"TASK {task_id} JUST ENDED")
+    print("----------------------------------------")
+
+    try:
+        report = TaskReport.objects.get(task_id=task_id)
+    except TaskReport.DoesNotExist:
+        logger.error(f"Couldn't retrieve any TaskReport object associated with celery task {task_id}")
+        return
+
+    # Checking if the report wasn't already ended by tasks like "document_export" or "document_import"
+    if (
+        report.workflow_state != report.WORKFLOW_STATE_ERROR and
+        report.workflow_state != report.WORKFLOW_STATE_DONE
+    ):
+        if kwargs.get("state") == states.SUCCESS:
+            report.end()
+        else:
+            report.error(str(kwargs.get("retval")))

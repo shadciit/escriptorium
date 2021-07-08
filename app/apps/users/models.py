@@ -136,7 +136,8 @@ class Invitation(models.Model):
             'users/email/invitation_html.html',
             to,
             context=context,
-            result_interface=('users', 'Invitation', self.id))
+            result_interface=('users', 'Invitation', self.id),
+            user_pk=self.recipient.pk)
 
     def email_sent(self):
         if self.workflow_state < self.STATE_SENT:

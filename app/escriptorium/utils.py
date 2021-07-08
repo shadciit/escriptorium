@@ -7,7 +7,8 @@ from users.tasks import async_email
 def send_email(subject_template, txt_template, html_template,
                recipients,
                context=None,
-               result_interface=None):
+               result_interface=None,
+               user_pk=None):
     """
     Higher level interface to send a multipart/aternative email with text/plain + text/html
 
@@ -25,4 +26,11 @@ def send_email(subject_template, txt_template, html_template,
     msg = txt_tmplt.render(context=context)
     html = html_tmplt.render(context=context)
 
-    async_email.delay(subject, msg, recipients, html=html, result_interface=result_interface)
+    async_email.delay(
+        subject,
+        msg,
+        recipients,
+        html=html,
+        result_interface=result_interface,
+        user_pk=user_pk
+    )

@@ -21,17 +21,19 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True)
-def document_import(task, import_pk, resume=True, task_id=None):
+def document_import(task, import_pk, resume=True, task_id=None, user_pk=None, report_label=None):
     DocumentImport = apps.get_model('imports', 'DocumentImport')
+    TaskReport = apps.get_model('reporting', 'TaskReport')
 
     imp = DocumentImport.objects.get(
         Q(workflow_state=DocumentImport.WORKFLOW_STATE_CREATED) |
         Q(workflow_state=DocumentImport.WORKFLOW_STATE_ERROR),
         pk=import_pk)
 
-    try:
-        imp.report.start(task.request.id)
+    imp.report = TaskReport.objects.get(task_id=task.request.id)
+    imp.save()
 
+    try:
         send_event('document', imp.document.pk, "import:start", {
             "id": imp.document.pk
         })
@@ -57,8 +59,9 @@ def document_import(task, import_pk, resume=True, task_id=None):
 
 
 @shared_task(bind=True)
-def document_export(task, file_format, user_pk, document_pk, part_pks,
-                    transcription_pk, report_pk, include_images=False):
+def document_export(task, file_format, document_pk, part_pks,
+                    transcription_pk, include_images=False,
+                    user_pk=None, report_label=None):
     ALTO_FORMAT = "alto"
     PAGEXML_FORMAT = "pagexml"
     TEXT_FORMAT = "text"
@@ -72,9 +75,8 @@ def document_export(task, file_format, user_pk, document_pk, part_pks,
 
     user = User.objects.get(pk=user_pk)
     document = Document.objects.get(pk=document_pk)
-    report = TaskReport.objects.get(pk=report_pk)
+    report = TaskReport.objects.get(task_id=task.request.id)
 
-    report.start(task.request.id)
     send_event('document', document.pk, "export:start", {
         "id": document.pk
     })
@@ -154,5 +156,6 @@ def document_export(task, file_format, user_pk, document_pk, part_pks,
                'export/email/ready_message.txt',
                'export/email/ready_html.html',
                (user.email,),
+               user_pk=user.pk,
                context={'domain': Site.objects.get_current().domain,
                         'export_uri': rel_path})

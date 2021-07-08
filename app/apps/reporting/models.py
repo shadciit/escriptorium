@@ -52,6 +52,7 @@ class TaskReport(models.Model):
     def error(self, message):
         # unrecoverable error
         self.workflow_state = self.WORKFLOW_STATE_ERROR
+        self.done_at = datetime.now(timezone.utc)
         self.append(message)
         self.save()
 
