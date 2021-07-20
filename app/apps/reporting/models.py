@@ -1,16 +1,11 @@
 from datetime import datetime, timezone
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-TASKS_WITHOUT_NOTIFICATIONS = [
-    'core.tasks.generate_part_thumbnails',
-    'core.tasks.convert',
-    'core.tasks.lossless_compression',
-    'core.tasks.recalculate_masks'
-]
 User = get_user_model()
 
 
@@ -66,7 +61,7 @@ class TaskReport(models.Model):
         self.append(message)
         self.save()
 
-        if self.method not in TASKS_WITHOUT_NOTIFICATIONS:
+        if self.method not in settings.REPORTING_NOTIFICATIONS_BLACKLIST:
             self.user.notify(_('%(task_label)s error!') % {'task_label': self.label},
                             level='danger',
                             links=[{'text': 'Report', 'src': self.uri}])
@@ -76,7 +71,7 @@ class TaskReport(models.Model):
         self.done_at = datetime.now(timezone.utc)
         self.save()
 
-        if self.method not in TASKS_WITHOUT_NOTIFICATIONS:
+        if self.method not in settings.REPORTING_NOTIFICATIONS_BLACKLIST:
             links = extra_links or []
             if self.messages != '':
                 links.append({'text': 'Report', 'src': self.uri})

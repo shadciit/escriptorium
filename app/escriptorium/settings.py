@@ -355,3 +355,10 @@ if 'test' in sys.argv:
         from .test_settings import *
     except (ModuleNotFoundError, ImportError):
         pass
+
+REPORTING_NOTIFICATIONS_BLACKLIST = [
+    'core.tasks.generate_part_thumbnails',
+    'core.tasks.convert',
+    'core.tasks.lossless_compression',
+    'core.tasks.recalculate_masks'
+]
