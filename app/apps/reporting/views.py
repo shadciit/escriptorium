@@ -49,4 +49,4 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
             last_week_runtime=Sum(runtime, filter=filter_last_week),
             last_day_tasks=Count('taskreport', filter=filter_last_day),
             last_day_runtime=Sum(runtime, filter=filter_last_day)
-        ).order_by('id')
+        ).order_by(F('total_runtime').desc(nulls_last=True))
