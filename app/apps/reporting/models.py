@@ -61,20 +61,7 @@ class TaskReport(models.Model):
         self.append(message)
         self.save()
 
-        if self.method not in settings.REPORTING_NOTIFICATIONS_BLACKLIST:
-            self.user.notify(_('%(task_label)s error!') % {'task_label': self.label},
-                            level='danger',
-                            links=[{'text': 'Report', 'src': self.uri}])
-
     def end(self, extra_links=None):
         self.workflow_state = self.WORKFLOW_STATE_DONE
         self.done_at = datetime.now(timezone.utc)
         self.save()
-
-        if self.method not in settings.REPORTING_NOTIFICATIONS_BLACKLIST:
-            links = extra_links or []
-            if self.messages != '':
-                links.append({'text': 'Report', 'src': self.uri})
-            self.user.notify(_('%(task_label)s done!') % {'task_label': self.label},
-                            level='success',
-                            links=links)
