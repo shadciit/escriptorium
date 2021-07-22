@@ -14,7 +14,7 @@ class ReportList(LoginRequiredMixin, ListView):
     def get_queryset(self):
         qs = super().get_queryset()
         return (qs.filter(user=self.request.user)
-                .exclude(messages='')
+                .annotate(duration=ExpressionWrapper(F('done_at') - F('started_at'), output_field=DurationField()))
                 .order_by('-queued_at'))
 
 
