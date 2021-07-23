@@ -81,7 +81,8 @@ export default {
         this.$store.commit('document/setDefaultTextDirection', this.defaultTextDirection);
         this.$store.commit('document/setMainTextDirection', this.mainTextDirection);
         this.$store.commit('document/setReadDirection', this.readDirection);
-        this.$store.commit('document/setReadonly', this.isReadonly.toLowerCase());
+        this.$store.commit('document/setReadonly', JSON.parse(this.isReadonly.toLowerCase()));
+        
         try {
             await this.$store.dispatch('parts/fetchPart', {pk: this.partId});
             let tr = userProfile.get('initialTranscriptions')

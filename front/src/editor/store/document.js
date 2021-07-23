@@ -10,7 +10,7 @@ export const initialState = () => ({
     readDirection: null,
     types: {},
     blockShortcuts: false,
-    readonly: 'false',
+    readonly: false,
 
     // Manage panels visibility through booleans
     // Those values are initially populated by localStorage

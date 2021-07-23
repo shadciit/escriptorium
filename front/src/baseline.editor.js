@@ -62,7 +62,7 @@ class SegmenterRegion {
     }
 
     select() {
-        if (this.selected || this.is_readonly == 'false') return;
+        if (this.selected || !this.is_readonly) return;
         this.polygonPath.selected = true;
         this.polygonPath.bringToFront();
         this.segmenter.addToSelection(this);
@@ -70,7 +70,7 @@ class SegmenterRegion {
     }
 
     unselect() {
-        if (!this.selected || this.is_readonly == 'false') return;
+        if (!this.selected || !this.is_readonly) return;
         this.polygonPath.selected = false;
         this.segmenter.removeFromSelection(this);
         this.selected = false;
@@ -229,7 +229,7 @@ class SegmenterLine {
     }
 
     select() {
-        if (this.selected || this.is_readonly == 'false') return;
+        if (this.selected || !this.is_readonly) return;
         if (this.maskPath && this.maskPath.visible) {
             this.maskPath.selected = true;
             this.maskPath.fillColor = this.segmenter.shadeColor(this.getMaskColor(), -50);
@@ -246,7 +246,7 @@ class SegmenterLine {
     }
 
     unselect() {
-        if (!this.selected || this.is_readonly == 'false') return;
+        if (!this.selected || !this.is_readonly) return;
         // also unselects any selected segments
         if (this.maskPath) {
             this.maskPath.selected = false;
@@ -1209,7 +1209,7 @@ export class Segmenter {
     }
 
     onMouseDrag(event) {
-        if(this.is_readonly == 'true'){
+        if(this.is_readonly){
             if (event.event.ctrlKey) {
                 this.multiMove(event);
                 this.tool.onMouseUp = function(event) {
@@ -1229,7 +1229,7 @@ export class Segmenter {
     }
 
     onMouseDown(event) {
-        if(this.is_readonly == 'true'){
+        if(this.is_readonly){
             if (isRightClick(event.event)) return;
             if (!this.selecting) {
                 if (event.event.ctrlKey) return;
@@ -1249,7 +1249,7 @@ export class Segmenter {
     }
 
     onMouseUp(event) {
-        if(this.is_readonly == 'true'){
+        if(this.is_readonly){
             if (this.selecting) {
                 // selection
                 if (event.event.shiftKey) {

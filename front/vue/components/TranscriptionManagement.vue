@@ -14,7 +14,7 @@
               title="Transcription management"
               data-toggle="modal"
               data-target="#transcriptionsManagement"
-              v-if="$store.state.document.readonly == 'true'"></button>
+              v-if="$store.state.document.readonly"></button>
       <div id="transcriptionsManagement"
            class="modal ui-draggable"
            tabindex="-1"

@@ -2,7 +2,7 @@
     <div class="col panel">
         <div class="tools">
             <i title="Segmentation Panel" class="panel-icon fas fa-align-left"></i>
-            <div class="btn-group" v-if="$store.state.document.readonly == 'true'">
+            <div class="btn-group" v-if="$store.state.document.readonly">
                 <button id="undo"
                         ref="undo"
                         title="Undo. (Ctrl+Z)"
@@ -76,13 +76,13 @@
                         title="Toggle line masks and stroke width. (M)"
                         class="btn btn-sm btn-info fas fa-mask"></button>
             </div>
-            <div class="btn-group" v-if="$store.state.document.readonly == 'true'">
+            <div class="btn-group" v-if="$store.state.document.readonly">
                 <button id="be-split-lines"
                         title="Cut through lines. (C)"
                         class="btn btn-sm btn-warning fas fa-cut"></button>
             </div>
 
-            <button v-if="!$store.getters['lines/hasMasks'] && $store.state.lines.all.length > 0 && $store.state.document.readonly == 'true'"
+            <button v-if="!$store.getters['lines/hasMasks'] && $store.state.lines.all.length > 0 && $store.state.document.readonly"
                     @click="processLines"
                     class="btn btn-sm btn-success fas fa-thumbs-up ml-auto"
                     title="Segmentation is ready for mask calculation!">
@@ -92,7 +92,7 @@
                     data-target="#segmentation-help"
                     title="Help."
                     class="btn btn-sm btn-info fas fa-question help nav-item ml-2"
-                    v-if="$store.state.document.readonly == 'true'">
+                    v-if="$store.state.document.readonly">
             </button>
             <div id="segmentation-help" class="alert alert-primary help-text collapse">
                 <button type="button" data-toggle="collapse" data-target="#segmentation-help" class="close" aria-label="Close">
@@ -298,27 +298,29 @@ export default Vue.extend({
     );
 
     //history
-    this.$refs.undo.addEventListener(
-      "click",
-      function (ev) {
-        this.undo();
-      }.bind(this)
-    );
-    this.$refs.redo.addEventListener(
-      "click",
-      function (ev) {
-        this.redo();
-      }.bind(this)
-    );
-    document.addEventListener(
-      "keyup",
-      function (ev) {
-        if (ev.ctrlKey) {
-          if (ev.key == "z") this.undo();
-          if (ev.key == "y") this.redo();
-        }
-      }.bind(this)
-    );
+    if(this.$store.state.readonly){
+      this.$refs.undo.addEventListener(
+        "click",
+        function (ev) {
+          this.undo();
+        }.bind(this)
+      );
+      this.$refs.redo.addEventListener(
+        "click",
+        function (ev) {
+          this.redo();
+        }.bind(this)
+      );
+      document.addEventListener(
+        "keyup",
+        function (ev) {
+          if (ev.ctrlKey) {
+            if (ev.key == "z") this.undo();
+            if (ev.key == "y") this.redo();
+          }
+        }.bind(this)
+      );
+    }
   },
   computed: {
     hasBinaryColor() {

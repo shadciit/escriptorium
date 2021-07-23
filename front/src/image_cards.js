@@ -49,7 +49,7 @@ class partCard {
         this.locked = false;
 
         this.api = API.part.replace('{part_pk}', this.pk);
-        this.is_readonly = is_readonly.toLowerCase();
+        this.is_readonly = JSON.parse(is_readonly.toLowerCase());
         var $new = $('.card', '#card-template').clone();
         this.$element = $new;
         this.domElement = this.$element.get(0);
@@ -92,7 +92,7 @@ class partCard {
         this.editButton.click(function(ev) {
             document.location.replace(url);
         });
-        if(this.is_readonly == 'true'){
+        if(this.is_readonly){
             this.cancelTasksButton.click($.proxy(function(ev) {
                 this.cancelTasks();
             }, this));
@@ -328,7 +328,7 @@ class partCard {
         return pks;
     }
     static refreshSelectedCount() {
-        if(this.is_readonly = 'false') $('#selected-counter').text($('#cards-container .card').length).parent().show();
+        if(!this.is_readonly) $('#selected-counter').text($('#cards-container .card').length).parent().show();
         else $('#selected-counter').text(partCard.getSelectedPks().length+'/'+$('#cards-container .card').length).parent().show();
     }
 }
@@ -342,7 +342,7 @@ export function bootImageCards(documentId, is_readonly) {
         'part': '/api/documents/' + DOCUMENT_ID + '/parts/{part_pk}/'
     };
     //************* Card ordering *************
-    if(is_readonly.toLowerCase() == 'true'){
+    if(JSON.parse(is_readonly.toLowerCase())){
         $('#cards-container').on('dragover', '.js-drop', function(ev) {
             var index = $('#cards-container .js-drop').index(ev.target);
             var elementId = ev.originalEvent.dataTransfer.getData("text/card-id");

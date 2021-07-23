@@ -15,6 +15,7 @@ export function bootDocumentForm(scripts, is_readonly) {
             input.value = "on";
         }
     });
+    is_readonly = JSON.parse(is_readonly.toLowerCase())
 
     // the browser might save the state of the delete box if its not posted
     // so we need to check its state on startup and change the button color accordingly
@@ -60,7 +61,6 @@ export function bootDocumentForm(scripts, is_readonly) {
 
     var submitedForm = false;
     let form = document.querySelector('#document-form');
-    if(is_readonly == 'true') form.addEventListener('submit', ev => submitedForm = true);
 
     function addTypeOption(parent, pk, name) {
         let checks = document.querySelectorAll(parent + " .form-check");
@@ -82,33 +82,34 @@ export function bootDocumentForm(scripts, is_readonly) {
             }
         });
     }
+    if(is_readonly){
+        form.addEventListener('submit', ev => submitedForm = true);
+        document.getElementById("add-region-type-btn").addEventListener("click", function(ev) {
+            ev.preventDefault();
+            let input = document.getElementById("add-region-type-input");
+            if (input.value) {
+                pushType('block', input.value)
+                    .then((response) => response.json())
+                    .then(function (data) {
+                        addTypeOption('#region-types', data.pk, data.name);
+                        input.value = '';  // empty the input for future use
+                    });
+            }
+        });
 
-    document.getElementById("add-region-type-btn").addEventListener("click", function(ev) {
-        ev.preventDefault();
-        let input = document.getElementById("add-region-type-input");
-        if (input.value) {
-            pushType('block', input.value)
-                .then((response) => response.json())
-                .then(function (data) {
-                    addTypeOption('#region-types', data.pk, data.name);
-                    input.value = '';  // empty the input for future use
-                });
-        }
-    });
-
-    document.getElementById("add-line-type-btn").addEventListener("click", function(ev) {
-        ev.preventDefault();
-        let input = document.getElementById("add-line-type-input");
-        if (input.value) {
-            pushType('line', input.value)
-                .then((response) => response.json())
-                .then(function (data) {
-                    addTypeOption('#line-types', data.pk, data.name);
-                    input.value = '';  // empty the input for future use
-                });
-        }
-    });
-
+        document.getElementById("add-line-type-btn").addEventListener("click", function(ev) {
+            ev.preventDefault();
+            let input = document.getElementById("add-line-type-input");
+            if (input.value) {
+                pushType('line', input.value)
+                    .then((response) => response.json())
+                    .then(function (data) {
+                        addTypeOption('#line-types', data.pk, data.name);
+                        input.value = '';  // empty the input for future use
+                    });
+            }
+        });
+    }
     // link tabs
     var hash = window.location.hash;
     hash && $('div.nav.nav-tabs a[href="' + hash + '"]').tab('show');

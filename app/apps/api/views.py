@@ -83,12 +83,27 @@ class ProjectViewSet(ModelViewSet):
     serializer_class = ProjectSerializer
     paginate_by = 10
 
+class DocumentOrPartReadOnly(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if request.user.is_authenticated or request.method in permissions.SAFE_METHODS:
+            return True
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        if isinstance(obj, Document):
+            if obj.workflow_state == Document.WORKFLOW_STATE_PUBLISHED:
+                return True
+        elif isinstance(obj, DocumentPart):
+            if obj.document.workflow_state == Document.WORKFLOW_STATE_PUBLISHED:
+                return True
+        return False
 
 class DocumentViewSet(ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     paginate_by = 10
-    permission_classes = (permissions.DjangoModelPermissionsOrAnonReadOnly,)
+    permission_classes = (DocumentOrPartReadOnly,)
 
     def get_queryset(self):
         if self.request.user.is_anonymous:
@@ -210,7 +225,7 @@ class DocumentPermissionMixin():
 
 class PartViewSet(DocumentPermissionMixin, ModelViewSet):
     queryset = DocumentPart.objects.all().select_related('document')
-    permission_classes = (permissions.DjangoModelPermissionsOrAnonReadOnly,)
+    permission_classes = (DocumentOrPartReadOnly,)
 
     def get_queryset(self):
         qs = super().get_queryset()
