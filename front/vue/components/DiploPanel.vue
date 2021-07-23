@@ -9,6 +9,12 @@
                     class="btn btn-sm ml-3 btn-info fas fa-sort"
                     @click="toggleSort"
                     autocomplete="off"></button>
+            <button class="btn btn-sm ml-2 mr-1"
+                    :class="{'btn-info': isVKEnabled, 'btn-outline-info': !isVKEnabled}"
+                    title="Toggle Virtual Keyboard for this document."
+                    @click="toggleVK">
+                <i class="fas fa-keyboard"></i>
+            </button>
         </div>
         <div :class="'content-container ' + $store.state.document.readDirection" ref="contentContainer">
 
@@ -24,6 +30,7 @@
                     ref="diplomaticLines"
                     contenteditable="true"
                     autocomplete="off"
+                    @contextmenu.prevent
                     @keydown="onKeyPress"
                     @keyup="constrainLineNumber"
                     @input="changed"
@@ -47,6 +54,7 @@ export default Vue.extend({
         updatedLines : [],
         createdLines : [],
         movedLines:[],
+        isVKEnabled: false,
     };},
     components: {
         'diploline': DiploLine,
@@ -87,6 +95,8 @@ export default Vue.extend({
         }.bind(this));
 
         this.refresh();
+
+        this.isVKEnabled = userProfile.get("VK-enabled", []).indexOf(this.$store.state.document.id) != -1 || false;
     },
     methods: {
         empty() {
@@ -97,11 +107,17 @@ export default Vue.extend({
         toggleSort() {
             if (this.$refs.diplomaticLines.contentEditable === 'true') {
                 this.$refs.diplomaticLines.contentEditable = 'false';
+                this.$refs.diplomaticLines.childNodes.forEach(c => {
+                    this.deactivateVK(c);
+                });
                 this.sortable.option('disabled', false);
                 this.$refs.sortMode.classList.remove('btn-info');
                 this.$refs.sortMode.classList.add('btn-success');
             } else {
                 this.$refs.diplomaticLines.contentEditable = 'true';
+                this.$refs.diplomaticLines.childNodes.forEach(c => {
+                    this.activateVK(c);
+                });
                 this.sortable.option('disabled', true);
                 this.$refs.sortMode.classList.remove('btn-success');
                 this.$refs.sortMode.classList.add('btn-info');
@@ -118,6 +134,9 @@ export default Vue.extend({
                 this.$refs.diplomaticLines.appendChild(div);
             } else {
                 this.$refs.diplomaticLines.insertBefore(div, pos);
+            }
+            if (this.isVKEnabled) {
+                this.activateVK(div);
             }
             return div;
         },
@@ -447,6 +466,34 @@ export default Vue.extend({
         },
         updateView() {
             this.setHeight();
+        },
+        activateVK(div) {
+            div.contentEditable = 'true';
+            div.tabIndex = '0';
+            enableVirtualKeyboard(div);
+        },
+        deactivateVK(div) {
+            div.removeAttribute('contentEditable');
+            div.removeAttribute('tabindex');
+            div.onfocus = (e) => { e.preventDefault() };
+        },
+        toggleVK() {
+            this.isVKEnabled = !this.isVKEnabled;
+            let vks = userProfile.get("VK-enabled", []);
+            if (this.isVKEnabled) {
+                vks.push(this.$store.state.document.id);
+                userProfile.set("VK-enabled", vks);
+                this.$refs.diplomaticLines.childNodes.forEach(c => {
+                    this.activateVK(c);
+                });
+            } else {
+                // Make sure we save changes made before we remove the VK
+                vks.splice(vks.indexOf(this.$store.state.document.id), 1);
+                userProfile.set("VK-enabled", vks);
+                this.$refs.diplomaticLines.childNodes.forEach(c => {
+                    this.deactivateVK(c);
+                });
+            }
         }
     }
 });

@@ -40,7 +40,7 @@
                         <i class="fas fa-arrow-circle-right"></i>
                     </button>
                     <button class="btn btn-sm ml-2 mr-1"
-                            :class="{'btn-info': this.isVKEnabled, 'btn-outline-info': !this.isVKEnabled}"
+                            :class="{'btn-info': isVKEnabled, 'btn-outline-info': !isVKEnabled}"
                             title="Toggle Virtual Keyboard for this document."
                             @click="toggleVK">
                         <i class="fas fa-keyboard"></i>
