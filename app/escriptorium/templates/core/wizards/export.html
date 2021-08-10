@@ -12,6 +12,8 @@
 {% render_field export_form.transcription %}
 {% render_field export_form.file_format %}
 {% render_field export_form.include_images %}
+<label>Typologies</label>
+{% render_field export_form.part_types %}
 {% endblock %}
 
 {% block wizard_submit %}{% trans "Export" %}{% endblock %}
