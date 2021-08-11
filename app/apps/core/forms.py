@@ -65,6 +65,19 @@ class DocumentForm(BootstrapFormMixin, forms.ModelForm):
         }
 
 
+class DocumentSearchForm(BootstrapFormMixin, forms.ModelForm):
+    query = forms.CharField(label="Text to search in your document", required=True)
+
+    def __init__(self, *args, **kwargs):
+        search = kwargs.pop('search')
+        super().__init__(*args, **kwargs)
+        self.fields['query'].initial = search
+
+    class Meta:
+        model = Document
+        fields = ['query',]
+
+
 class ShareForm(BootstrapFormMixin, forms.ModelForm):
     # abstract form
     username = forms.CharField(required=False)
