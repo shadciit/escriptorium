@@ -30,42 +30,6 @@ class UserViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(user.onboarding, False)
 
 
-class OcrModelViewSetTestCase(CoreFactoryTestCase):
-    def setUp(self):
-        super().setUp()
-        self.part = self.factory.make_part()
-        self.user = self.part.document.owner
-        self.model = self.factory.make_model(self.part.document)
-
-    def test_list(self):
-        self.client.force_login(self.user)
-        uri = reverse('api:model-list', kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(6):
-            resp = self.client.get(uri)
-        self.assertEqual(resp.status_code, 200)
-
-    def test_detail(self):
-        self.client.force_login(self.user)
-        uri = reverse('api:model-detail',
-                      kwargs={'document_pk': self.part.document.pk,
-                              'pk': self.model.pk})
-        with self.assertNumQueries(5):
-            resp = self.client.get(uri)
-        self.assertEqual(resp.status_code, 200)
-
-    def test_create(self):
-        self.client.force_login(self.user)
-        uri = reverse('api:model-list', kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(6):
-            resp = self.client.post(uri, {
-                'name': 'test.mlmodel',
-                'file': self.factory.make_asset_file(name='test.mlmodel',
-                                                     asset_name='fake_seg.mlmodel'),
-                'job': 'Segment'
-            })
-        self.assertEqual(resp.status_code, 201, resp.content)
-
-
 class DocumentViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
         super().setUp()
@@ -244,7 +208,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:part-list',
                       kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(23):
+        with self.assertNumQueries(24):
             img = self.factory.make_image_file()
             resp = self.client.post(uri, {
                 'image': SimpleUploadedFile(

@@ -462,12 +462,12 @@ class DocumentExportTestCase(CoreFactoryTestCase):
 
     def test_simple(self):
         self.client.force_login(self.user)
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(11):
             response = self.client.post(reverse('api:document-export',
                                                 kwargs={'pk': self.trans.document.pk}),
                                         {'transcription': self.trans.pk,
                                          'file_format': 'text',
-                                         'parts': json.dumps([str(p.pk) for p in self.parts])})
+                                         'parts': [str(p.pk) for p in self.parts]})
             self.assertEqual(response.status_code, 200)
 
         # self.assertEqual(''.join([c.decode() for c in response.streaming_content]),
@@ -475,12 +475,12 @@ class DocumentExportTestCase(CoreFactoryTestCase):
 
     def test_alto(self):
         self.client.force_login(self.user)
-        with self.assertNumQueries(25):
+        with self.assertNumQueries(11):
             response = self.client.post(reverse('api:document-export',
                                                 kwargs={'pk': self.trans.document.pk}),
                                         {'transcription': self.trans.pk,
                                          'file_format': 'alto',
-                                         'parts': json.dumps([str(p.pk) for p in self.parts])})
+                                         'parts': [str(p.pk) for p in self.parts]})
             self.assertEqual(response.status_code, 200)
         # self.assertEqual(response.content, '')
 
@@ -499,12 +499,12 @@ class DocumentExportTestCase(CoreFactoryTestCase):
                     transcription=self.trans,
                     content='line %d:%d' % (i, j))
         self.client.force_login(self.user)
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(11):
             response = self.client.post(reverse('api:document-export',
                                                 kwargs={'pk': self.trans.document.pk}),
                                         {'transcription': self.trans.pk,
                                          'file_format': 'text',
-                                         'parts': json.dumps([str(p.pk) for p in self.parts])})
+                                         'parts': [str(p.pk) for p in self.parts]})
             self.assertEqual(response.status_code, 200)
 
     def test_invalid(self):
@@ -514,7 +514,7 @@ class DocumentExportTestCase(CoreFactoryTestCase):
                                             kwargs={'pk': self.trans.document.pk}),
                                     {'transcription': self.trans.pk,
                                      'file_format': 'pouet',
-                                     'parts': json.dumps([str(p.pk) for p in self.parts])})
+                                     'parts': [str(p.pk) for p in self.parts]})
         self.assertEqual(response.status_code, 400)
 
         # no img
@@ -522,5 +522,5 @@ class DocumentExportTestCase(CoreFactoryTestCase):
                                             kwargs={'pk': self.trans.document.pk}),
                                     {'transcription': self.trans.pk,
                                      'file_format': 'text',
-                                     'parts': json.dumps([])})
+                                     'parts': []})
         self.assertEqual(response.status_code, 400)
