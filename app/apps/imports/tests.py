@@ -5,6 +5,7 @@ from unittest import mock
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import transaction
 from django.urls import reverse
 
 from imports.models import DocumentImport
@@ -166,17 +167,13 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test.zip'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            imp = DocumentImport.objects.create(
-                document=self.document,
-                started_by=self.document.owner,
-                import_file=ContentFile(
-                    fh.read(),
-                    name=os.path.join(
-                        settings.MEDIA_ROOT,
-                        DocumentImport.import_file.field.upload_to +
-                        os.path.basename(fh.name))),
-                workflow_state=DocumentImport.WORKFLOW_STATE_ERROR,
-                processed=0)
+            with transaction.atomic():
+                imp = DocumentImport.objects.create(
+                    document=self.document,
+                    started_by=self.document.owner,
+                    import_file=SimpleUploadedFile(filename, fh.read()),
+                    workflow_state=DocumentImport.WORKFLOW_STATE_ERROR,
+                    processed=0)
 
         response = self.client.post(uri, {'resume_import': True})
         self.assertEqual(response.status_code, 200)
