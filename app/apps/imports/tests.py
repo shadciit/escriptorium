@@ -12,6 +12,9 @@ from imports.models import DocumentImport
 from imports.parsers import AltoParser, IIIFManifestParser
 from core.models import Block, Line, Transcription, LineTranscription, BlockType, LineType
 from core.tests.factory import CoreFactoryTestCase
+
+# DO NOT REMOVE THIS IMPORT, it will break a lot of tests
+# It is used to trigger Celery signals when running tests
 from app.apps.reporting.tasks import end_task_reporting, start_task_reporting
 
 
