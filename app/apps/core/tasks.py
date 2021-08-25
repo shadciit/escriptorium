@@ -23,6 +23,8 @@ from kraken.lib import train as kraken_train
 
 from users.consumers import send_event
 
+import time
+
 logger = logging.getLogger(__name__)
 User = get_user_model()
 redis_ = get_redis_connection()
@@ -131,6 +133,65 @@ def make_segmentation_training_data(part):
 
 @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
 def segtrain(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
+    segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk, **kwargs)
+
+
+def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
+    # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
+    from multiprocessing import current_process
+    current_process().daemon = False
+
+    if user_pk:
+        try:
+            user = User.objects.get(pk=user_pk)
+        except User.DoesNotExist:
+            user = None
+    else:
+        user = None
+
+    def msg(txt, fg=None, nl=False):
+        logger.info(txt)
+
+    redis_.set('segtrain-%d' % model_pk, json.dumps({'task_id': task.request.id}))
+
+    Document = apps.get_model('core', 'Document')
+    DocumentPart = apps.get_model('core', 'DocumentPart')
+    OcrModel = apps.get_model('core', 'OcrModel')
+
+    model = OcrModel.objects.get(pk=model_pk)
+
+    try:
+        load = model.file.path
+    except ValueError:  # model is empty
+        load = settings.KRAKEN_DEFAULT_SEGMENTATION_MODEL
+        model.file = model.file.field.upload_to(model, slugify(model.name) + '.mlmodel')
+
+    model_dir = os.path.join(settings.MEDIA_ROOT, os.path.split(model.file.path)[0])
+
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+
+    try:
+        model.training = True
+        model.save()
+        send_event('document', document_pk, "training:start", {
+            "id": model.pk,
+        })
+        print(model_dir)
+        time.sleep(60)
+
+
+    finally:
+        model.training = False
+        model.save()
+
+        send_event('document', document_pk, "training:done", {
+            "id": model.pk,
+        })
+    
+
+#@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
+def segtrain_local(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
     current_process().daemon = False
