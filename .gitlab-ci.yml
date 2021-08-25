@@ -8,7 +8,7 @@ tests:
   image: python:3.7
 
   services:
-    - postgres:latest
+    - postgres:13-alpine
     - redis:alpine
 
   variables:
@@ -36,7 +36,7 @@ tests:
     - pip install -r app/requirements.txt
 
   script:
-    - python app/manage.py test users api versioning imports # core
+    - python app/manage.py test -v 2 users api versioning imports # core
 
 build:
   stage: build
