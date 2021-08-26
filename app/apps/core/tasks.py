@@ -177,8 +177,31 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         send_event('document', document_pk, "training:start", {
             "id": model.pk,
         })
-        print(model_dir)
-        time.sleep(60)
+        qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')
+
+        ground_truth = list(qs)
+        if ground_truth[0].document.line_offset == Document.LINE_OFFSET_TOPLINE:
+            topline = True
+        elif ground_truth[0].document.line_offset == Document.LINE_OFFSET_CENTERLINE:
+            topline = None
+        else:
+            topline = False
+
+        np.random.default_rng(241960353267317949653744176059648850006).shuffle(ground_truth)
+        partition = max(1, int(len(ground_truth) / 10))
+
+        training_data = []
+        evaluation_data = []
+        for part in qs[partition:]:
+            training_data.append(make_segmentation_training_data(part))
+        for part in qs[:partition]:
+            evaluation_data.append(make_segmentation_training_data(part))
+
+        print(training_data)
+
+        # print("\n=======================\n")
+        
+        # print(evaluation_data)
 
 
     finally:
