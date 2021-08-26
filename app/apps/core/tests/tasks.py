@@ -6,6 +6,10 @@ from django.test import TestCase, override_settings
 from core.models import *
 from core.tests.factory import CoreFactoryTestCase
 
+# DO NOT REMOVE THIS IMPORT, it will break a lot of tests
+# It is used to trigger Celery signals when running tests
+from app.apps.reporting.tasks import end_task_reporting, start_task_reporting
+
 
 class TasksTestCase(CoreFactoryTestCase):
     def makeTranscriptionContent(self):
@@ -46,7 +50,7 @@ class TasksTestCase(CoreFactoryTestCase):
         
         response = self.client.post(uri, {
             'document': self.part.document.pk,
-            'parts': json.dumps([part.pk for part in parts]),
+            'parts': [str(part.pk) for part in parts],
             'task': 'transcribe'
         }, follow=True)
         self.assertEqual(response.status_code, 200)
@@ -57,13 +61,13 @@ class TasksTestCase(CoreFactoryTestCase):
         self.makeTranscriptionContent()
         self.client.force_login(self.part.document.owner)
         uri = reverse('document-parts-process', kwargs={'pk': self.part.document.pk})
-        with self.assertNumQueries(19):
+        with self.assertNumQueries(27):
             response = self.client.post(uri, {
                 'document': self.part.document.pk,
                 'transcription': self.transcription.pk,
-                'parts': json.dumps([part.pk for part in self.part.document.parts.all()]),
+                'parts': [str(part.pk) for part in self.part.document.parts.all()],
                 'task': 'train',
-                'new_model': 'new_test_model'})
+                'model_name': 'new_test_model'})
             self.assertEqual(response.status_code, 200, response.content)
     
     def test_train_existing_transcription_model(self):
@@ -71,11 +75,11 @@ class TasksTestCase(CoreFactoryTestCase):
         model = self.factory.make_model(self.part.document)
         self.client.force_login(self.part.document.owner)
         uri = reverse('document-parts-process', kwargs={'pk': self.part.document.pk})
-        with self.assertNumQueries(17):
+        with self.assertNumQueries(27):
             response = self.client.post(uri, {
                 'document': self.part.document.pk,
                 'transcription': self.transcription.pk,
-                'parts': json.dumps([part.pk for part in self.part.document.parts.all()]),
+                'parts': [str(part.pk) for part in self.part.document.parts.all()],
                 'task': 'train',
                 'train_model': model.pk})
         self.assertEqual(response.status_code, 200)
@@ -87,7 +91,7 @@ class TasksTestCase(CoreFactoryTestCase):
         with self.assertNumQueries(77):
             response = self.client.post(uri, {
                 'document': self.part.document.pk,
-                'parts': json.dumps([self.part.pk]),
+                'parts': [str(self.part.pk)],
                 'task': 'segment'})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(self.part.lines.count(), 19)
@@ -110,9 +114,9 @@ class TasksTestCase(CoreFactoryTestCase):
         with self.assertNumQueries(14):
             response = self.client.post(uri, {
                 'document': self.part.document.pk,
-                'parts': json.dumps([self.part.pk, self.part2.pk]),
+                'parts': [str(self.part.pk), str(self.part2.pk)],
                 'task': 'segtrain',
-                'new_model': 'new_seg_model'
+                'model_name': 'new_seg_model'
             })
             self.assertEqual(response.status_code, 200, response.content)
             self.assertEqual(self.part.lines.count(), 3)

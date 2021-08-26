@@ -10,7 +10,8 @@ from django.test import TestCase
 from django_redis import get_redis_connection
 from kraken.lib import vgsl
 
-from core.models import (Document,
+from core.models import (Block,
+                         Document,
                          DocumentPart,
                          Transcription,
                          Line,
@@ -125,6 +126,10 @@ class CoreFactory():
         if transcription is None:
             transcription = self.make_transcription(document=part.document)
         for i in range(amount):
+            block = Block.objects.create(document_part=part, box=[
+                line_margin, i*line_height-line_margin,
+                line_margin+line_width, i*line_height-line_margin
+            ])
             line = Line.objects.create(document_part=part,
                                        baseline=[
                                            [line_margin, i*line_height],
@@ -135,10 +140,7 @@ class CoreFactory():
                                            [line_margin+line_width, i*line_height-line_margin],
                                            [line_margin, i*line_height-line_margin],
                                        ],
-                                       box=[
-                                           line_margin, i*line_height-line_margin,
-                                           line_margin+line_width, i*line_height-line_margin
-                                       ])
+                                       block=block)
             LineTranscription.objects.create(transcription=transcription,
                                              line=line,
                                              content='test %d' % i)
