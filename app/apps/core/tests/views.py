@@ -10,32 +10,32 @@ from users.models import User
 class DocumentTestCase(TestCase):
     def setUp(self):
         factory = CoreFactory()
-        doc = factory.make_document()
-        factory.make_document(owner=doc.owner)
+        self.project = factory.make_project()
+        doc = factory.make_document(project=self.project)
+        factory.make_document(owner=self.project.owner, project=self.project)
         
-        self.user = doc.owner
+        self.user = self.project.owner
         group = Group.objects.create(name='test group')
         self.user.groups.add(group)
         
-        doc = factory.make_document()  # another owner
+        doc = factory.make_document(project=self.project)  # another owner
         doc.shared_with_users.add(doc.owner)
         
-        doc = factory.make_document()
+        doc = factory.make_document(project=self.project)
         doc.shared_with_groups.add(group)
     
     def test_list(self):
         self.client.force_login(self.user)
-        uri = reverse('documents-list')
-        with self.assertNumQueries(9):
-            # Note: 1 query / document to fetch the first picture
-            # can be improved
+        uri = reverse('documents-list', kwargs={'slug': self.project.slug})
+        with self.assertNumQueries(31):   # Note: can be improved
             resp = self.client.get(uri)
             self.assertEqual(resp.status_code, 200)
 
     def test_create(self):
+        self.assertEqual(Document.objects.count(), 4)  # 4 created in setup
         self.client.force_login(self.user)
-        uri = reverse('document-create')
-        with self.assertNumQueries(19):
+        uri = reverse('document-create', kwargs={'slug': self.project.slug})
+        with self.assertNumQueries(12):
             resp = self.client.post(uri, {
                 'name':"Test+metadatas",
                 'main_script': '',
@@ -61,6 +61,6 @@ class DocumentTestCase(TestCase):
                 'documentmetadata_set-2-value': '',
                 'documentmetadata_set-2-DELETE': ''
             })
-            self.assertEqual(resp.status_code, 302)
-        self.assertEqual(Document.objects.count(), 5)  # 4 created in setup
+            self.assertEqual(resp.status_code, 200)
+        self.assertEqual(Document.objects.count(), 5)
         
