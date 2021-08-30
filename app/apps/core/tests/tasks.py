@@ -21,7 +21,6 @@ class TasksTestCase(CoreFactoryTestCase):
     
     # This test fails on various lines...
     # self.part.convert(): ALWAYS_CONVERT settings is False, part.convert stops directly
-    # self.part.segment(): The default model, KRAKEN_DEFAULT_SEGMENTATION_MODEL, doesn't exist
     # self.part.transcribe(): No model is given to transcribe the DocumentPart
     @unittest.expectedFailure
     def test_workflow(self):
@@ -91,9 +90,7 @@ class TasksTestCase(CoreFactoryTestCase):
                 'task': 'train',
                 'train_model': model.pk})
         self.assertEqual(response.status_code, 200)
-    
-    # This test fails with an error because the default segmentation model doesn't exist
-    # KRAKEN_DEFAULT_SEGMENTATION_MODEL = "app/apps/core/static/cBAD_27.mlmodel"
+
     @unittest.expectedFailure
     def test_process_segment(self):
         self.part = self.factory.make_part(image_asset='segmentation/cbad1.png')
@@ -107,9 +104,7 @@ class TasksTestCase(CoreFactoryTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(self.part.lines.count(), 19)
 
-    # This test fails with an error because the default segmentation model doesn't exist
-    # KRAKEN_DEFAULT_SEGMENTATION_MODEL = "app/apps/core/static/cBAD_27.mlmodel"
-    @unittest.expectedFailure
+    @unittest.skip("Too heavy on resources")
     def test_train_new_segmentation_model(self):
         self.part = self.factory.make_part(image_asset='segmentation/default.png')
         baselines = [[[13,31],[848,37]], [[99,93],[850,106]], [[15,157],[837,165]]]
