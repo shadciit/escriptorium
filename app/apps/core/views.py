@@ -252,14 +252,15 @@ class DocumentSearch(LoginRequiredMixin, FormView, ListView):
 
     def get_queryset(self):
         search = self.request.GET.get('query')
-        if search:
-            res = LineTranscription.objects.select_related(
-                'line', 'line__document_part', 'transcription'
-            ).annotate(
-                search=SearchVector('content', 'transcription__name', 'line__document_part__name')
-            ).filter(line__document_part__document=self.kwargs.get('pk'), search__contains=search)
-            return res
-        return None
+
+        if not search:
+            return LineTranscription.objects.none()
+
+        return LineTranscription.objects.select_related(
+            'line', 'line__document_part', 'transcription'
+        ).annotate(
+            search=SearchVector('content', 'transcription__name', 'line__document_part__name')
+        ).filter(line__document_part__document=self.kwargs.get('pk'), search__contains=search)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
