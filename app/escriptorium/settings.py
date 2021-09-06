@@ -209,6 +209,14 @@ CELERY_TASK_ROUTES = {
     'users.tasks.async_email': {'queue': 'low-priority'},
 }
 
+REPORTING_TASKS_BLACKLIST = [
+    'core.tasks.lossless_compression',
+    'core.tasks.convert',
+    'core.tasks.generate_part_thumbnails',
+    'users.tasks.async_email',
+    'core.tasks.recalculate_masks'
+]
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
