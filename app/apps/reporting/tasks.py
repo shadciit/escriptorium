@@ -12,7 +12,7 @@ User = get_user_model()
 
 
 @task_prerun.connect
-def start_task_reporting(task_id, task, args, **kwargs):
+def start_task_reporting(task_id, task, *args, **kwargs):
     task_kwargs = kwargs.get("kwargs", {})
     # If the reporting is disabled for this task we don't need to execute following code
     if task.name in settings.REPORTING_TASKS_BLACKLIST:
@@ -20,7 +20,7 @@ def start_task_reporting(task_id, task, args, **kwargs):
 
     TaskReport = apps.get_model('reporting', 'TaskReport')
 
-    if kwargs.get("user_pk"):
+    if task_kwargs.get("user_pk"):
         try:
             user = User.objects.get(pk=task_kwargs["user_pk"])
         except User.DoesNotExist:
