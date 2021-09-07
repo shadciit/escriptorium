@@ -1,4 +1,5 @@
 import unittest
+import os
 
 from django.urls import reverse
 from django.test import TestCase, override_settings
@@ -18,7 +19,7 @@ class TasksTestCase(CoreFactoryTestCase):
         self.factory.make_part(document=self.part.document)
         self.transcription = self.factory.make_transcription(document=self.part.document)
         self.factory.make_content(self.part, transcription=self.transcription)
-    
+
     # This test fails on various lines...
     # self.part.convert(): ALWAYS_CONVERT settings is False, part.convert stops directly
     # self.part.transcribe(): No model is given to transcribe the DocumentPart
@@ -37,11 +38,11 @@ class TasksTestCase(CoreFactoryTestCase):
         self.part.segment()
         self.assertEqual(self.part.workflow_state,
                          self.part.WORKFLOW_STATE_SEGMENTED)
-        
+
         self.part.transcribe()
         self.assertEqual(self.part.workflow_state,
                          self.part.WORKFLOW_STATE_TRANSCRIBING)
-    
+
     # This test fails with an error because there isn't any default model for
     # transcription and none is given
     @unittest.expectedFailure
@@ -54,7 +55,7 @@ class TasksTestCase(CoreFactoryTestCase):
         for part in parts:
             part.workflow_state = part.WORKFLOW_STATE_CONVERTED
             part.save()
-        
+
         response = self.client.post(uri, {
             'document': self.part.document.pk,
             'parts': [str(part.pk) for part in parts],
@@ -63,7 +64,7 @@ class TasksTestCase(CoreFactoryTestCase):
         self.assertEqual(response.status_code, 200)
         part.refresh_from_db()
         self.assertEqual(part.workflow_state, part.WORKFLOW_STATE_TRANSCRIBING)
-    
+
     def test_train_new_transcription_model(self):
         self.makeTranscriptionContent()
         self.client.force_login(self.part.document.owner)
@@ -76,7 +77,7 @@ class TasksTestCase(CoreFactoryTestCase):
                 'task': 'train',
                 'model_name': 'new_test_model'})
             self.assertEqual(response.status_code, 200, response.content)
-    
+
     def test_train_existing_transcription_model(self):
         self.makeTranscriptionContent()
         model = self.factory.make_model(self.part.document)
@@ -104,7 +105,10 @@ class TasksTestCase(CoreFactoryTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(self.part.lines.count(), 19)
 
-    @unittest.skip("Too heavy on resources")
+    @unittest.skipIf(
+        os.environ.get("CI") is not None,
+        "Too heavy on resources"
+    )
     def test_train_new_segmentation_model(self):
         self.part = self.factory.make_part(image_asset='segmentation/default.png')
         baselines = [[[13,31],[848,37]], [[99,93],[850,106]], [[15,157],[837,165]]]
@@ -117,7 +121,7 @@ class TasksTestCase(CoreFactoryTestCase):
                      [[5,158],[155,165],[305,165],[540,170],[554,165],[689,177],[733,196]]]
         for baseline in baselines:
             l = Line.objects.create(document_part=self.part2, baseline=baseline)
-        
+
         self.client.force_login(self.part.document.owner)
         uri = reverse('document-parts-process', kwargs={'pk': self.part.document.pk})
         with self.assertNumQueries(14):
@@ -129,6 +133,6 @@ class TasksTestCase(CoreFactoryTestCase):
             })
             self.assertEqual(response.status_code, 200, response.content)
             self.assertEqual(self.part.lines.count(), 3)
-    
+
     def test_train_existing_segmentation_model(self):
         pass

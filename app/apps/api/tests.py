@@ -5,6 +5,7 @@ So no need to test the content unless there is some magic in the serializer.
 """
 
 import unittest
+import os
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.urls import reverse
@@ -99,7 +100,10 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['error'], {'parts': [
             'Segmentation training requires at least 2 images.']})
 
-    @unittest.skip("Too heavy on resources")
+    @unittest.skipIf(
+        os.environ.get("CI") is not None,
+        "Too heavy on resources"
+    )
     def test_segtrain_new_model(self):
         # This test breaks CI as it consumes too many resources
         self.client.force_login(self.doc.owner)
