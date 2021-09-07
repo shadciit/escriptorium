@@ -15,7 +15,7 @@ from core.tests.factory import CoreFactoryTestCase
 
 # DO NOT REMOVE THIS IMPORT, it will break a lot of tests
 # It is used to trigger Celery signals when running tests
-from app.apps.reporting.tasks import end_task_reporting, start_task_reporting
+from reporting.tasks import end_task_reporting, start_task_reporting
 
 
 class XmlImportTestCase(CoreFactoryTestCase):
