@@ -4,12 +4,11 @@ import requests
 
 from django import forms
 from django.core.files.base import ContentFile
-from django.db.models import Q
 from django.utils.translation import gettext as _
 
 from bootstrap.forms import BootstrapFormMixin
 
-from core.models import Transcription, DocumentPart, DocumentPartType
+from core.models import Transcription, DocumentPart
 from imports.models import DocumentImport
 from imports.parsers import make_parser, ParseError
 from imports.tasks import document_import, document_export
@@ -139,7 +138,7 @@ class ExportForm(BootstrapFormMixin, forms.Form):
         initial=False, required=False,
         label=_('Include images'),
         help_text=_("Will significantly increase the time to produce and download the export."))
-    part_types = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple)
+    region_types = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple)
 
     def __init__(self, document, user, *args, **kwargs):
         self.document = document
@@ -148,38 +147,17 @@ class ExportForm(BootstrapFormMixin, forms.Form):
         self.fields['transcription'].queryset = Transcription.objects.filter(document=self.document)
         self.fields['parts'].queryset = DocumentPart.objects.filter(document=self.document)
         choices = [
-            (t.id, t.name)
-            for t in DocumentPartType.objects.filter(documentpart__in=self.fields['parts'].queryset)
-        ] + [('Undefined', '(Undefined typology)')]
-        self.fields['part_types'].choices = choices
-        self.fields['part_types'].initial = [c[0] for c in choices]
+            (rt.id, rt.name)
+            for rt in self.document.valid_block_types.all()
+        ] + [('Undefined', '(Undefined region type)'), ('Orphan', '(Orphan lines)')]
+        self.fields['region_types'].choices = choices
+        self.fields['region_types'].initial = [c[0] for c in choices]
 
     def clean_parts(self):
         parts = self.cleaned_data['parts']
         if len(parts) < 1:
             raise forms.ValidationError(_("Select at least one image to export."))
         return parts
-
-    def clean(self):
-        cleaned_data = super().clean()
-        parts = cleaned_data['parts']
-        part_types = cleaned_data['part_types']
-
-        # Check if we have to include parts with an undefined typology
-        include_undefined_typo = False
-        if 'Undefined' in part_types:
-            include_undefined_typo = True
-            part_types.remove('Undefined')
-
-        filter = Q(typology_id__in=part_types)
-        if include_undefined_typo:
-            filter |= Q(typology_id__isnull=True)
-        cleaned_data['parts'] = parts.filter(filter)
-
-        if len(cleaned_data['parts']) < 1:
-            raise forms.ValidationError(_("No selected image to export with chosen typologies."))
-
-        return cleaned_data
 
     def process(self):
         parts = self.cleaned_data['parts']
@@ -189,6 +167,7 @@ class ExportForm(BootstrapFormMixin, forms.Form):
         document_export.delay(file_format, self.document.pk,
                               list(parts.values_list('pk', flat=True)),
                               transcription.pk,
+                              self.cleaned_data['region_types'],
                               include_images=self.cleaned_data['include_images'],
                               user_pk=self.user.pk,
                               report_label=_('Export %(document_name)s') % {'document_name': self.document.name})
