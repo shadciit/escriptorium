@@ -8,7 +8,8 @@
                     title="Toggle sorting mode."
                     class="btn btn-sm ml-3 btn-info fas fa-sort"
                     @click="toggleSort"
-                    autocomplete="off"></button>
+                    autocomplete="off"
+                    :disabled="isVKEnabled"></button>
             <button class="btn btn-sm ml-2 mr-1"
                     :class="{'btn-info': isVKEnabled, 'btn-outline-info': !isVKEnabled}"
                     title="Toggle Virtual Keyboard for this document."
@@ -30,7 +31,6 @@
                     ref="diplomaticLines"
                     contenteditable="true"
                     autocomplete="off"
-                    @contextmenu.prevent
                     @keydown="onKeyPress"
                     @keyup="constrainLineNumber"
                     @input="changed"
@@ -107,17 +107,11 @@ export default Vue.extend({
         toggleSort() {
             if (this.$refs.diplomaticLines.contentEditable === 'true') {
                 this.$refs.diplomaticLines.contentEditable = 'false';
-                this.$refs.diplomaticLines.childNodes.forEach(c => {
-                    this.deactivateVK(c);
-                });
                 this.sortable.option('disabled', false);
                 this.$refs.sortMode.classList.remove('btn-info');
                 this.$refs.sortMode.classList.add('btn-success');
             } else {
                 this.$refs.diplomaticLines.contentEditable = 'true';
-                this.$refs.diplomaticLines.childNodes.forEach(c => {
-                    this.activateVK(c);
-                });
                 this.sortable.option('disabled', true);
                 this.$refs.sortMode.classList.remove('btn-success');
                 this.$refs.sortMode.classList.add('btn-info');
@@ -469,12 +463,12 @@ export default Vue.extend({
         },
         activateVK(div) {
             div.contentEditable = 'true';
-            div.tabIndex = '0';
+            this.$refs.diplomaticLines.contentEditable = 'false';
             enableVirtualKeyboard(div);
         },
         deactivateVK(div) {
             div.removeAttribute('contentEditable');
-            div.removeAttribute('tabindex');
+            this.$refs.diplomaticLines.contentEditable = 'true';
             div.onfocus = (e) => { e.preventDefault() };
         },
         toggleVK() {
