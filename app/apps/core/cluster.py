@@ -10,7 +10,6 @@ class State(Enum):
 class Cluster:
 
     slurm_file = 'ketos_gpu_sub.sh'
-    result = ''
     jobid = ''
 
     def __init__(self, username, cluster_addr, workdir):
@@ -24,8 +23,16 @@ class Cluster:
     def __del__(self):
         self.reset()
 
+    def erase_remote_files(self):
+        with self.c.cd(self.workdir):
+            try:
+                self.c.run('rm *.mlmodel *.out *.zip dataset/*', hide=True)
+            except:
+                print("No remote file to clean")
+
     def request_training(self, gt_path):
         if self.state == State.IDLE:
+            self.erase_remote_files()
             gt_filename = gt_path.split('/')[-1]
             print(gt_path)
             print(gt_filename)
@@ -56,12 +63,14 @@ class Cluster:
 
     def result_path(self):
         if self.state == State.COMPLETE:
-            # Download result ...
-            return self.result
+            self.c.get(self.workdir+'/train_output_best.mlmodel', '/tmp/train_output_best.mlmodel')
+            return '/tmp/train_output_best.mlmodel'
         return ''
 
     def reset(self):
-        if self.result != '':
-            # delete file
-            None
+        if self.state == State.COMPLETE:
+            os.remove('/tmp/train_output_best.mlmodel')
+        # add case for other states (kill the job if running for example)
+        self.erase_remote_files()
+        self.jobid = ''
         self.state = State.IDLE
