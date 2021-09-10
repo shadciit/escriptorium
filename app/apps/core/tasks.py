@@ -6,13 +6,16 @@ import os.path
 import pathlib
 import shutil
 from itertools import groupby
+from datetime import datetime
+from zipfile import ZipFile
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models import F, Q
+from django.db.models import F, Q, Prefetch
 from django.utils.text import slugify
 from django.utils.translation import gettext as _
+from django.template import loader
 
 from celery import shared_task
 from celery.signals import before_task_publish, task_prerun, task_success, task_failure
@@ -20,8 +23,10 @@ from django_redis import get_redis_connection
 from easy_thumbnails.files import get_thumbnailer
 from kraken.lib import train as kraken_train
 
-
+# from core.models import Line
 from users.consumers import send_event
+
+import core.cluster
 
 import time
 
@@ -179,29 +184,66 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         })
         qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')
 
-        ground_truth = list(qs)
-        if ground_truth[0].document.line_offset == Document.LINE_OFFSET_TOPLINE:
-            topline = True
-        elif ground_truth[0].document.line_offset == Document.LINE_OFFSET_CENTERLINE:
-            topline = None
-        else:
-            topline = False
+        # Writing ground truth data on disk
+        # Seems OK to write segments geometry
+        # CONTENT is empty in the xml, normal while doing segmentation ?
+        document = Document.objects.get(pk=document_pk)
+        base_filename = "export_doc%d_%s_%s_%s" % (
+            document.pk,
+            slugify(document.name).replace('-', '_')[:32],
+            "alto",
+            datetime.now().strftime('%Y%m%d%H%M'))
 
-        np.random.default_rng(241960353267317949653744176059648850006).shuffle(ground_truth)
-        partition = max(1, int(len(ground_truth) / 10))
+        tplt = loader.get_template('export/alto.xml')
+        filename = "%s.zip" % base_filename
+        filepath = os.path.join(user.get_document_store_path(), filename)
 
-        training_data = []
-        evaluation_data = []
-        for part in qs[partition:]:
-            training_data.append(make_segmentation_training_data(part))
-        for part in qs[:partition]:
-            evaluation_data.append(make_segmentation_training_data(part))
+        with ZipFile(filepath, 'w') as zip_:
+            for part in qs:
+                zip_.write(part.image.path, part.filename)
+                try:
+                    page = tplt.render({
+                        'valid_block_types': document.valid_block_types.all(),
+                        'valid_line_types': document.valid_line_types.all(),
+                        'part': part,
+                        'blocks': (part.blocks.order_by('order')
+                                    .prefetch_related(
+                                        Prefetch(
+                                            'lines'#,
+                                            # queryset=Line.objects.prefetch_transcription(
+                                            #     transcription))
+                                                )))#,
 
-        print(training_data)
+                        # 'orphan_lines': (part.lines.prefetch_transcription(transcription)
+                        #                     .filter(block=None))
+                    })
+                except Exception as e:
+                    print("Skipped {element}({image}) because '{reason}'.".format(
+                                element=part.name, image=part.filename, reason=str(e)
+                            ))
+                else:
+                    zip_.writestr('%s.xml' % os.path.splitext(part.filename)[0], page)
 
-        # print("\n=======================\n")
+            zip_.close()
+
+        print("Written "+filepath)
+
+        cluster = core.cluster.Cluster(username='kunzli0', 
+                                    cluster_addr='login1.yggdrasil.hpc.unige.ch', 
+                                    workdir='/home/kunzli0/celery-workdir/segtrain/')
+
+        cluster.request_training(filepath)
+
+        while not cluster.task_is_complete():
+            time.sleep(10)
         
-        # print(evaluation_data)
+        print('Training done')
+
+        # # Copy best version
+        # best_version = cluster.result_path()
+
+        # shutil.copy(best_version, model.file.path)
+
 
 
     finally:
