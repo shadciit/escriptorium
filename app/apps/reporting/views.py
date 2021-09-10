@@ -3,10 +3,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, Sum
 from django.db.models.expressions import OuterRef, Subquery
 from django.db.models.fields import IntegerField
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, TemplateView
 
 from reporting.models import TaskReport
 from users.models import User
+from core.models import Project
+from reporting.models import TaskReport, ProjectReport as ModelProjectReport
 
 
 class ReportList(LoginRequiredMixin, ListView):
@@ -87,3 +89,15 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
             user.disk_usage = (disk_usages_left[user.id] or 0) + (disk_usages_right[user.id] or 0)
 
         return results
+
+
+class ProjectReport(LoginRequiredMixin, TemplateView):
+    template_name = 'reporting/project_reports.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['project'] = (Project.objects
+                        .get(slug=self.kwargs['slug']))
+        context['ProjectStats'] = ModelProjectReport(context['project'])
+        return context
+

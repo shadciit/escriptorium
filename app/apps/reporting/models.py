@@ -5,6 +5,9 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from core.models import Document, DocumentPart
+from django.db.models import Count, Sum, F
+import re
 
 User = get_user_model()
 
@@ -78,3 +81,41 @@ class TaskReport(models.Model):
         task_duration = (self.done_at - self.started_at).total_seconds()
         self.gpu_cost = (task_duration * settings.GPU_COST) / 60
         self.save()
+
+
+class ProjectReport:
+    def __init__(self, project):
+        project_document = (Document
+                            .objects
+                            .filter(project=project)
+                            .annotate(_part_count=Count('parts'))
+                            .annotate(_part_lines_count=Count('parts__lines'))
+                            .annotate(_part_lines_transcriptions=F('parts__lines__transcriptions__content'))
+                            .annotate(_part_lines_block=Count('parts__lines__block', distinct=True))
+                            .values('shared_with_groups', 'shared_with_users', '_part_count', '_part_lines_count', '_part_lines_transcriptions', '_part_lines_block'))
+        self.project_documentpart_total = self.aggregate_value(project_document, '_part_count')
+        self.project_documentpart_rows_total = self.aggregate_value(project_document, '_part_lines_count')
+        self.project_documentpart_region_total = self.aggregate_value(project_document, '_part_lines_block')
+        self.project_create_at = project.created_at
+        self.project_update_at = project.updated_at
+        self.project_shared_group_total = project.shared_with_groups.all().count()
+        self.project_shared_users_total = project.shared_with_users.all().count()
+        self.project_document_group_shared_total = project_document.filter(shared_with_groups__isnull=False).count()
+        self.project_document_user_shared_total = project_document.filter(shared_with_users__isnull=False).count()
+        self.all_transcription_content = re.sub(r'[^\w\s]','', ' '.join([i for i in project_document.values_list('_part_lines_transcriptions', flat=True) if i]))
+        self.project_documentpart_rows_words_total = len(self.all_transcription_content.split())
+        self.project_documentpart_rows_characters_total = len(self.all_transcription_content.strip().replace(" ", ""))
+        self.project_documentpart_vocabulary = ' '.join(sorted(set(self.simplify_text(self.all_transcription_content))))
+    
+    def aggregate_value(self, model, field):
+        return model.aggregate(Sum(field)).get(field + '__sum')
+    
+    def simplify_text(self, text):
+        import unicodedata
+        try:
+            text = unicode(text, 'utf-8')
+        except NameError:
+            pass
+        text = unicodedata.normalize('NFD', text).encode('ascii', 'ignore').decode("utf-8")
+        return str(text).strip().replace(" ", "")
+
