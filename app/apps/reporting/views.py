@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, Sum
+<<<<<<< HEAD
 from django.db.models.expressions import OuterRef, Subquery
 from django.db.models.fields import IntegerField
 from django.views.generic import ListView, DetailView, TemplateView
@@ -9,6 +10,12 @@ from reporting.models import TaskReport
 from users.models import User
 from core.models import Project
 from reporting.models import TaskReport, ProjectReport as ModelProjectReport
+=======
+from django.views.generic import ListView, DetailView, TemplateView
+from reporting.models import TaskReport, ProjectReport as ModelProjectReport
+from users.models import User
+from core.models import Project
+>>>>>>> Setup dashboard template
 
 
 class ReportList(LoginRequiredMixin, ListView):
@@ -68,6 +75,7 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
             output_field=DurationField()
         )
 
+<<<<<<< HEAD
         results = list(
             qs.annotate(
                 total_cpu_usage=Sum('taskreport__cpu_cost'),
@@ -90,6 +98,16 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
 
         return results
 
+=======
+        return qs.annotate(
+            total_tasks=Count('taskreport'),
+            total_runtime=Sum(runtime),
+            last_week_tasks=Count('taskreport', filter=filter_last_week),
+            last_week_runtime=Sum(runtime, filter=filter_last_week),
+            last_day_tasks=Count('taskreport', filter=filter_last_day),
+            last_day_runtime=Sum(runtime, filter=filter_last_day)
+        ).order_by(F('total_runtime').desc(nulls_last=True))
+>>>>>>> Setup dashboard template
 
 class ProjectReport(LoginRequiredMixin, TemplateView):
     template_name = 'reporting/project_reports.html'
@@ -98,9 +116,14 @@ class ProjectReport(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['project'] = (Project.objects
                         .get(slug=self.kwargs['slug']))
+<<<<<<< HEAD
 
         context['ProjectStats'] = ModelProjectReport(context['project'], self.request.GET.getlist('tags'))
         context['document_tags'] = list(context['project'].document_tags.values())
         context['filters'] = self.request.GET.getlist('tags')
         return context
 
+=======
+        context['ProjectStats'] = ModelProjectReport(context['project'])
+        return context
+>>>>>>> Setup dashboard template
