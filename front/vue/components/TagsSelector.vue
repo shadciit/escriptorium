@@ -15,6 +15,7 @@
      'tags',
      'filters',
   ],
+<<<<<<< HEAD
   created(){
     this.$store.commit('documentslist/setAllProjectTags', this.tags);
   },
@@ -22,6 +23,12 @@
     isChecked(tag){ 
         return this.filters.includes(tag)
     }
+=======
+  methods: {
+     isChecked(tag){ 
+         return this.filters.includes(tag)
+     }
+>>>>>>> Fix on frontend reviews
   },
   filters: {
     truncate(value, num) {
