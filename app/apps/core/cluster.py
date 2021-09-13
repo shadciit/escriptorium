@@ -67,6 +67,15 @@ class Cluster:
             return '/tmp/train_output_best.mlmodel'
         return ''
 
+    def best_accuracy(self):
+        if self.state == State.COMPLETE:
+            self.c.get(self.workdir+'/segtrain-'+self.jobid+'.out', '/tmp/segtrain-'+self.jobid+'.out')
+            with open('/tmp/segtrain-'+self.jobid+'.out', 'r') as f:
+                for line in f:
+                    pass
+                return float(line.split('(')[1].split(')')[0])
+        return -1.0
+
     def reset(self):
         if self.state == State.COMPLETE:
             os.remove('/tmp/train_output_best.mlmodel')

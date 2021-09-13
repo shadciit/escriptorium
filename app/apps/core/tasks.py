@@ -240,12 +240,12 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         print('Training done')
 
         best_version = cluster.result_path()
+        model.training_accuracy = cluster.best_accuracy()
 
         shutil.copy(best_version, model.file.path)
 
-
-
     finally:
+        
         model.training = False
         model.save()
 
