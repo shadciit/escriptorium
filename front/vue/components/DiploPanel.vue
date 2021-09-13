@@ -65,6 +65,9 @@ export default Vue.extend({
                 // changed page probably
                 this.empty();
             }
+        },
+        '$store.state.document.enabledVKs'() {
+            this.isVKEnabled = this.$store.state.document.enabledVKs.indexOf(this.$store.state.document.id) != -1 || false;
         }
     },
     created() {
@@ -96,7 +99,7 @@ export default Vue.extend({
 
         this.refresh();
 
-        this.isVKEnabled = userProfile.get("VK-enabled", []).indexOf(this.$store.state.document.id) != -1 || false;
+        this.isVKEnabled = this.$store.state.document.enabledVKs.indexOf(this.$store.state.document.id) != -1 || false;
     },
     methods: {
         empty() {
@@ -473,9 +476,10 @@ export default Vue.extend({
         },
         toggleVK() {
             this.isVKEnabled = !this.isVKEnabled;
-            let vks = userProfile.get("VK-enabled", []);
+            let vks = this.$store.state.document.enabledVKs;
             if (this.isVKEnabled) {
                 vks.push(this.$store.state.document.id);
+                this.$store.commit('document/setEnabledVKs', vks);
                 userProfile.set("VK-enabled", vks);
                 this.$refs.diplomaticLines.childNodes.forEach(c => {
                     this.activateVK(c);
@@ -483,6 +487,7 @@ export default Vue.extend({
             } else {
                 // Make sure we save changes made before we remove the VK
                 vks.splice(vks.indexOf(this.$store.state.document.id), 1);
+                this.$store.commit('document/setEnabledVKs', vks);
                 userProfile.set("VK-enabled", vks);
                 this.$refs.diplomaticLines.childNodes.forEach(c => {
                     this.deactivateVK(c);
