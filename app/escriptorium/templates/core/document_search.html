@@ -9,6 +9,7 @@
 <div>
     <h2>{% trans "Search text in document" %}</h2>
     <form method="get">
+        <div>{% render_field form.search_type %}</div>
         <div class="form-row">
             <div class="col">{% render_field form.query group=True %}</div>
             <div class="col-auto">
