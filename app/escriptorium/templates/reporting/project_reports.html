@@ -1,5 +1,5 @@
 {% extends 'core/project_nav.html' %}
-{% load i18n staticfiles thumbnail bootstrap %}
+{% load i18n staticfiles thumbnail bootstrap json %}
 {% block head_title %}{% trans "My Documents" %}{% endblock %}
 
 {% block nav-reports-active %}active{% endblock %}
@@ -24,7 +24,7 @@
                 <div class="card border-primary text-center">
                     <i class="far fa-file-image card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Document Parts Total' %}</h5>
+                        <h5 class="card-title">{% trans 'Total number of document parts' %}</h5>
                         <h2 class="card-title">{{ ProjectStats.project_documentpart_total }}</h2>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
@@ -34,7 +34,7 @@
                 <div class="card border-primary text-center">
                     <i class="fas fa-stream card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Parts rows Total' %}</h5>
+                        <h5 class="card-title">{% trans 'Total number of lines' %}</h5>
                         <h2 class="card-title">{{ ProjectStats.project_documentpart_rows_total }}</h2>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
@@ -44,7 +44,7 @@
                 <div class="card border-primary text-center">
                     <i class="far fa-file-word card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Words count total' %}</h5>
+                        <h5 class="card-title">{% trans 'Total number of words' %}</h5>
                         <h2 class="card-title"> {{ ProjectStats.project_documentpart_rows_words_total }} </h2>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
@@ -54,7 +54,7 @@
                 <div class="card border-primary text-center">
                     <i class="far fa-file-word card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Characters count total' %}</h5>
+                        <h5 class="card-title">{% trans 'Total number of characters' %}</h5>
                         <h2 class="card-title"> {{ ProjectStats.project_documentpart_rows_characters_total }} </h2>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
@@ -76,7 +76,7 @@
                 <div class="card border-primary text-center">
                     <i class="fas fa-th card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Region count total' %}</h5>
+                        <h5 class="card-title">{% trans 'Total number of regions' %}</h5>
                         <h2 class="card-title"> {{ ProjectStats.project_documentpart_region_total }} </h2>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
@@ -92,9 +92,23 @@
                 <div class="card border-primary text-center">
                     <i class="fa fa-tags card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Document Tags' %}</h5>
-                        <h2 class="card-title"></h2>
-                        <p class="card-text">This is some card content that we'll reuse</p>
+                        <h5 class="card-title">{% trans 'Current use of document tags' %}</h5>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Tags</th>
+                                    <th scope="col">Documents</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tag in ProjectStats.project_documenttag_list %}
+                                <tr>
+                                    <td>{{ tag.name }}</td>
+                                    <td>{{ tag.value }}</td>
+                                </tr>
+                                {% endfor %}
+                            <tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -102,9 +116,8 @@
                 <div class="card border-primary text-center">
                     <i class="fa fa-tags card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Document parts Tags' %}</h5>
+                        <h5 class="card-title">{% trans 'Current use of part tags' %}</h5>
                         <h2 class="card-title"></h2>
-                        <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
                 </div>
             </div>
@@ -127,7 +140,7 @@
                 <div class="card border-primary text-center">
                     <i class="fas fa-calendar-alt card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Update at' %}</h5>
+                        <h5 class="card-title">{% trans 'Last update on' %}</h5>
                         <h2 class="card-title">{{ ProjectStats.project_update_at|date }}</h2>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
@@ -137,8 +150,7 @@
                 <div class="card border-primary text-center">
                     <i class="fas fa-share-square card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Shared with users' %}</h5>
-                        <h2 class="card-title">{{ ProjectStats.project_shared_users_total }}</h2>
+                        <h5 class="card-title">{% trans 'Project shared with '%}  {{ProjectStats.project_shared_users_total}}  {% trans ' user(s)' %}</h5>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
                 </div>
@@ -149,8 +161,7 @@
                 <div class="card border-primary text-center">
                     <i class="fas fa-share-square card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Shared with group' %}</h5>
-                        <h2 class="card-title">{{ ProjectStats.project_shared_group_total }}</h2>
+                        <h5 class="card-title">{% trans 'Project shared with '%}  {{ProjectStats.project_shared_group_total}}  {% trans ' group(s)' %}</h5>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
                 </div>
@@ -159,8 +170,7 @@
                 <div class="card border-primary text-center">
                     <i class="fas fa-share-square card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Document shared with users' %}</h5>
-                        <h2 class="card-title">{{ ProjectStats.project_document_user_shared_total }}</h2>
+                        <h5 class="card-title">{% trans 'Documents shared with  '%}  {{ProjectStats.project_document_user_shared_total}}  {% trans ' user(s)' %}</h5>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
                 </div>
@@ -169,8 +179,7 @@
                 <div class="card border-primary text-center">
                     <i class="fas fa-share-square card-header"></i>
                     <div class="card-body">
-                        <h5 class="card-title">{% trans 'Document shared with groups' %}</h5>
-                        <h2 class="card-title">{{ ProjectStats.project_document_group_shared_total }}</h2>
+                        <h5 class="card-title"> {% trans 'Documents shared with  '%}  {{ProjectStats.project_document_group_shared_total}}  {% trans ' group(s)' %}</h5>
                         <p class="card-text">This is some card content that we'll reuse</p>
                     </div>
                 </div>

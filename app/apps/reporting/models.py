@@ -6,7 +6,8 @@ from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from core.models import Document, DocumentPart
-from django.db.models import Count, Sum, F
+from django.db.models import Count, Sum, F, CharField, Value as V
+from django.db.models.functions import Concat
 import re
 
 User = get_user_model()
@@ -92,7 +93,8 @@ class ProjectReport:
                             .annotate(_part_lines_count=Count('parts__lines'))
                             .annotate(_part_lines_transcriptions=F('parts__lines__transcriptions__content'))
                             .annotate(_part_lines_block=Count('parts__lines__block', distinct=True))
-                            .values('shared_with_groups', 'shared_with_users', '_part_count', '_part_lines_count', '_part_lines_transcriptions', '_part_lines_block'))
+                            .annotate(_document_per_tag=Concat('project__document_tags__name', V('∂'), Count('project__document_tags__tags_document', distinct=True), output_field=CharField()))
+                            .values('shared_with_groups', 'shared_with_users', '_part_count', '_part_lines_count', '_part_lines_transcriptions', '_part_lines_block', '_document_per_tag'))
         self.project_documentpart_total = self.aggregate_value(project_document, '_part_count')
         self.project_documentpart_rows_total = self.aggregate_value(project_document, '_part_lines_count')
         self.project_documentpart_region_total = self.aggregate_value(project_document, '_part_lines_block')
@@ -106,6 +108,9 @@ class ProjectReport:
         self.project_documentpart_rows_words_total = len(self.all_transcription_content.split())
         self.project_documentpart_rows_characters_total = len(self.all_transcription_content.strip().replace(" ", ""))
         self.project_documentpart_vocabulary = ' '.join(sorted(set(self.simplify_text(self.all_transcription_content))))
+        import json
+        self.project_documenttag_list = [ {'name': item.split('∂')[0], 'value': item.split('∂')[1]} for item in set(project_document.values_list('_document_per_tag', flat=True)) ]
+        print(self.project_documenttag_list)
     
     def aggregate_value(self, model, field):
         return model.aggregate(Sum(field)).get(field + '__sum')
