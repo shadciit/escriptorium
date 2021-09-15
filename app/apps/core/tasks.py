@@ -257,6 +257,7 @@ def segtrain(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
                         level='success')
     finally:
         model.training = False
+        model.file_size = model.file.size
         model.save()
 
         send_event('document', document_pk, "training:done", {
@@ -403,6 +404,7 @@ def train_(qs, document, transcription, model=None, user=None):
     trainer.run(_print_eval)
     best_version = os.path.join(model_dir, f'version_{trainer.stopper.best_epoch}.mlmodel')
     shutil.copy(best_version, model.file.path)
+    model.save()
 
 
 @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
@@ -450,6 +452,7 @@ def train(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
                         level='success')
     finally:
         model.training = False
+        model.file_size = model.file.size
         model.save()
 
         send_event('document', document.pk, "training:done", {
