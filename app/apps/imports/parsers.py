@@ -102,9 +102,10 @@ class PdfParser(ParserDocument):
                                                    access='sequential')
                 part = DocumentPart(document=self.document)
                 fname = '%s_page_%d.png' % (self.file.name.rsplit('/')[-1], page_nb+1)
+                part.image_file_size = 0
                 part.image.save(fname, ContentFile(page.write_to_buffer('.png')))
-                part.original_filename = fname
                 part.image_file_size = part.image.size
+                part.original_filename = fname
                 part.save()
                 yield part
                 page_nb = page_nb + 1
@@ -163,6 +164,7 @@ class ZipParser(ParserDocument):
                                     document=self.document,
                                     original_filename=zipedfh.name
                                 )
+                            part.image_file_size = 0
                             part.image.save(zipedfh.name, ContentFile(zipedfh.read()))
                             part.image_file_size = part.image.size
                             part.save()
@@ -714,6 +716,7 @@ class IIIFManifestParser(ParserDocument):
                 # iiif file names are always default.jpg or close to
                 name = "%d_%s_%s" % (i, uuid.uuid4().hex[:5], url.split("/")[-1])
                 part.original_filename = name
+                part.image_file_size = 0
                 part.image.save(name, ContentFile(r.content), save=False)
                 part.image_file_size = part.image.size
                 part.save()
