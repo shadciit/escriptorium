@@ -104,6 +104,7 @@ class PdfParser(ParserDocument):
                 fname = '%s_page_%d.png' % (self.file.name.rsplit('/')[-1], page_nb+1)
                 part.image.save(fname, ContentFile(page.write_to_buffer('.png')))
                 part.original_filename = fname
+                part.image_file_size = part.image.size
                 part.save()
                 yield part
                 page_nb = page_nb + 1
@@ -163,6 +164,7 @@ class ZipParser(ParserDocument):
                                     original_filename=zipedfh.name
                                 )
                             part.image.save(zipedfh.name, ContentFile(zipedfh.read()))
+                            part.image_file_size = part.image.size
                             part.save()
 
                         # xml
@@ -713,6 +715,7 @@ class IIIFManifestParser(ParserDocument):
                 name = "%d_%s_%s" % (i, uuid.uuid4().hex[:5], url.split("/")[-1])
                 part.original_filename = name
                 part.image.save(name, ContentFile(r.content), save=False)
+                part.image_file_size = part.image.size
                 part.save()
                 yield part
                 time.sleep(0.1)  # avoid being throttled
