@@ -3,17 +3,23 @@
 from django.db import migrations, models
 
 
+def batch_qs(qs, batch_size=10):
+    total = qs.count()
+    for start in range(0, total, batch_size):
+        yield qs[:batch_size]
+
+
 def set_file_size(apps, schema_editor):
     OcrModel = apps.get_model('core', 'OcrModel')
 
-    ocr_models = OcrModel.objects.all()
-    for ocr_model in ocr_models:
-        try:
-            ocr_model.file_size = ocr_model.file.size
-        except (ValueError, FileNotFoundError) as e:
-            print(f"Couldn't update file_size field on {ocr_model.id}, the file wasn't found: {e}")
+    for ocr_models in batch_qs(OcrModel.objects.all()):
+        for ocr_model in ocr_models:
+            try:
+                ocr_model.file_size = ocr_model.file.size
+            except (ValueError, FileNotFoundError) as e:
+                print(f"Couldn't update file_size field on {ocr_model.id}, the file wasn't found: {e}")
 
-    OcrModel.objects.bulk_update(ocr_models, ['file_size'])
+        OcrModel.objects.bulk_update(ocr_models, ['file_size'])
 
 
 class Migration(migrations.Migration):
