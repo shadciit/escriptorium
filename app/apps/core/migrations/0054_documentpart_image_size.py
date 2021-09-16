@@ -4,17 +4,23 @@ from django.db import migrations, models
 from django.db.models import F
 
 
+def batch_qs(qs, batch_size=10):
+    total = qs.count()
+    for start in range(0, total, batch_size):
+        yield qs[:batch_size]
+
+
 def set_image_file_size(apps, schema_editor):
     DocumentPart = apps.get_model('core', 'DocumentPart')
 
-    parts = DocumentPart.objects.all()
-    for part in parts:
-        try:
-            part.image_file_size = part.image.size
-        except FileNotFoundError as e:
-            print(f"Couldn't update image_file_size field on {part.id}, the file wasn't found: {e}")
+    for parts in batch_qs(DocumentPart.objects.all()):
+        for part in parts:
+            try:
+                part.image_file_size = part.image.size
+            except FileNotFoundError as e:
+                print(f"Couldn't update image_file_size field on {part.id}, the file wasn't found: {e}")
 
-    DocumentPart.objects.bulk_update(parts, ['image_file_size'])
+        DocumentPart.objects.bulk_update(parts, ['image_file_size'])
 
 
 class Migration(migrations.Migration):
