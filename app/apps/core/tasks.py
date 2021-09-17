@@ -404,7 +404,6 @@ def train_(qs, document, transcription, model=None, user=None):
     trainer.run(_print_eval)
     best_version = os.path.join(model_dir, f'version_{trainer.stopper.best_epoch}.mlmodel')
     shutil.copy(best_version, model.file.path)
-    model.save()
 
 
 @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
