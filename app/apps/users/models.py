@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from django.conf import settings
 from django.db import models
+from django.db.models import Sum
 from django.contrib.auth.models import AbstractUser, Group
 from django.utils.translation import gettext as _
 from django.urls import reverse
@@ -43,6 +44,9 @@ class User(AbstractUser):
         if not os.path.isdir(store_path):
             os.makedirs(store_path)
         return store_path
+
+    def calc_disk_usage(self):
+        return self.ocrmodel_set.aggregate(Sum('file_size'))['file_size__sum'] + self.document_set.aggregate(Sum('parts__image_file_size'))['parts__image_file_size__sum']
 
 
 class ResearchField(models.Model):
