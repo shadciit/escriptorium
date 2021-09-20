@@ -46,7 +46,9 @@ class User(AbstractUser):
         return store_path
 
     def calc_disk_usage(self):
-        return self.ocrmodel_set.aggregate(Sum('file_size'))['file_size__sum'] + self.document_set.aggregate(Sum('parts__image_file_size'))['parts__image_file_size__sum']
+        models_size = self.ocrmodel_set.aggregate(Sum('file_size'))['file_size__sum'] or 0
+        images_size = self.document_set.aggregate(Sum('parts__image_file_size'))['parts__image_file_size__sum'] or 0
+        return models_size + images_size
 
 
 class ResearchField(models.Model):
