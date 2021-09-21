@@ -29,7 +29,6 @@
                 <th>{% trans "Content" %}</th>
                 <th>{% trans "Transcription" %}</th>
                 <th>{% trans "Document part" %}</th>
-                <th>{% trans "Mask" %}</th>
             </tr>
         </thead>
         <tbody>
@@ -43,14 +42,7 @@
                 </td>
                 <td title="{% trans 'Line document part name' %}">
                     {% if result.line != None and result.line.document_part != None %}
-                        {{ result.line.document_part.name }}
-                    {% endif %}
-                </td>
-                <td title="{% trans 'Line mask' %}">
-                    {% if result.line != None %}
-                    <div>
-                        <code>{{ result.line.mask }}</code>
-                    </div>
+                        {{ result.line.document_part.title }} - {{ result.line.document_part.filename }}
                     {% endif %}
                 </td>
             </tr>
