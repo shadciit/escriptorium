@@ -27,15 +27,18 @@ fi
 cd $CI_PROJECT_DIR
 
 if [ "$NAME" = "app" ]; then
+	# git is needed to retrieve the base tag
+	apk add git
+
   # App image uses the root level of the container
   DOCKER_IMAGE="$CI_REGISTRY_IMAGE:$VERSION"
   docker build . -t $DOCKER_IMAGE --build-arg VERSION_DATE=$(git tag | sort -V | tail -1)
 
-elif [ "$NAME" = "exim"]; then
+elif [ "$NAME" = "exim" ]; then
   DOCKER_IMAGE="$CI_REGISTRY_IMAGE/mail:$VERSION"
   docker build exim/ -t $DOCKER_IMAGE
 
-elif [ "$NAME" = "nginx"]; then
+elif [ "$NAME" = "nginx" ]; then
   DOCKER_IMAGE="$CI_REGISTRY_IMAGE/nginx:$VERSION"
   docker build nginx/ -t $DOCKER_IMAGE
 
