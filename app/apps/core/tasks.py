@@ -26,7 +26,7 @@ from kraken.lib import train as kraken_train
 # from core.models import Line
 from users.consumers import send_event
 
-import core.cluster
+import core.clusterjob
 
 import time
 
@@ -228,19 +228,19 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
 
         print("Written "+filepath)
 
-        cluster = core.cluster.Cluster(username='kunzli0', 
+        job = core.clusterjob.ClusterJob(username='kunzli0', 
                                     cluster_addr='login1.yggdrasil.hpc.unige.ch', 
                                     workdir='/home/kunzli0/celery-workdir/segtrain/')
 
-        cluster.request_training(filepath)
+        job.request_training(filepath)
 
-        while not cluster.task_is_complete():
+        while not job.task_is_complete():
             time.sleep(10)
         
         print('Training done')
 
-        best_version = cluster.result_path()
-        model.training_accuracy = cluster.best_accuracy()
+        best_version = job.result_path()
+        model.training_accuracy = job.best_accuracy()
 
         shutil.copy(best_version, model.file.path)
 
@@ -455,7 +455,18 @@ def recalculate_masks(instance_pk, user_pk=None, only=None, **kwargs):
     })
 
 
+@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
+def train(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+    train_local(task, part_pks, transcription_pk, model_pk, user_pk, **kwargs)
+
+
+def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+    pass
+
 def train_(qs, document, transcription, model=None, user=None):
+
+    print("train_")
+
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
     current_process().daemon = False
@@ -530,8 +541,11 @@ def train_(qs, document, transcription, model=None, user=None):
     shutil.copy(best_version, model.file.path)
 
 
-@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
-def train(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+# @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
+def train_local(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+
+    print("train")
+
     if user_pk:
         try:
             user = User.objects.get(pk=user_pk)

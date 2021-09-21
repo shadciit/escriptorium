@@ -7,7 +7,7 @@ class State(Enum):
     RUNNING = 2
     COMPLETE = 3
 
-class Cluster:
+class ClusterJob:
 
     slurm_file = 'ketos_gpu_sub.sh'
     jobid = ''
