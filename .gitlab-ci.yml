@@ -49,7 +49,7 @@ build:
   script:
     - npm run production
 
-docker-build:
+.docker-build:
   stage: build
   image: docker:19.03.1
   services:
@@ -57,18 +57,27 @@ docker-build:
   variables:
     DOCKER_DRIVER: overlay2
     DOCKER_HOST: tcp://docker:2375/
+
+docker-build-app:
+  extends: .docker-build
 
   script:
-    - ci/build.sh
+    - ci/build.sh app
+
+docker-build-exim:
+  extends: .docker-build
+
+  script:
+    - ci/build.sh exim
+
+docker-build-nginx:
+  extends: .docker-build
+
+  script:
+    - ci/build.sh nginx
 
 docker-build-base:
-  stage: build
-  image: docker:19.03.1
-  services:
-    - docker:dind
-  variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_HOST: tcp://docker:2375/
+  extends: .docker-build
 
   # Run this only on base tags
   rules:
