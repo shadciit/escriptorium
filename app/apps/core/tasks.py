@@ -142,6 +142,8 @@ def segtrain(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
 
 
 def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
+    from imports.tasks import write_to_file
+
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
     current_process().daemon = False
@@ -162,6 +164,7 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
     Document = apps.get_model('core', 'Document')
     DocumentPart = apps.get_model('core', 'DocumentPart')
     OcrModel = apps.get_model('core', 'OcrModel')
+    Transcription = apps.get_model('core', 'Transcription')
 
     model = OcrModel.objects.get(pk=model_pk)
 
@@ -188,43 +191,18 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         # Seems OK to write segments geometry
         # CONTENT is empty in the xml, normal while doing segmentation ?
         document = Document.objects.get(pk=document_pk)
+        #transcription = Transcription.objects.get(document=document, pk=transcription_pk)
         base_filename = "export_doc%d_%s_%s_%s" % (
             document.pk,
             slugify(document.name).replace('-', '_')[:32],
             "alto",
             datetime.now().strftime('%Y%m%d%H%M'))
 
-        tplt = loader.get_template('export/alto.xml')
+        
         filename = "%s.zip" % base_filename
         filepath = os.path.join(user.get_document_store_path(), filename)
 
-        with ZipFile(filepath, 'w') as zip_:
-            for part in qs:
-                zip_.write(part.image.path, part.filename)
-                try:
-                    page = tplt.render({
-                        'valid_block_types': document.valid_block_types.all(),
-                        'valid_line_types': document.valid_line_types.all(),
-                        'part': part,
-                        'blocks': (part.blocks.order_by('order')
-                                    .prefetch_related(
-                                        Prefetch(
-                                            'lines'#,
-                                            # queryset=Line.objects.prefetch_transcription(
-                                            #     transcription))
-                                                )))#,
-
-                        # 'orphan_lines': (part.lines.prefetch_transcription(transcription)
-                        #                     .filter(block=None))
-                    })
-                except Exception as e:
-                    print("Skipped {element}({image}) because '{reason}'.".format(
-                                element=part.name, image=part.filename, reason=str(e)
-                            ))
-                else:
-                    zip_.writestr('%s.xml' % os.path.splitext(part.filename)[0], page)
-
-            zip_.close()
+        write_to_file(filepath, qs, document)
 
         print("Written "+filepath)
 
@@ -457,10 +435,82 @@ def recalculate_masks(instance_pk, user_pk=None, only=None, **kwargs):
 
 @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
 def train(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
-    train_local(task, part_pks, transcription_pk, model_pk, user_pk, **kwargs)
+    train_cluster(task, part_pks, transcription_pk, model_pk, user_pk, **kwargs)
 
 
 def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+    from imports.tasks import write_to_file
+
+    if user_pk:
+        try:
+            user = User.objects.get(pk=user_pk)
+        except User.DoesNotExist:
+            user = None
+    else:
+        user = None
+
+    redis_.set('training-%d' % model_pk, json.dumps({'task_id': task.request.id}))
+
+    DocumentPart = apps.get_model('core', 'DocumentPart')
+    Document = apps.get_model('core', 'Document')
+    Transcription = apps.get_model('core', 'Transcription')
+    LineTranscription = apps.get_model('core', 'LineTranscription')
+    OcrModel = apps.get_model('core', 'OcrModel')
+
+    try:
+        model = OcrModel.objects.get(pk=model_pk)
+        model.training = True
+        model.save()
+        transcription = Transcription.objects.get(pk=transcription_pk)
+        # document = transcription.document
+        document_pk = transcription.document.pk
+        document = Document.objects.get(pk=document_pk)
+        send_event('document', document_pk, "training:start", {
+            "id": model.pk,
+        })
+        # qs = (LineTranscription.objects
+        #       .filter(transcription=transcription,
+        #               line__document_part__pk__in=part_pks)
+        #       .exclude(Q(content='') | Q(content=None)))
+        qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')
+
+        
+        base_filename = "export_doc%d_%s_%s_%s" % (
+            document.pk,
+            slugify(document.name).replace('-', '_')[:32],
+            "alto",
+            datetime.now().strftime('%Y%m%d%H%M'))
+
+        
+        filename = "%s.zip" % base_filename
+        filepath = os.path.join(user.get_document_store_path(), filename)
+
+        write_to_file(filepath, qs, document, transcription)
+
+        print("Written "+filepath)
+
+
+    except Exception as e:
+        send_event('document', document.pk, "training:error", {
+            "id": model.pk,
+        })
+        if user:
+            user.notify(_("Something went wrong during the training process!"),
+                        id="training-error", level='danger')
+        logger.exception(e)
+    else:
+        if user:
+            user.notify(_("Training finished!"),
+                        id="training-success",
+                        level='success')
+    finally:
+        model.training = False
+        model.save()
+
+        send_event('document', document.pk, "training:done", {
+            "id": model.pk,
+        })
+
     pass
 
 def train_(qs, document, transcription, model=None, user=None):
