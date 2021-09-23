@@ -9,7 +9,7 @@ class State(Enum):
 
 class ClusterJob:
 
-    slurm_file = 'ketos_gpu_sub.sh'
+    slurm_file = 'segtrain_gpu_sub.sh'
     jobid = ''
 
     def __init__(self, username, cluster_addr, workdir):
@@ -27,6 +27,7 @@ class ClusterJob:
         with self.c.cd(self.workdir):
             try:
                 self.c.run('rm *.mlmodel *.out *.zip dataset/*', hide=True)
+                self.c.run('rmdir dataset')
             except:
                 print("No remote file to clean")
 

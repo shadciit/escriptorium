@@ -208,7 +208,7 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
 
         job = core.clusterjob.ClusterJob(username='kunzli0', 
                                     cluster_addr='login1.yggdrasil.hpc.unige.ch', 
-                                    workdir='/home/kunzli0/celery-workdir/segtrain/')
+                                    workdir='/home/kunzli0/celery-workdir/ketos/')
 
         job.request_training(filepath)
 
