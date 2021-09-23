@@ -461,10 +461,15 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
         model = OcrModel.objects.get(pk=model_pk)
         model.training = True
         model.save()
-        transcription = Transcription.objects.get(pk=transcription_pk)
+        
         # document = transcription.document
+        transcription = Transcription.objects.get(pk=transcription_pk)
         document_pk = transcription.document.pk
         document = Document.objects.get(pk=document_pk)
+        
+        # print("transcription_pk : ", transcription_pk)
+        # print("document_pk : ", document_pk)
+
         send_event('document', document_pk, "training:start", {
             "id": model.pk,
         })
@@ -485,7 +490,7 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
         filename = "%s.zip" % base_filename
         filepath = os.path.join(user.get_document_store_path(), filename)
 
-        write_to_file(filepath, qs, document, transcription)
+        write_to_file(filepath, qs, document, transcription=transcription)
 
         print("Written "+filepath)
 
