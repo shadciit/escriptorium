@@ -98,6 +98,9 @@ class ProjectReport(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['project'] = (Project.objects
                         .get(slug=self.kwargs['slug']))
-        context['ProjectStats'] = ModelProjectReport(context['project'])
+
+        context['ProjectStats'] = ModelProjectReport(context['project'], self.request.GET.getlist('tags'))
+        context['document_tags'] = list(context['project'].document_tags.values())
+        context['filters'] = self.request.GET.getlist('tags')
         return context
 
