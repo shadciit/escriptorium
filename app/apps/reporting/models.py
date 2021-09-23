@@ -123,4 +123,3 @@ class ProjectReport:
         for tag in tags:
             qs = qs.filter(tags__name=tag)
         return qs
-
