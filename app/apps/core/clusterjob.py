@@ -9,7 +9,8 @@ class State(Enum):
 
 class ClusterJob:
 
-    slurm_file = 'segtrain_gpu_sub.sh'
+    slurm_segmenter_train_file = 'segtrain_gpu_sub.sh'
+    slurm_recognizer_train_file = 'train_gpu_sub.sh'
     jobid = ''
 
     def __init__(self, username, cluster_addr, workdir):
@@ -21,7 +22,8 @@ class ClusterJob:
                             user=self.username)
 
     def __del__(self):
-        self.reset()
+        pass
+        # self.reset()
 
     def erase_remote_files(self):
         with self.c.cd(self.workdir):
@@ -31,7 +33,7 @@ class ClusterJob:
             except:
                 print("No remote file to clean")
 
-    def request_training(self, gt_path):
+    def request_training(self, gt_path, slurm_file):
         if self.state == State.IDLE:
             self.erase_remote_files()
             gt_filename = gt_path.split('/')[-1]
@@ -45,10 +47,16 @@ class ClusterJob:
                 print('Extracting data ...')
                 self.c.run('unzip '+gt_filename+' -d dataset', hide=True)
                 print('Done extracting data')
-                res = self.c.run('sbatch '+self.slurm_file, hide=True)
+                res = self.c.run('sbatch '+slurm_file, hide=True)
                 self.jobid = res.stdout.split()[-1]
                 print('Running job '+self.jobid)
             self.state = State.RUNNING
+
+    def request_segmenter_training(self, gt_path):
+        self.request_training(gt_path, self.slurm_segmenter_train_file)
+
+    def request_recognizer_training(self, gt_path):
+        self.request_training(gt_path, self.slurm_recognizer_train_file)
             
 
     def task_is_complete(self):
@@ -70,8 +78,8 @@ class ClusterJob:
 
     def best_accuracy(self):
         if self.state == State.COMPLETE:
-            self.c.get(self.workdir+'/segtrain-'+self.jobid+'.out', '/tmp/segtrain-'+self.jobid+'.out')
-            with open('/tmp/segtrain-'+self.jobid+'.out', 'r') as f:
+            self.c.get(self.workdir+'/'+self.jobid+'.out', '/tmp/'+self.jobid+'.out')
+            with open('/tmp/'+self.jobid+'.out', 'r') as f:
                 for line in f:
                     pass
                 return float(line.split('(')[1].split(')')[0])

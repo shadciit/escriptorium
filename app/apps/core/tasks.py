@@ -210,7 +210,7 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
                                     cluster_addr='login1.yggdrasil.hpc.unige.ch', 
                                     workdir='/home/kunzli0/celery-workdir/ketos/')
 
-        job.request_training(filepath)
+        job.request_segmenter_training(filepath)
 
         while not job.task_is_complete():
             time.sleep(10)
@@ -459,6 +459,21 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
 
     try:
         model = OcrModel.objects.get(pk=model_pk)
+
+        load = None
+        try:
+            load = model.file.path
+        except ValueError:  # model is empty
+            filename = slugify(model.name) + '.mlmodel'
+            model.file = model.file.field.upload_to(model, filename)
+            model.save()
+
+        model_dir = os.path.join(settings.MEDIA_ROOT, os.path.split(model.file.path)[0])
+
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+
+
         model.training = True
         model.save()
         
@@ -493,6 +508,25 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
         write_to_file(filepath, qs, document, transcription=transcription)
 
         print("Written "+filepath)
+
+        job = core.clusterjob.ClusterJob(username='kunzli0', 
+                            cluster_addr='login1.yggdrasil.hpc.unige.ch', 
+                            workdir='/home/kunzli0/celery-workdir/ketos/')
+
+        job.request_recognizer_training(filepath)
+
+        while not job.task_is_complete():
+            time.sleep(10)
+        
+        print('Training done')
+
+        best_version = job.result_path()
+
+        # print('best version file : '+best_version)
+
+        model.training_accuracy = job.best_accuracy()
+
+        shutil.copy(best_version, model.file.path)
 
 
     except Exception as e:

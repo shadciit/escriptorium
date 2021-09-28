@@ -197,7 +197,6 @@ def write_to_file(filepath, qs, document, transcription=None):
             zip_.write(part.image.path, part.filename)
             try:
                 if not transcription:
-                    print("writing without transcription")
                     page = tplt.render({
                         'valid_block_types': document.valid_block_types.all(),
                         'valid_line_types': document.valid_line_types.all(),
@@ -214,7 +213,6 @@ def write_to_file(filepath, qs, document, transcription=None):
                         #                     .filter(block=None))
                     })
                 else:
-                    print("writing with transcription")
                     page = tplt.render({
                         'valid_block_types': document.valid_block_types.all(),
                         'valid_line_types': document.valid_line_types.all(),
