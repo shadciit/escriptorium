@@ -98,6 +98,19 @@
   <div class="dropable js-drop"></div>
 </div>
 
+<div id="monitoring">
+  <div id="sending-data" class="{% if not training_model %}hide{% endif %}">
+    Sending data
+  </div>
+  <div id="job-pending" class="{% if not training_model %}hide{% endif %}">
+    Job pending
+  </div>
+  <div id="job-running" class="{% if not training_model %}hide{% endif %}">
+    Job running
+  </div>
+</div>
+
+
 {# Process wizards #}
 {% include 'core/wizards/import_iiif.html' with proc='import-iiif' %}
 {% include 'core/wizards/import_file.html' with proc='import-xml' %}
@@ -109,6 +122,8 @@
 {% include 'core/wizards/train.html' with proc='train' %}
 {% include 'core/wizards/transcribe.html' with proc='transcribe' %}
 {% endblock %}
+
+
 
 {% block scripts %}
 <script type="text/javascript">
