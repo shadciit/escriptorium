@@ -13,7 +13,7 @@
             {% render_field form.search_type group=True %}
             <div class="small text-right mt-1 mb-3">
                 <a href="https://docs.djangoproject.com/en/3.2/ref/contrib/postgres/search/#searchquery" target="_blank">{% trans "See documentation about search types" %}</a>
-                <span>and</span>
+                <span>{% trans "and" %}</span>
                 <a href="https://www.postgresql.org/docs/current/textsearch-controls.html#TEXTSEARCH-PARSING-QUERIES" target="_blank">{% trans "search syntax" %}</a>
             </div>
         </div>
