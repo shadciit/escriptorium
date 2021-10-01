@@ -248,9 +248,10 @@ class DocumentSearch(LoginRequiredMixin, FormView, ListView):
     model = Document
     form_class = DocumentSearchForm
     template_name = "core/document_search.html"
-    paginate_by = 10
 
     def get_queryset(self):
+        self.paginate_by = self.request.GET.get('paginate_by', "100")
+        self.request.GET.paginate_by = self.paginate_by
         search = self.request.GET.get('query')
         search_type = self.request.GET.get('search_type', 'plain')
 
@@ -271,6 +272,11 @@ class DocumentSearch(LoginRequiredMixin, FormView, ListView):
         kwargs['search'] = self.request.GET.get('query')
         kwargs['search_type'] = self.request.GET.get('search_type', 'plain')
         return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data()
+        context['pagination_values'] = ["20", "50", "100", "250"]
+        return context
 
     def get_success_url(self):
         return reverse('document-search', kwargs={'pk': self.kwargs.get('pk')})
