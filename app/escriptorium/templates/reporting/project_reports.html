@@ -1,5 +1,5 @@
 {% extends 'core/project_nav.html' %}
-{% load i18n staticfiles thumbnail bootstrap json %}
+{% load i18n staticfiles thumbnail bootstrap report %}
 {% block head_title %}{% trans "My Documents" %}{% endblock %}
 
 {% block nav-reports-active %}active{% endblock %}
@@ -34,7 +34,7 @@
                             <i class="far fa-file-image card-header"></i>
                             <div class="card-body">
                                 <h5 class="card-title">{% trans 'Total number of document parts' %}</h5>
-                                <h2 class="card-title">{{ ProjectStats.project_documentpart_total }}</h2>
+                                <h2 class="card-title">{{ ProjectStats.project_documentpart_total|default_value  }}</h2>
                                 <p class="card-text">A document part corresponds to one image loaded within a document.</p>
                             </div>
                         </div>
@@ -44,7 +44,7 @@
                             <i class="fas fa-th card-header"></i>
                             <div class="card-body">
                                 <h5 class="card-title">{% trans 'Total number of regions' %}</h5>
-                                <h2 class="card-title"> {{ ProjectStats.project_documentpart_region_total }} </h2>
+                                <h2 class="card-title"> {{ ProjectStats.project_documentpart_region_total|default_value }} </h2>
                                 <p class="card-text">A region is a polygon drawn on a document part, grouping one, several or no line(s)
 </p>
                             </div>
@@ -55,7 +55,7 @@
                             <i class="fas fa-stream card-header"></i>
                             <div class="card-body">
                                 <h5 class="card-title">{% trans 'Total number of lines' %}</h5>
-                                <h2 class="card-title">{{ ProjectStats.project_documentpart_rows_total }}</h2>
+                                <h2 class="card-title">{{ ProjectStats.project_documentpart_rows_total|default_value  }}</h2>
                                 <p class="card-text">A line is a segment of text identified on a document part, usually associated with a polygon (mask) and a transcription.</p>
                             </div>
                         </div>
@@ -65,7 +65,7 @@
                             <i class="far fa-file-word card-header"></i>
                             <div class="card-body">
                                 <h5 class="card-title">{% trans 'Total number of words' %}</h5>
-                                <h2 class="card-title"> {{ ProjectStats.project_documentpart_rows_words_total }} </h2>
+                                <h2 class="card-title"> {{ ProjectStats.project_documentpart_rows_words_total|wordcount }} </h2>
                                 <p class="card-text">A word is any series of one or more characters, excepted punctuation signs and white spaces</p>
                             </div>
                         </div>
@@ -75,7 +75,7 @@
                             <i class="far fa-file-word card-header"></i>
                             <div class="card-body">
                                 <h5 class="card-title">{% trans 'Total number of characters' %}</h5>
-                                <h2 class="card-title"> {{ ProjectStats.project_documentpart_rows_characters_total }} </h2>
+                                <h2 class="card-title"> {{ ProjectStats.project_documentpart_rows_words_total|length }} </h2>
                                 <p class="card-text">A character is any symbol used in the transcription, including punctuation, excepted white spaces.</p>
                             </div>
                         </div>
@@ -91,21 +91,23 @@
                                 <table class="table">
                                     <tbody>
                                         <tr>
-                                        {% for item_v in ProjectStats.project_documentpart_vocabulary %}
+                                        {% for item_v in ProjectStats.project_documentpart_vocabulary|chunk_dict %}
                                             <td>
-                                            {% for item in item_v|parsedict %}
-                                                <table>
-                                                    <tr>
-                                                        <td>{{ item.name }}</td>
-                                                        <td>
-                                                        {% if item.value < 50 %}
-                                                            <span style="color: red;">{{ item.value }}</span>
-                                                        {% else %}
-                                                            <span>{{ item.value }}</span>
-                                                        {% endif %}
-                                                        </td>
-                                                    </tr>
-                                                </table>
+                                            {% for key, value in item_v.items %}
+                                                {% for k, v in value %}
+                                                    <table>
+                                                        <tr>
+                                                            <td>{{ k }}</td>
+                                                            <td>
+                                                            {% if v < 50 %}
+                                                                <span style="color: red;">{{ v }}</span>
+                                                            {% else %}
+                                                                <span>{{ v }}</span>
+                                                            {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                {% endfor %}
                                             {% endfor %}
                                             </td>
                                         {% endfor %}
@@ -128,10 +130,13 @@
                                 <table class="table">
                                     <tbody>
                                         {% for tag in ProjectStats.project_documenttag_list %}
-                                        <tr>
-                                            <td>{{ tag.name }}</td>
-                                            <td>{{ tag.value }}</td>
-                                        </tr>
+                                            {% with tag|split:"∂" as tag_list %}
+                                                <tr>
+                                                    {% for t in tag_list %}
+                                                        <td>{{ t }}</td>
+                                                    {% endfor %}
+                                                </tr>
+                                            {% endwith %}
                                         {% endfor %}
                                     <tbody>
                                 </table>
@@ -157,17 +162,17 @@
                                 <h5 class="card-title">{% trans 'Current use of regions type' %}</h5>
                                 <table class="table">
                                     <tbody>
-                                        {% for region in ProjectStats.project_regions_type %}
-                                        <tr>
-                                            <td>
-                                            {% if region.name == '' %}
-                                                {% trans 'None' %}
-                                            {% else %}
-                                                {{ region.name }}
-                                            {% endif %}
-                                            </td>
-                                            <td>{{ region.value }}</td>
-                                        </tr>
+                                        {% for key, value in ProjectStats.project_regions_type.items %}
+                                            <tr>
+                                                <td>
+                                                    {% if key == '' %}
+                                                        None
+                                                    {% else %}
+                                                        {{ key }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ value }}</td>
+                                            </tr>
                                         {% endfor %}
                                     <tbody>
                                 </table>
@@ -181,17 +186,17 @@
                                 <h5 class="card-title">{% trans 'Current use of lines type' %}</h5>
                                 <table class="table">
                                     <tbody>
-                                        {% for line in ProjectStats.project_lines_type %}
-                                        <tr>
-                                            <td>
-                                                {% if line.name == '' %}
-                                                    {% trans 'None' %}
-                                                {% else %}
-                                                    {{ line.name }}
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ line.value }}</td>
-                                        </tr>
+                                        {% for key, value in ProjectStats.project_lines_type.items %}
+                                            <tr>
+                                                <td>
+                                                    {% if key == '' %}
+                                                        None
+                                                    {% else %}
+                                                        {{ key }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ value }}</td>
+                                            </tr>
                                         {% endfor %}
                                     <tbody>
                                 </table>
