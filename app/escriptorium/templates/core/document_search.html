@@ -49,7 +49,7 @@
                 <td>
                     {% if not result.line.mask %}
                     <div class="alert alert-warning small" role="alert">
-                        No mask associated to this line, baseline is displayed instead.
+                        {% trans "No mask associated to this line, baseline is displayed instead." %}
                     </div>
                     {% endif %}
                     <img width="100%" height="auto" src="{% url 'retrieve-line-crop' pk=result.line.document_part.document.pk line_pk=result.line.pk %}"/>
