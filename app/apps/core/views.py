@@ -14,8 +14,9 @@ from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView, FormView
+from PIL import Image, ImageDraw
 
-from core.models import (Project, Document, DocumentPart, Metadata,
+from core.models import (Line, Project, Document, DocumentPart, Metadata,
                          OcrModel, OcrModelRight, AlreadyProcessingException, LineTranscription)
 
 from core.forms import (ProjectForm,
@@ -600,3 +601,25 @@ class ModelRightDelete(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
 
     def get_success_url(self):
         return reverse('model-rights', kwargs={'pk': self.kwargs['modelPk']})
+
+
+class RetrieveLineCrop(LoginRequiredMixin, View):
+    model = Line
+    pk_url_kwarg = 'line_pk'
+    http_method_names = ('get',)
+
+    def get(self, request, **kwargs):
+        line = Line.objects.get(document_part__document=self.kwargs.get('pk'), pk=self.kwargs.get('line_pk'))
+        full_image = Image.open(line.document_part.image)
+
+        # Drawing the mask on the image
+        canvas = ImageDraw.Draw(full_image, "RGBA") 
+        canvas.polygon([tuple(point) for point in (line.mask or line.baseline)], outline="red", fill="#ff000022")
+
+        # Croping the mask bounding box
+        bbox = line.get_box()
+        crop = full_image.crop([bbox[0] - 3, bbox[1] - 3, bbox[2] + 3, bbox[3] + 3])
+
+        response = HttpResponse(content_type="image/jpeg")
+        crop.save(response, "JPEG")
+        return response
