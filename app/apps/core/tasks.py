@@ -210,11 +210,31 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
                                     cluster_addr='login1.yggdrasil.hpc.unige.ch', 
                                     workdir='/home/kunzli0/celery-workdir/ketos/')
 
-        job.request_segmenter_training(filepath)
+        send_event('document', document_pk, "training:statechange",{
+            "jobid": "Unknown",
+            "state": "Sending"
+        })
+
+        jobid = job.request_segmenter_training(filepath)
+
+        send_event('document', document_pk, "training:statechange",{
+            "jobid": jobid,
+            "state": "PD"
+        })
 
         while not job.task_is_complete():
+            state = job.current_state()
+            send_event('document', document_pk, "training:statechange",{
+                "jobid": jobid,
+                "state": state
+            })
             time.sleep(10)
         
+        send_event('document', document_pk, "training:statechange",{
+            "jobid": jobid,
+            "state": "Finished"
+        })
+
         print('Training done')
 
         best_version = job.result_path()

@@ -51,12 +51,13 @@ class ClusterJob:
                 self.jobid = res.stdout.split()[-1]
                 print('Running job '+self.jobid)
             self.state = State.RUNNING
+            return self.jobid
 
     def request_segmenter_training(self, gt_path):
-        self.request_training(gt_path, self.slurm_segmenter_train_file)
+        return self.request_training(gt_path, self.slurm_segmenter_train_file)
 
     def request_recognizer_training(self, gt_path):
-        self.request_training(gt_path, self.slurm_recognizer_train_file)
+        return self.request_training(gt_path, self.slurm_recognizer_train_file)
             
 
     def task_is_complete(self):
@@ -92,3 +93,13 @@ class ClusterJob:
         self.erase_remote_files()
         self.jobid = ''
         self.state = State.IDLE
+
+    def current_state(self):
+        if self.state == State.RUNNING :
+            res = self.c.run('squeue --job '+self.jobid, hide=True)
+            if len(res.stdout.split('\n')) == 2:
+                self.state = State.COMPLETE
+                return "Finished"
+            state = res.stdout.split('\n')[1].split()[4]
+            return state
+        return "None"
