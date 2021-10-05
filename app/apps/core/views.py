@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import Max, Q, Count
 from django.http import HttpResponse, HttpResponseRedirect, Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
+from django.utils.cache import patch_cache_control
 from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.views.generic import View, TemplateView, ListView, DetailView
@@ -612,14 +613,19 @@ class RetrieveLineCrop(LoginRequiredMixin, View):
         line = Line.objects.get(document_part__document=self.kwargs.get('pk'), pk=self.kwargs.get('line_pk'))
         full_image = Image.open(line.document_part.image)
 
-        # Drawing the mask on the image
-        canvas = ImageDraw.Draw(full_image, "RGBA") 
-        canvas.polygon([tuple(point) for point in (line.mask or line.baseline)], outline="red", fill="#ff000022")
+        # Converting image if necessary
+        if full_image.mode != "RGB":
+            full_image = full_image.convert("RGB")
 
         # Croping the mask bounding box
         bbox = line.get_box()
         crop = full_image.crop([bbox[0] - 3, bbox[1] - 3, bbox[2] + 3, bbox[3] + 3])
 
+        # Drawing the mask on the cropped image
+        canvas = ImageDraw.Draw(crop, "RGBA")
+        canvas.polygon([(x - bbox[0] + 3, y - bbox[1] + 3) for x,y in (line.mask or line.baseline)], outline="red", fill="#ff000022")
+
         response = HttpResponse(content_type="image/jpeg")
         crop.save(response, "JPEG")
+        patch_cache_control(response, max_age=10*60)
         return response
