@@ -619,11 +619,11 @@ class RetrieveLineCrop(LoginRequiredMixin, View):
 
         # Croping the mask bounding box
         bbox = line.get_box()
-        crop = full_image.crop([bbox[0] - 3, bbox[1] - 3, bbox[2] + 3, bbox[3] + 3])
+        crop = full_image.crop([bbox[0] - 15, bbox[1] - 15, bbox[2] + 15, bbox[3] + 15])
 
         # Drawing the mask on the cropped image
         canvas = ImageDraw.Draw(crop, "RGBA")
-        canvas.polygon([(x - bbox[0] + 3, y - bbox[1] + 3) for x,y in (line.mask or line.baseline)], outline="red", fill="#ff000022")
+        canvas.polygon([(x - bbox[0] + 15, y - bbox[1] + 15) for x,y in (line.mask or line.baseline)], outline="red", fill="#ff000022")
 
         response = HttpResponse(content_type="image/jpeg")
         crop.save(response, "JPEG")
