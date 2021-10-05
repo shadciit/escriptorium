@@ -250,7 +250,7 @@ class DocumentSearch(LoginRequiredMixin, FormView, ListView):
     template_name = "core/document_search.html"
 
     def get_queryset(self):
-        self.paginate_by = self.request.GET.get('paginate_by', "100")
+        self.paginate_by = max(int(self.request.GET.get('paginate_by', "100")), 20)
         self.request.GET.paginate_by = self.paginate_by
         search = self.request.GET.get('query')
         search_type = self.request.GET.get('search_type', 'plain')
