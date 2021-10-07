@@ -371,3 +371,10 @@ if 'test' in sys.argv:
 
 CPU_COST_FACTOR = 1.0
 GPU_COST = 1.0
+
+# Boolean used to defuse quotas enforcement
+DISABLE_QUOTAS = True
+
+# Limitation of disk storage usage per user, should be defined as a positive integer in Mb
+# If set to None, users have unlimited disk storage capacity
+QUOTA_DISK_STORAGE = None

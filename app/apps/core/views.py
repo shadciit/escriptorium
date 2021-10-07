@@ -236,6 +236,8 @@ class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['has_disk_storage_left'] = settings.DISABLE_QUOTAS or self.request.user.has_free_disk_storage()
+
         context['upload_form'] = UploadImageForm(document=self.object)
 
         # process forms
@@ -491,6 +493,11 @@ class ModelUpload(LoginRequiredMixin, SuccessMessageMixin, CreateView):
     def form_valid(self, form):
         form.instance.owner = self.request.user
         return super().form_valid(form)
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['has_disk_storage_left'] = settings.DISABLE_QUOTAS or self.request.user.has_free_disk_storage()
+        return context
 
 
 class ModelDelete(LoginRequiredMixin, SuccessMessageMixin, DeleteView):

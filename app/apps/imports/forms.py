@@ -1,5 +1,6 @@
 import json
 import io
+from django.conf import settings
 import requests
 
 from django import forms
@@ -79,6 +80,10 @@ class ImportForm(BootstrapFormMixin, forms.Form):
             return upload_file
 
     def clean(self):
+        # If quotas are enforced, assert that the user still has free disk storage
+        if not settings.DISABLE_QUOTAS and not self.request.user.has_free_disk_storage():
+            raise forms.ValidationError(_("You don't have any disk storage left."))
+
         cleaned_data = super().clean()
         if (not cleaned_data['resume_import']
             and not cleaned_data.get('upload_file')

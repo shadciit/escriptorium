@@ -332,7 +332,7 @@ class partCard {
 }
 
 
-export function bootImageCards(documentId) {
+export function bootImageCards(documentId, diskStorageLeft) {
     DOCUMENT_ID = documentId;
     API = {
         'document': '/api/documents/' + DOCUMENT_ID,
@@ -537,6 +537,8 @@ export function bootImageCards(documentId) {
             }
         }
     });
+
+    if (diskStorageLeft === "False") imageDropzone.disable()
 
     // processor buttons
     $('#select-all').click(function(ev) {
