@@ -25,8 +25,12 @@
             <div class="text-right col-3">
                 <span class="control-label d-inline col-8" for="paginate_by">{% trans "Paginate by" %}</span>
                 <select name="paginate_by" onchange="this.form.submit()" class="form-control d-inline col-4">
+                    <option value="{{ page_obj.paginator.per_page }}" selected="">{{ page_obj.paginator.per_page }}</option>
+                    <option disabled data-divider="true">----------</option>
                     {% for val in pagination_values %}
-                    <option value="{{ val }}" {% if request.GET.paginate_by == val %}selected=""{% endif %}>{{ val }}</option>
+                        {% if val != page_obj.paginator.per_page %}
+                        <option value="{{ val }}">{{ val }}</option>
+                        {% endif %}
                     {% endfor %}
                 </select>
             </div>
