@@ -118,6 +118,7 @@ class Script(ExportModelOperationsMixin('Script'), models.Model):
     name = models.CharField(max_length=128)
     name_fr = models.CharField(max_length=128, blank=True)
     iso_code = models.CharField(max_length=4, blank=True)
+    postgres_language = models.CharField(max_length=64, default='simple')
     text_direction = models.CharField(max_length=64, default='horizontal-lr',
                                       choices=TEXT_DIRECTION_CHOICES)
 

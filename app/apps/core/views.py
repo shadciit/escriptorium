@@ -255,6 +255,7 @@ class DocumentSearch(LoginRequiredMixin, FormView, ListView):
     def get_queryset(self):
         search = self.request.GET.get('query')
         search_type = self.request.GET.get('search_type', 'plain')
+        language = Document.objects.get(pk=self.kwargs.get('pk')).main_script.postgres_language
 
         if not search:
             return LineTranscription.objects.none()
@@ -262,10 +263,10 @@ class DocumentSearch(LoginRequiredMixin, FormView, ListView):
         return LineTranscription.objects.select_related(
             'line', 'line__document_part', 'transcription'
         ).annotate(
-            search=SearchVector('content', 'transcription__name', 'line__document_part__name')
+            search=SearchVector('content', 'transcription__name', 'line__document_part__name', config=language)
         ).filter(
             line__document_part__document=self.kwargs.get('pk'),
-            search=SearchQuery(search, search_type=search_type)
+            search=SearchQuery(search, search_type=search_type, config=language)
         )
 
     def get_form_kwargs(self):
