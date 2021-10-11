@@ -3,7 +3,7 @@ import logging
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
-from django.contrib.postgres.search import SearchQuery, SearchVector, TrigramSimilarity
+from django.contrib.postgres.search import SearchQuery, SearchVector, TrigramBase
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -247,6 +247,10 @@ class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
         return context
 
 
+class TrigramWordSimilarity(TrigramBase):
+    function = 'WORD_SIMILARITY'
+
+
 class DocumentSearch(LoginRequiredMixin, FormView, ListView):
     model = Document
     form_class = DocumentSearchForm
@@ -286,9 +290,9 @@ class DocumentSearch(LoginRequiredMixin, FormView, ListView):
             'line', 'line__document_part', 'transcription'
         ).annotate(
             similarity=Greatest(
-                TrigramSimilarity('content', search),
-                TrigramSimilarity('transcription__name', search),
-                TrigramSimilarity('line__document_part__name', search)
+                TrigramWordSimilarity('content', search),
+                TrigramWordSimilarity('transcription__name', search),
+                TrigramWordSimilarity('line__document_part__name', search)
             )
         ).filter(
             line__document_part__document=self.kwargs.get('pk'),
