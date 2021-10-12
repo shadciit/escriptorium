@@ -32,8 +32,6 @@ services:
 
   redis:
     image: sickp/alpine-redis:4.0.6
-    ports:
-      - 127.0.0.1:6379:6379
 
   nginx:
     image: registry.gitlab.com/scripta/escriptorium/nginx
