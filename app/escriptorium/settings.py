@@ -378,3 +378,7 @@ DISABLE_QUOTAS = os.getenv('DISABLE_QUOTAS', True)
 # Limitation of disk storage usage per user, should be defined as a positive integer in Mb
 # If set to None, users have unlimited disk storage capacity
 QUOTA_DISK_STORAGE = os.getenv('QUOTA_DISK_STORAGE', None)
+
+# Limitation of CPU minutes usage per user over a week, should be defined as a positive integer in CPU-min
+# If set to None, users have unlimited CPU minutes capacity
+QUOTA_CPU_MINUTES = os.getenv('QUOTA_CPU_MINUTES', None)
