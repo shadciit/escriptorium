@@ -380,6 +380,13 @@ class SegmentSerializer(ProcessSerializerMixin, serializers.Serializer):
         self.fields['model'].queryset = self.document.ocr_models.filter(job=OcrModel.MODEL_JOB_SEGMENT)
         self.fields['parts'].queryset = DocumentPart.objects.filter(document=self.document)
 
+    def validate(self, data):
+        data = super().validate(data)
+        # If quotas are enforced, assert that the user still has free CPU minutes and disk storage
+        if not settings.DISABLE_QUOTAS and not self.user.has_free_cpu_minutes():
+            raise serializers.ValidationError(_("You don't have any CPU minutes left."))
+        return data
+
     def process(self):
         model = self.validated_data.get('model')
         parts = self.validated_data.get('parts')
@@ -428,9 +435,12 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
 
     def validate(self, data):
         data = super().validate(data)
-        # If quotas are enforced, assert that the user still has free disk storage
-        if not settings.DISABLE_QUOTAS and not self.user.has_free_disk_storage():
-            raise serializers.ValidationError(_("You don't have any disk storage left."))
+        # If quotas are enforced, assert that the user still has free CPU minutes and disk storage
+        if not settings.DISABLE_QUOTAS:
+            if not self.user.has_free_cpu_minutes():
+                raise serializers.ValidationError(_("You don't have any CPU minutes left."))
+            if not self.user.has_free_disk_storage():
+                raise serializers.ValidationError(_("You don't have any disk storage left."))
 
         if not data.get('model') and not data.get('model_name'):
             raise serializers.ValidationError(
@@ -495,9 +505,12 @@ class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
 
     def validate(self, data):
         data = super().validate(data)
-        # If quotas are enforced, assert that the user still has free disk storage
-        if not settings.DISABLE_QUOTAS and not self.user.has_free_disk_storage():
-            raise serializers.ValidationError(_("You don't have any disk storage left."))
+        # If quotas are enforced, assert that the user still has free CPU minutes and disk storage
+        if not settings.DISABLE_QUOTAS:
+            if not self.user.has_free_cpu_minutes():
+                raise serializers.ValidationError(_("You don't have any CPU minutes left."))
+            if not self.user.has_free_disk_storage():
+                raise serializers.ValidationError(_("You don't have any disk storage left."))
 
         if not data.get('model') and not data.get('model_name'):
             raise serializers.ValidationError(
@@ -553,6 +566,13 @@ class TranscribeSerializer(ProcessSerializerMixin, serializers.Serializer):
         # self.fields['transcription'].queryset = Transcription.objects.filter(document=self.document)
         self.fields['model'].queryset = self.document.ocr_models.filter(job=OcrModel.MODEL_JOB_RECOGNIZE)
         self.fields['parts'].queryset = DocumentPart.objects.filter(document=self.document)
+
+    def validate(self, data):
+        data = super().validate(data)
+        # If quotas are enforced, assert that the user still has free CPU minutes and disk storage
+        if not settings.DISABLE_QUOTAS and not self.user.has_free_cpu_minutes():
+            raise serializers.ValidationError(_("You don't have any CPU minutes left."))
+        return data
 
     def process(self):
         model = self.validated_data.get('model')
