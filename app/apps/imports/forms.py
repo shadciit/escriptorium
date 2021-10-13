@@ -81,7 +81,7 @@ class ImportForm(BootstrapFormMixin, forms.Form):
 
     def clean(self):
         # If quotas are enforced, assert that the user still has free disk storage
-        if not settings.DISABLE_QUOTAS and not self.request.user.has_free_disk_storage():
+        if not settings.DISABLE_QUOTAS and not self.user.has_free_disk_storage():
             raise forms.ValidationError(_("You don't have any disk storage left."))
 
         cleaned_data = super().clean()

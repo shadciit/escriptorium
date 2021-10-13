@@ -148,6 +148,10 @@ class ModelUploadForm(BootstrapFormMixin, forms.ModelForm):
         model = OcrModel
         fields = ('name', 'file')
 
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user')
+        super().__init__(*args, **kwargs)
+
     def clean_file(self):
         # Early validation of the model loading
         file_field = self.cleaned_data['file']
@@ -170,7 +174,7 @@ class ModelUploadForm(BootstrapFormMixin, forms.ModelForm):
 
     def clean(self):
         # If quotas are enforced, assert that the user still has free disk storage
-        if not settings.DISABLE_QUOTAS and not self.request.user.has_free_disk_storage():
+        if not settings.DISABLE_QUOTAS and not self.user.has_free_disk_storage():
             raise forms.ValidationError(_("You don't have any disk storage left."))
 
         if not getattr(self, '_model_job', None):
@@ -369,7 +373,7 @@ class TrainMixin():
         cleaned_data = super().clean()
 
         # If quotas are enforced, assert that the user still has free disk storage
-        if not settings.DISABLE_QUOTAS and not self.request.user.has_free_disk_storage():
+        if not settings.DISABLE_QUOTAS and not self.user.has_free_disk_storage():
             raise forms.ValidationError(_("You don't have any disk storage left."))
 
         model = cleaned_data['model']
@@ -465,11 +469,12 @@ class UploadImageForm(BootstrapFormMixin, forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.document = kwargs.pop('document')
+        self.user = kwargs.pop('user')
         super().__init__(*args, **kwargs)
 
     def clean(self):
         # If quotas are enforced, assert that the user still has free disk storage
-        if not settings.DISABLE_QUOTAS and not self.request.user.has_free_disk_storage():
+        if not settings.DISABLE_QUOTAS and not self.user.has_free_disk_storage():
             raise forms.ValidationError(_("You don't have any disk storage left."))
 
         return super().clean()
