@@ -538,7 +538,7 @@ export function bootImageCards(documentId, diskStorageLeft) {
         }
     });
 
-    if (diskStorageLeft === "False") imageDropzone.disable()
+    if (diskStorageLeft === "False") imageDropzone.disable();
 
     // processor buttons
     $('#select-all').click(function(ev) {
