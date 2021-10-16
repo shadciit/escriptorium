@@ -161,7 +161,8 @@ USE_L10N = True
 USE_TZ = True
 LANGUAGES = [
   ('en', _('English')),
-  ('de', _('French')),
+  ('de', _('German')),
+  ('fr', _('French')),
 ]
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'mail')
