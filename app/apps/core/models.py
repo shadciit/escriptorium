@@ -10,6 +10,9 @@ import subprocess
 import time
 import uuid
 from datetime import datetime
+import numpy as np
+from sklearn import preprocessing
+from sklearn.cluster import DBSCAN
 
 from PIL import Image
 from celery.task.control import inspect, revoke
@@ -489,9 +492,24 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
 
         def avg_line_height_block(lines_in_block, read_direction_):
             """Returns the average line height in the block taking into account devising number of columns
-            based on x lines origins clustering"""
-            y_origins = list(map(lambda l: line_origin_pt(l, read_direction_)[1], lines_in_block))
-            return (max(y_origins) - min(y_origins)) / len(y_origins)
+            based on x lines origins clustering
+
+            lines_in_block is an iterator providing the lines in a block"""
+            origins_np = np.array(list(map(lambda l: line_origin_pt(l, read_direction_), lines_in_block)))
+
+            # Devise the number of columns by performing DBSCAN clustering on x coordinate of line origins
+            x_origins_np = origins_np[:, 0].reshape(-1, 1)
+            scaler = preprocessing.MaxAbsScaler()
+            scaler.fit(x_origins_np)
+            x_scaled = scaler.transform(x_origins_np)
+            clustering = DBSCAN(eps=.1, min_samples=2)
+            clustering.fit(x_scaled)
+            labels = np.unique(clustering.labels_)
+            columns_count = 1 if -1 in clustering.labels_ else labels.size
+
+            # Compute the average line size based on th guessed number of columns
+            y_origins_np = origins_np[:, 1]
+            return columns_count * (y_origins_np.max() - y_origins_np.min()) / y_origins_np.size
 
         def avg_lines_heights(lines, read_direction_):
             """Returns a dictionary with block.pk (or 0 if None) as keys and average lines height
