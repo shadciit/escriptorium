@@ -120,7 +120,6 @@ class DocumentsList(LoginRequiredMixin, ListView):
 
         return context
 
-
 class DocumentMixin():
     def get_success_url(self):
         return reverse('document-update', kwargs={'pk': self.object.pk})

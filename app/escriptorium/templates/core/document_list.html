@@ -29,7 +29,6 @@
     {% else %}
     <div class="col-md-12 col-md-offset-4">
       {% endif %}
-
       <table id="document-list" class="table table-hover">
         <tbody>
           {% for document in object_list %}
@@ -61,7 +60,6 @@
             <td>
               {% blocktrans with count=document.parts.count %}{{ count }} image(s).{% endblocktrans %}
             </td>
-
             <td>
               <simpletagedit
                 :document-id="{{document.pk}}">

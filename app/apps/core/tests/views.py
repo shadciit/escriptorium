@@ -65,3 +65,4 @@ class DocumentTestCase(TestCase):
             })
             self.assertEqual(resp.status_code, 302)
         self.assertEqual(Document.objects.count(), 5)
+

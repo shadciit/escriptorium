@@ -90,6 +90,30 @@ class BlockType(Typology):
 class LineType(Typology):
     pass
 
+def random_color():
+    return "#%06x" % random.randint(0, 0xFFFFFF)
+
+
+class Tag(models.Model):
+    name = models.CharField(max_length=100)
+    color = ColorField(default=random_color)
+
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return self.name
+
+class DocumentTag(Tag):
+    project = models.ForeignKey('core.Project', blank=True,
+                                related_name='document_tags',
+                                on_delete=models.CASCADE)
+    class Meta:
+        unique_together = ('project', 'name')
+
+
+# class DocumentPartTag(Tag):
+#     pass
 
 def random_color():
     return "#%06x" % random.randint(0, 0xFFFFFF)
@@ -312,7 +336,7 @@ class Document(ExportModelOperationsMixin('Document'), models.Model):
                                                 verbose_name=_("Share with teams"),
                                                 related_name='shared_documents')
 
-    tags = models.ManyToManyField(DocumentTag, blank=True)
+    tags = models.ManyToManyField(DocumentTag, blank=True, related_name='tags_document')
 
     objects = DocumentManager()
 

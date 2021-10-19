@@ -5,7 +5,11 @@ stages:
 
 tests:
   stage: test
+<<<<<<< HEAD
   image: registry.gitlab.com/scripta/escriptorium/base:0.10.0
+=======
+  image: python:3.7
+>>>>>>> Run all unit tests on CI
 
   services:
     - postgres:13-alpine
@@ -30,6 +34,14 @@ tests:
   except:
     - schedules
 
+<<<<<<< HEAD
+=======
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends libvips
+    - pip install -r app/requirements.txt
+
+>>>>>>> Run all unit tests on CI
   script:
     - python app/manage.py test -v 2 users api versioning imports core
 
