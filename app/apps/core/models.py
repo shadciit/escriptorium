@@ -490,6 +490,18 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
         def line_block_pk(line_):
             return line_.block.pk if line_.block else 0
 
+        def avg_line_height_column(y_origins_np, line_labels):
+            """"Return the min of the averages line heights of the columns"""
+            labels = np.unique(line_labels)
+            column_heights_list = []
+            for label in labels:
+                y_origins_column = y_origins_np[line_labels == label]
+                column_height = (y_origins_column.max() - y_origins_column.min()) / y_origins_column.size
+                column_heights_list.append(column_height)
+            print(column_heights_list)
+            print(line_labels)
+            return min(column_heights_list)
+
         def avg_line_height_block(lines_in_block, read_direction_):
             """Returns the average line height in the block taking into account devising number of columns
             based on x lines origins clustering
@@ -504,14 +516,12 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
             x_scaled = scaler.transform(x_origins_np)
             clustering = DBSCAN(eps=.1, min_samples=2)
             clustering.fit(x_scaled)
-            labels = np.unique(clustering.labels_)
-            columns_count = 1 if -1 in clustering.labels_ else labels.size
 
-            # Compute the average line size based on th guessed number of columns
+            # Compute the average line size based on the guessed number of columns
             y_origins_np = origins_np[:, 1]
-            return columns_count * (y_origins_np.max() - y_origins_np.min()) / y_origins_np.size
+            return avg_line_height_column(y_origins_np, clustering.labels_)
 
-        def avg_lines_heights(lines, read_direction_):
+        def avg_lines_heights_dict(lines, read_direction_):
             """Returns a dictionary with block.pk (or 0 if None) as keys and average lines height
             in the block as values"""
             sorted_by_block = sorted(lines, key=line_block_pk)
@@ -528,7 +538,8 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
         if len(ls) == 0:
             return
 
-        dict_avg_heights = avg_lines_heights(ls, read_direction)
+        dict_avg_heights = avg_lines_heights_dict(ls, read_direction)
+        print(dict_avg_heights)
 
         def cmp_lines(a, b):
             # cache origin pts for efficiency
