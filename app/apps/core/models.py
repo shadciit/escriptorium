@@ -493,33 +493,33 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
         def avg_line_height_column(y_origins_np, line_labels):
             """"Return the min of the averages line heights of the columns"""
             labels = np.unique(line_labels)
-            column_heights_list = []
+            line_heights_list = []
             for label in labels:
                 y_origins_column = y_origins_np[line_labels == label]
                 column_height = (y_origins_column.max() - y_origins_column.min()) / y_origins_column.size
-                column_heights_list.append(column_height)
-            print(column_heights_list)
-            print(line_labels)
-            return min(column_heights_list)
+                line_heights_list.append(column_height)
+            return min(line_heights_list)
 
         def avg_line_height_block(lines_in_block, read_direction_):
             """Returns the average line height in the block taking into account devising number of columns
-            based on x lines origins clustering
+            based on x lines origins clustering. Key parameters of the algorithm:
+            x_cluster: tolerance used to gather lines in a column
+            line_height_decrease: scaling factor to avoid over gathering of lines"""
+            x_cluster, line_height_decrease = 0.1, 0.8
 
-            lines_in_block is an iterator providing the lines in a block"""
             origins_np = np.array(list(map(lambda l: line_origin_pt(l, read_direction_), lines_in_block)))
 
             # Devise the number of columns by performing DBSCAN clustering on x coordinate of line origins
             x_origins_np = origins_np[:, 0].reshape(-1, 1)
-            scaler = preprocessing.MaxAbsScaler()
+            scaler = preprocessing.MinMaxScaler()
             scaler.fit(x_origins_np)
             x_scaled = scaler.transform(x_origins_np)
-            clustering = DBSCAN(eps=.1, min_samples=2)
+            clustering = DBSCAN(eps=x_cluster)
             clustering.fit(x_scaled)
 
             # Compute the average line size based on the guessed number of columns
             y_origins_np = origins_np[:, 1]
-            return avg_line_height_column(y_origins_np, clustering.labels_)
+            return avg_line_height_column(y_origins_np, clustering.labels_) * line_height_decrease
 
         def avg_lines_heights_dict(lines, read_direction_):
             """Returns a dictionary with block.pk (or 0 if None) as keys and average lines height
@@ -539,7 +539,6 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
             return
 
         dict_avg_heights = avg_lines_heights_dict(ls, read_direction)
-        print(dict_avg_heights)
 
         def cmp_lines(a, b):
             # cache origin pts for efficiency
