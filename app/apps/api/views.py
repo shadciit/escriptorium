@@ -166,12 +166,11 @@ class DocumentViewSet(ModelViewSet):
         else:
             return self.form_error(json.dumps(form.errors))
 
-    def get_process_response(self, request, serializer_class, check_disk_quota=False):
+    def get_process_response(self, request, serializer_class):
         document = self.get_object()
         serializer = serializer_class(document=document,
                                       user=request.user,
-                                      data=request.data,
-                                      check_disk_quota=check_disk_quota)
+                                      data=request.data)
         if serializer.is_valid():
             try:
                 serializer.process()
@@ -193,11 +192,11 @@ class DocumentViewSet(ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def train(self, request, pk=None):
-        return self.get_process_response(request, TrainSerializer, check_disk_quota=True)
+        return self.get_process_response(request, TrainSerializer)
 
     @action(detail=True, methods=['post'])
     def segtrain(self, request, pk=None):
-        return self.get_process_response(request, SegTrainSerializer, check_disk_quota=True)
+        return self.get_process_response(request, SegTrainSerializer)
 
     @action(detail=True, methods=['post'])
     def transcribe(self, request, pk=None):

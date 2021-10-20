@@ -242,11 +242,11 @@ class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
         context['upload_form'] = UploadImageForm(document=self.object, user=self.request.user)
 
         # process forms
-        context['binarize_form'] = BinarizeForm(self.object, self.request.user, check_disk_quota=False)
-        context['segment_form'] = SegmentForm(self.object, self.request.user, check_disk_quota=False)
-        context['transcribe_form'] = TranscribeForm(self.object, self.request.user, check_disk_quota=False)
-        context['segtrain_form'] = SegTrainForm(self.object, self.request.user, check_disk_quota=True)
-        context['rectrain_form'] = RecTrainForm(self.object, self.request.user, check_disk_quota=True)
+        context['binarize_form'] = BinarizeForm(self.object, self.request.user)
+        context['segment_form'] = SegmentForm(self.object, self.request.user)
+        context['transcribe_form'] = TranscribeForm(self.object, self.request.user)
+        context['segtrain_form'] = SegTrainForm(self.object, self.request.user)
+        context['rectrain_form'] = RecTrainForm(self.object, self.request.user)
 
         context['import_form'] = ImportForm(self.object, self.request.user)
         context['export_form'] = ExportForm(self.object, self.request.user)
@@ -363,7 +363,6 @@ class DocumentPartsProcessAjax(LoginRequiredMixin, View):
                                 status=404, content_type="application/json")
 
         task = self.request.POST.get('task')
-        check_disk_quota = False
         if task == 'binarize':
             form_class = BinarizeForm
         elif task == 'segment':
@@ -372,14 +371,11 @@ class DocumentPartsProcessAjax(LoginRequiredMixin, View):
             form_class = TranscribeForm
         elif task == 'segtrain':
             form_class = SegTrainForm
-            check_disk_quota = True
         elif task == 'train':
             form_class = RecTrainForm
-            check_disk_quota = True
 
         form = form_class(document,
                           self.request.user,
-                          check_disk_quota,
                           self.request.POST,
                           self.request.FILES)
 

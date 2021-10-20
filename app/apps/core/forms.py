@@ -206,13 +206,13 @@ class ModelUploadForm(BootstrapFormMixin, forms.ModelForm):
 
 
 class DocumentProcessFormBase(forms.Form):
+    CHECK_DISK_QUOTA = False
+
     parts = forms.ModelMultipleChoiceField(queryset=None)
 
-    def __init__(self, document, user, check_disk_quota, *args, **kwargs):
+    def __init__(self, document, user, *args, **kwargs):
         self.document = document
         self.user = user
-        # Needed to enforce the disk storage quota
-        self.check_disk_quota = check_disk_quota
         super().__init__(*args, **kwargs)
 
         self.fields['parts'].queryset = DocumentPart.objects.filter(document=self.document)
@@ -222,7 +222,7 @@ class DocumentProcessFormBase(forms.Form):
         if not settings.DISABLE_QUOTAS:
             if not self.user.has_free_cpu_minutes():
                 raise forms.ValidationError(_("You don't have any CPU minutes left."))
-            if self.check_disk_quota and not self.user.has_free_disk_storage():
+            if self.CHECK_DISK_QUOTA and not self.user.has_free_disk_storage():
                 raise forms.ValidationError(_("You don't have any disk storage left."))
 
         return super().clean()
@@ -369,6 +369,8 @@ class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
 
 
 class TrainMixin():
+    CHECK_DISK_QUOTA = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

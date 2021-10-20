@@ -342,11 +342,11 @@ class OcrModelSerializer(serializers.ModelSerializer):
 
 
 class ProcessSerializerMixin():
-    def __init__(self, document, user, check_disk_quota, *args, **kwargs):
+    CHECK_DISK_QUOTA = False
+
+    def __init__(self, document, user, *args, **kwargs):
         self.document = document
         self.user = user
-        # Needed to enforce the disk storage quota
-        self.check_disk_quota = check_disk_quota
         super().__init__(*args, **kwargs)
 
     def validate(self, data):
@@ -355,7 +355,7 @@ class ProcessSerializerMixin():
         if not settings.DISABLE_QUOTAS:
             if not self.user.has_free_cpu_minutes():
                 raise serializers.ValidationError(_("You don't have any CPU minutes left."))
-            if self.check_disk_quota and not self.user.has_free_disk_storage():
+            if self.CHECK_DISK_QUOTA and not self.user.has_free_disk_storage():
                 raise serializers.ValidationError(_("You don't have any disk storage left."))
         return data
 
@@ -484,6 +484,8 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
 
 
 class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
+    CHECK_DISK_QUOTA = True
+
     parts = serializers.PrimaryKeyRelatedField(many=True,
                                                queryset=DocumentPart.objects.all())
     model = serializers.PrimaryKeyRelatedField(required=False,
