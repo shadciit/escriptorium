@@ -22,8 +22,7 @@ class ClusterJob:
                             user=self.username)
 
     def __del__(self):
-        pass
-        # self.reset()
+        self.reset()
 
     def erase_remote_files(self):
         with self.c.cd(self.workdir):
