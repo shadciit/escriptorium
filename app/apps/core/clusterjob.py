@@ -1,6 +1,7 @@
 from enum import Enum
 from fabric import Connection
 import os
+import uuid
 
 class State(Enum):
     IDLE = 1
@@ -11,24 +12,27 @@ class ClusterJob:
 
     slurm_segmenter_train_file = 'segtrain_gpu_sub.sh'
     slurm_recognizer_train_file = 'train_gpu_sub.sh'
-    jobid = ''
 
     def __init__(self, username, cluster_addr, workdir):
         self.username = username
         self.cluster_addr = cluster_addr
         self.workdir = workdir
         self.state = State.IDLE
+        self.jobid = ''
+        self.jobdir = str(uuid.uuid4())
         self.c = Connection(host=self.cluster_addr, 
                             user=self.username)
 
     def __del__(self):
         self.reset()
+        #pass
 
     def erase_remote_files(self):
         with self.c.cd(self.workdir):
             try:
-                self.c.run('rm *.mlmodel *.out *.zip dataset/*', hide=True)
-                self.c.run('rmdir dataset')
+                #self.c.run('rm *.mlmodel *.out *.zip dataset/*', hide=True)
+                #self.c.run('rmdir dataset')
+                self.c.run('rm -r '+self.jobdir, hide=True)
             except:
                 print("No remote file to clean")
 
@@ -39,13 +43,15 @@ class ClusterJob:
             print(gt_path)
             print(gt_filename)
             print('Uploading data ...')
-            self.c.put(gt_path, self.workdir+'/'+gt_filename)
+            self.c.run('mkdir '+self.workdir+'/'+self.jobdir, hide=True)
+            self.c.put(gt_path, self.workdir+'/'+self.jobdir+'/'+gt_filename)
             print('Done uploading data')
             os.remove(gt_path)
-            with self.c.cd(self.workdir):
+            with self.c.cd(self.workdir+'/'+self.jobdir):
                 print('Extracting data ...')
                 self.c.run('unzip '+gt_filename+' -d dataset', hide=True)
                 print('Done extracting data')
+                self.c.run('cp ../'+slurm_file+' .', hide=True)
                 res = self.c.run('sbatch '+slurm_file, hide=True)
                 self.jobid = res.stdout.split()[-1]
                 print('Running job '+self.jobid)
@@ -72,13 +78,13 @@ class ClusterJob:
 
     def result_path(self):
         if self.state == State.COMPLETE:
-            self.c.get(self.workdir+'/train_output_best.mlmodel', '/tmp/train_output_best.mlmodel')
+            self.c.get(self.workdir+'/'+self.jobdir+'/train_output_best.mlmodel', '/tmp/train_output_best.mlmodel')
             return '/tmp/train_output_best.mlmodel'
         return ''
 
     def best_accuracy(self):
         if self.state == State.COMPLETE:
-            self.c.get(self.workdir+'/'+self.jobid+'.out', '/tmp/'+self.jobid+'.out')
+            self.c.get(self.workdir+'/'+self.jobdir+'/'+self.jobid+'.out', '/tmp/'+self.jobid+'.out')
             with open('/tmp/'+self.jobid+'.out', 'r') as f:
                 for line in f:
                     pass
