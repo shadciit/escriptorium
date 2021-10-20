@@ -208,12 +208,24 @@ class ModelUploadForm(BootstrapFormMixin, forms.ModelForm):
 class DocumentProcessFormBase(forms.Form):
     parts = forms.ModelMultipleChoiceField(queryset=None)
 
-    def __init__(self, document, user, *args, **kwargs):
+    def __init__(self, document, user, check_disk_quota, *args, **kwargs):
         self.document = document
         self.user = user
+        # Needed to enforce the disk storage quota
+        self.check_disk_quota = check_disk_quota
         super().__init__(*args, **kwargs)
 
         self.fields['parts'].queryset = DocumentPart.objects.filter(document=self.document)
+
+    def clean(self):
+        # If quotas are enforced, assert that the user still has free CPU minutes and disk storage
+        if not settings.DISABLE_QUOTAS:
+            if not self.user.has_free_cpu_minutes():
+                raise forms.ValidationError(_("You don't have any CPU minutes left."))
+            if self.check_disk_quota and not self.user.has_free_disk_storage():
+                raise forms.ValidationError(_("You don't have any disk storage left."))
+
+        return super().clean()
 
 
 class BinarizeForm(BootstrapFormMixin, DocumentProcessFormBase):
@@ -244,13 +256,6 @@ class BinarizeForm(BootstrapFormMixin, DocumentProcessFormBase):
         if fh.size != isize:
             raise forms.ValidationError(_("Uploaded image should be the same size as original image {size}.").format(size=isize))
         return img
-
-    def clean(self):
-        # If quotas are enforced, assert that the user still has free CPU minutes
-        if not settings.DISABLE_QUOTAS and not self.user.has_free_cpu_minutes():
-            raise forms.ValidationError(_("You don't have any CPU minutes left."))
-
-        return super().clean()
 
     def process(self):
         parts = self.cleaned_data.get('parts')
@@ -308,13 +313,6 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
             Q(ocr_model_rights__group__user=self.user)
         ).distinct()
 
-    def clean(self):
-        # If quotas are enforced, assert that the user still has free CPU minutes
-        if not settings.DISABLE_QUOTAS and not self.user.has_free_cpu_minutes():
-            raise forms.ValidationError(_("You don't have any CPU minutes left."))
-
-        return super().clean()
-
     def process(self):
         model = self.cleaned_data.get('model')
 
@@ -352,13 +350,6 @@ class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
             Q(ocr_model_rights__group__user=self.user)
         ).distinct()
 
-    def clean(self):
-        # If quotas are enforced, assert that the user still has free CPU minutes
-        if not settings.DISABLE_QUOTAS and not self.user.has_free_cpu_minutes():
-            raise forms.ValidationError(_("You don't have any CPU minutes left."))
-
-        return super().clean()
-
     def process(self):
         model = self.cleaned_data.get('model')
 
@@ -392,13 +383,6 @@ class TrainMixin():
 
     def clean(self):
         cleaned_data = super().clean()
-
-        # If quotas are enforced, assert that the user still has free CPU minutes and disk storage
-        if not settings.DISABLE_QUOTAS:
-            if not self.user.has_free_cpu_minutes():
-                raise forms.ValidationError(_("You don't have any CPU minutes left."))
-            if not self.user.has_free_disk_storage():
-                raise forms.ValidationError(_("You don't have any disk storage left."))
 
         model = cleaned_data['model']
         if model and model.training:
