@@ -242,6 +242,16 @@ class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
         return context
 
 
+class DocumentJobs(LoginRequiredMixin, DocumentMixin, DetailView):
+    model = Document
+    template_name = "core/document_jobs.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+
+
+
 class ShareDocument(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Document
     form_class = DocumentShareForm
