@@ -71,7 +71,6 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
     def get_queryset(self):
         qs = super().get_queryset()
         today = date.today()
-        filter_last_month = Q(taskreport__started_at__gte=today - timedelta(days=30))
         filter_last_week = Q(taskreport__started_at__gte=today - timedelta(days=7))
         filter_last_day = Q(taskreport__started_at__gte=today - timedelta(days=1))
         runtime = ExpressionWrapper(
