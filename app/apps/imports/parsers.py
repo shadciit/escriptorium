@@ -326,7 +326,7 @@ class XMLParser(ParserDocument):
                                 except ValidationError as e:
                                     if self.report:
                                         self.report.append(
-                                            "Block in '{filen}' line N°{line} was skipped because: {error}".format(
+                                            _("Block in '{filen}' line N°{line} was skipped because: {error}").format(
                                                 filen=self.file.name, line=blockTag.sourceline, error=e))
                                 else:
                                     block.save()
@@ -351,9 +351,12 @@ class XMLParser(ParserDocument):
                                 line.full_clean()
                             except ValidationError as e:
                                 if self.report:
-                                    self.report.append("Line in '{filen}' line N°{line} (id: {lineid}) was skipped because: {error}".format(
-                                        filen=self.file.name, line=blockTag.sourceline,
-                                        lineid=line_id, error=e))
+                                    self.report.append(
+                                        _("Line in '{filen}' line N°{line} (id: {lineid}) was skipped because: {error}")
+                                        .format(filen=self.file.name,
+                                                line=blockTag.sourceline,
+                                                lineid=line_id,
+                                                error=e))
                             else:
                                 line.save()
 
@@ -453,8 +456,8 @@ The alto file should contain a Description/sourceImageInformation/fileName tag f
                     coords = tuple(map(float, baseline.split(" ")))
                     line.baseline = tuple(zip(coords[::2], coords[1::2]))
                 except ValueError:
-                    msg = ("Invalid baseline %s in {filen} line {linen}" %
-                           (baseline, self.file.name, lineTag.sourceline))
+                    msg = _("Invalid baseline %s in {filen} line {linen}").format(
+                        baseline, self.file.name, lineTag.sourceline)
                     logger.warning(msg)
                     if self.report:
                         self.report.append(msg)
@@ -567,13 +570,16 @@ The PageXml file should contain an attribute imageFilename in Page tag for match
         try:
             baseline = lineTag.find("Baseline", self.root.nsmap)
             line.baseline = self.clean_coords(baseline)
-        except AttributeError:
+        except ParseError:
             #  to check if the baseline is good
             line.baseline = None
 
-        polygon = lineTag.find("Coords", self.root.nsmap)
-        if polygon is not None:
-            line.mask = self.clean_coords(polygon)
+        try:
+            polygon = lineTag.find("Coords", self.root.nsmap)
+            if polygon is not None:
+                line.mask = self.clean_coords(polygon)
+        except ParseError:
+            line.mask = None
 
         type_ = lineTag.get("type")
         if not type_:
@@ -592,10 +598,16 @@ The PageXml file should contain an attribute imageFilename in Page tag for match
                 pass
 
     def clean_coords(self, coordTag):
-        return [
+        try:
+            return [
                 list(map(int, pt.split(",")))
                 for pt in coordTag.get("points").split(" ")
             ]
+        except (AttributeError, ValueError):
+            msg = _("Invalid coordinates in for {tag} in {filen} line {line}").format(
+                tag=coordTag.tag, filen=self.file.name, line=coordTag.sourceline)
+            self.report.append(msg)
+            raise ParseError(msg)
 
     def get_transcription_content(self, lineTag):
         words = lineTag.findall("Word", self.root.nsmap)
@@ -647,7 +659,7 @@ class IIIFManifestParser(ParserDocument):
         be transient.  It will only retry a fixed number of times (default 10),
         and it backs off a little more on each retry. Failure to retrieve
         the image within the retry limit will result in a DownloadError
-        being raised. All other unsuccessful requests will raise a 
+        being raised. All other unsuccessful requests will raise a
         DownloadError as well.
         """
 
@@ -661,10 +673,10 @@ class IIIFManifestParser(ParserDocument):
 
             except requests.exceptions.HTTPError as http_error:
                 # retry on transient 5XX errors, but keep a record of the retry count
-                if http_error.response.status_code in [500, 502, 503, 504, 507, 508]: 
+                if http_error.response.status_code in [500, 502, 503, 504, 507, 508]:
                     current_retry = current_retry + 1
                     continue
-                
+
                 # We probably got a 4XX error, but whatever it is just raise it
                 raise DownloadError(http_error)
 
