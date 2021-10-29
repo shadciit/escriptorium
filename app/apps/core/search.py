@@ -4,7 +4,6 @@ from elasticsearch.helpers import bulk as es_bulk
 
 from django.conf import settings
 
-COMMON_INDEX = "escriptorium-data"
 ES_HOST = settings.ELASTICSEARCH_HOST + ":" + settings.ELASTICSEARCH_PORT
 
 
@@ -16,9 +15,9 @@ class Indexer:
 
     def configure(self):
         indices = IndicesClient(self.es_client)
-        if not indices.exists(COMMON_INDEX):
-            indices.create(COMMON_INDEX)
-            print(f"Created a new index named {COMMON_INDEX}")
+        if not indices.exists(settings.ELASTICSEARCH_COMMON_INDEX):
+            indices.create(settings.ELASTICSEARCH_COMMON_INDEX)
+            print(f"Created a new index named {settings.ELASTICSEARCH_COMMON_INDEX}")
 
     def process(self):
         to_insert = []
@@ -28,12 +27,12 @@ class Indexer:
         to_insert = [entry for entry in to_insert if entry["transcription"]]
 
         nb_inserted, _ = es_bulk(self.es_client, to_insert, stats_only=True)
-        print(f"Inserted {nb_inserted} new entries in index {COMMON_INDEX}")
+        print(f"Inserted {nb_inserted} new entries in index {settings.ELASTICSEARCH_COMMON_INDEX}")
 
     def process_document(self, document):
         return [
             {
-                "_index": COMMON_INDEX,
+                "_index": settings.ELASTICSEARCH_COMMON_INDEX,
                 "_type": "document",
                 "_id": str(part.id),
                 "document_id": str(document.id),
