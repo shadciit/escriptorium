@@ -604,7 +604,7 @@ The PageXml file should contain an attribute imageFilename in Page tag for match
                 for pt in coordTag.get("points").split(" ")
             ]
         except (AttributeError, ValueError):
-            msg = _("Invalid coordinates in for {tag} in {filen} line {line}").format(
+            msg = _("Invalid coordinates for {tag} in {filen} line {line}").format(
                 tag=coordTag.tag, filen=self.file.name, line=coordTag.sourceline)
             self.report.append(msg)
             raise ParseError(msg)
