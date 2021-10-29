@@ -16,12 +16,15 @@ from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView, FormView
+from app.apps.core.search import ES_HOST
+from elasticsearch import Elasticsearch
 from PIL import Image, ImageDraw
 
 from core.models import (Line, Project, Document, DocumentPart, Metadata,
                          OcrModel, OcrModelRight, AlreadyProcessingException, LineTranscription)
 
-from core.forms import (ProjectForm,
+from core.forms import (SearchForm,
+                        ProjectForm,
                         DocumentForm,
                         DocumentSearchForm,
                         MetadataFormSet,
@@ -51,6 +54,70 @@ class Home(TemplateView):
         context['VERSION_DATE'] = settings.VERSION_DATE
         context['KRAKEN_VERSION'] = settings.KRAKEN_VERSION
         return context
+
+
+class Search(LoginRequiredMixin, FormView, TemplateView):
+    template_name = 'core/search.html'
+    form_class = SearchForm
+
+    def get_context_data(self, **kwargs):
+        search = self.request.GET.get('query')
+        projects = self.request.GET.get('project')
+        if projects is None or projects == "":
+            projects = Project.objects.for_user_read(self.request.user).values_list("id", flat=True)
+
+        es_client = Elasticsearch(hosts=[ES_HOST])
+
+        body = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {
+                            "terms": {
+                                "project_id": list(projects),
+                            }
+                        },
+                        {
+                            "fuzzy": {
+                                "transcription": {
+                                    "value": search
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+        es_results = es_client.search(index=settings.ELASTICSEARCH_COMMON_INDEX, body=body)
+
+        context = super(Search, self).get_context_data(**kwargs)
+
+        template_results = [self.convert_hit_to_template(hit) for hit in es_results['hits']['hits']]
+        sorted_results = sorted(template_results, key=lambda d: d['score'], reverse=True) 
+        context['es_results'] = [result.values() for result in sorted_results]
+
+        return context
+
+    def convert_hit_to_template(self, hit):
+        hit_source = hit['_source']
+        return {
+            "content": hit_source["transcription"],
+            "part": DocumentPart.objects.get(pk=hit["_id"]),
+            "document": Document.objects.get(pk=hit_source["document_id"]),
+            "project": Project.objects.get(pk=hit_source["project_id"]),
+            "score": hit["_score"],
+        }
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['search'] = self.request.GET.get('query')
+        kwargs['project'] = self.request.GET.get('project')
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def get_success_url(self):
+        return reverse('search')
 
 
 class ProjectList(LoginRequiredMixin, ListView):
