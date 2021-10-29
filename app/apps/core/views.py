@@ -16,7 +16,6 @@ from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView, FormView
-from app.apps.core.search import ES_HOST
 from elasticsearch import Elasticsearch
 from PIL import Image, ImageDraw
 
@@ -40,6 +39,7 @@ from core.forms import (SearchForm,
                         UploadImageForm,
                         ModelUploadForm,
                         ModelRightsForm)
+from core.search import ES_HOST
 from imports.forms import ImportForm, ExportForm
 
 
@@ -61,26 +61,26 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
     form_class = SearchForm
 
     def get_context_data(self, **kwargs):
-        search = self.request.GET.get('query')
+        search = self.request.GET.get('query', '')
         projects = self.request.GET.get('project')
-        if projects is None or projects == "":
-            projects = Project.objects.for_user_read(self.request.user).values_list("id", flat=True)
+        if projects is None or projects == '':
+            projects = Project.objects.for_user_read(self.request.user).values_list('id', flat=True)
 
         es_client = Elasticsearch(hosts=[ES_HOST])
 
         body = {
-            "query": {
-                "bool": {
-                    "must": [
+            'query': {
+                'bool': {
+                    'must': [
                         {
-                            "terms": {
-                                "project_id": list(projects),
+                            'terms': {
+                                'project_id': list(projects),
                             }
                         },
                         {
-                            "fuzzy": {
-                                "transcription": {
-                                    "value": search
+                            'fuzzy': {
+                                'transcription': {
+                                    'value': search
                                 }
                             }
                         }
@@ -102,11 +102,11 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
     def convert_hit_to_template(self, hit):
         hit_source = hit['_source']
         return {
-            "content": hit_source["transcription"],
-            "part": DocumentPart.objects.get(pk=hit["_id"]),
-            "document": Document.objects.get(pk=hit_source["document_id"]),
-            "project": Project.objects.get(pk=hit_source["project_id"]),
-            "score": hit["_score"],
+            'content': hit_source['transcription'],
+            'part': DocumentPart.objects.get(pk=hit['_id']),
+            'document': Document.objects.get(pk=hit_source['document_id']),
+            'project': Project.objects.get(pk=hit_source['project_id']),
+            'score': hit['_score'],
         }
 
     def get_form_kwargs(self):
