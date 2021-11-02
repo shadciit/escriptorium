@@ -35,7 +35,7 @@
         {% endif %}
 
         <div class="mt-4 mb-3">
-            <h4>{% trans "Results" %} ({{ es_results | length }})</h4>
+            <h4>{% trans "Results" %} ({{ page_obj.paginator.count }})</h4>
         </div>
 
         <table class="table table-hover">
@@ -49,7 +49,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for content, part, document, project, score in es_results %}
+                {% for content, part, document, project, score in page_obj %}
                 <tr>
                     <td title="{% trans 'Transcription content' %}">{{ content|safe }}</td>
                     <td title="{% trans 'Document part' %}">

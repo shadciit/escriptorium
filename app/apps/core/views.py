@@ -6,12 +6,14 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.postgres.search import SearchQuery, SearchVector, TrigramBase
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Page, Paginator
 from django.db import transaction
 from django.db.models import Max, Q, Count
 from django.db.models.functions import Greatest
 from django.http import HttpResponse, HttpResponseRedirect, Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
 from django.utils.cache import patch_cache_control
+from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.views.generic import View, TemplateView, ListView, DetailView
@@ -57,14 +59,36 @@ class Home(TemplateView):
         return context
 
 
+class ESPaginator(Paginator):
+
+    def __init__(self, *args, **kwargs):
+        self._count = kwargs.pop('total')
+        super(ESPaginator, self).__init__(*args, **kwargs)
+
+    @cached_property
+    def count(self):
+        return self._count
+
+    def page(self, number):
+        number = self.validate_number(number)
+        return Page(self.object_list, number, self)
+
+
 class Search(LoginRequiredMixin, FormView, TemplateView):
     template_name = 'core/search.html'
     form_class = SearchForm
+    paginate_by = 100
 
     def get_context_data(self, **kwargs):
         context = super(Search, self).get_context_data(**kwargs)
         context['display_right_warning'] = False
 
+        try:
+            page = int(self.request.GET.get('page', '1'))
+        except ValueError:
+            page = 1
+
+        # Search
         search = self.request.GET.get('query', '')
         projects = self.request.GET.get('project')
 
@@ -77,6 +101,9 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
 
         es_client = Elasticsearch(hosts=[ES_HOST])
         body = {
+            'from': (page-1) * self.paginate_by,
+            'size': self.paginate_by,
+            'sort' : ['_score'],
             'query': {
                 'bool': {
                     'must': [
@@ -112,8 +139,16 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
             return context
 
         template_results = [self.convert_hit_to_template(hit) for hit in es_results['hits']['hits']]
-        sorted_results = sorted(template_results, key=lambda d: d['score'], reverse=True) 
-        context['es_results'] = [result.values() for result in sorted_results]
+        results = [result.values() for result in template_results]
+
+        # Pagination
+        paginator = ESPaginator(results, self.paginate_by, total=int(es_results['hits']['total']['value']))
+
+        if page > paginator.num_pages:
+            page = paginator.num_pages
+
+        context['page_obj'] = paginator.page(page)
+        context['is_paginated'] = paginator.num_pages > 1
 
         return context
 
