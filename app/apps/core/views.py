@@ -16,8 +16,9 @@ from django.utils.translation import gettext as _
 from django.urls import reverse
 from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView, FormView
-from elasticsearch import Elasticsearch
+from elasticsearch import exceptions, Elasticsearch
 from PIL import Image, ImageDraw
+from urllib.parse import unquote_plus
 
 from core.models import (Line, Project, Document, DocumentPart, Metadata,
                          OcrModel, OcrModelRight, AlreadyProcessingException, LineTranscription)
@@ -61,13 +62,20 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
     form_class = SearchForm
 
     def get_context_data(self, **kwargs):
+        context = super(Search, self).get_context_data(**kwargs)
+        context['display_right_warning'] = False
+
         search = self.request.GET.get('query', '')
         projects = self.request.GET.get('project')
+
+        user_projects = Project.objects.for_user_read(self.request.user).values_list('id', flat=True)
         if projects is None or projects == '':
-            projects = Project.objects.for_user_read(self.request.user).values_list('id', flat=True)
+            projects = user_projects
+        elif projects not in user_projects:
+            projects = user_projects
+            context['display_right_warning'] = True
 
         es_client = Elasticsearch(hosts=[ES_HOST])
-
         body = {
             'query': {
                 'bool': {
@@ -78,20 +86,30 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
                             }
                         },
                         {
-                            'fuzzy': {
+                            'match': {
                                 'transcription': {
-                                    'value': search
+                                    'query': unquote_plus(search),
+                                    'fuzziness': 'AUTO'
                                 }
                             }
                         }
                     ]
                 }
+            },
+            'highlight': {
+                "pre_tags" : ["<strong class='text-success'>"],
+                "post_tags" : ["</strong>"],
+                "fields": {
+                    "transcription": {}
+                }
             }
         }
 
-        es_results = es_client.search(index=settings.ELASTICSEARCH_COMMON_INDEX, body=body)
-
-        context = super(Search, self).get_context_data(**kwargs)
+        try:
+            es_results = es_client.search(index=settings.ELASTICSEARCH_COMMON_INDEX, body=body)
+        except exceptions.ConnectionError as e:
+            context['es_error'] = str(e)
+            return context
 
         template_results = [self.convert_hit_to_template(hit) for hit in es_results['hits']['hits']]
         sorted_results = sorted(template_results, key=lambda d: d['score'], reverse=True) 
@@ -102,7 +120,7 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
     def convert_hit_to_template(self, hit):
         hit_source = hit['_source']
         return {
-            'content': hit_source['transcription'],
+            'content': hit.get('highlight', {}).get('transcription', [])[0],
             'part': DocumentPart.objects.get(pk=hit['_id']),
             'document': Document.objects.get(pk=hit_source['document_id']),
             'project': Project.objects.get(pk=hit_source['project_id']),
