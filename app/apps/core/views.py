@@ -106,6 +106,14 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
             'sort' : ['_score'],
             'query': {
                 'bool': {
+                    'should': [
+                        { 'term' : { 'owner' : str(self.request.user.id) } },
+                        { 'term' : { 'shared_with_users' : self.request.user.id } },
+                        { 'terms' : {
+                            'shared_with_groups' : list(self.request.user.groups.all().values_list('id', flat=True))
+                        } },
+                    ],
+                    'minimum_should_match' : 1,
                     'must': [
                         {
                             'terms': {
@@ -124,10 +132,10 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
                 }
             },
             'highlight': {
-                "pre_tags" : ["<strong class='text-success'>"],
-                "post_tags" : ["</strong>"],
-                "fields": {
-                    "transcription": {}
+                'pre_tags' : ['<strong class="text-success">'],
+                'post_tags' : ['</strong>'],
+                'fields': {
+                    'transcription': {}
                 }
             }
         }
