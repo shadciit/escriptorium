@@ -98,6 +98,21 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
         for user in results:
             user.disk_usage = (disk_usages_left[user.id] or 0) + (disk_usages_right[user.id] or 0)
 
+        only_display_exceeded = self.request.GET.get('display_exceeded', 'off') in ('on', 'ON')
+        if only_display_exceeded and not settings.DISABLE_QUOTAS:
+            # Excluding users that still have free usage in all of their quotas
+            results = [
+                user
+                for user in results
+                if (
+                    user.disk_storage_limit() != None and user.disk_usage >= user.disk_storage_limit()
+                ) or (
+                    user.cpu_minutes_limit() != None and (user.last_week_cpu_usage or 0) >= user.cpu_minutes_limit()
+                ) or (
+                    user.gpu_minutes_limit() != None and (user.last_week_gpu_usage or 0) >= user.gpu_minutes_limit()
+                )
+            ]
+
         return results
 
     def get_context_data(self, *args, **kwargs):

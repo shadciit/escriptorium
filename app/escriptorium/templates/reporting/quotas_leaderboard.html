@@ -3,6 +3,33 @@
 
 {% block body %}
 <div>
+  <h2>{% trans "Administration leaderboard" %}</h2>
+  <h4><small class="text-primary">
+    {% if 'display_exceeded' in request.GET and request.GET.display_exceeded == 'on' %}
+    {% trans "Currently displaying users exceeding one or more of their quotas" %}
+    {% else %}
+    {% trans "Currently displaying all users" %}
+    {% endif %}
+  </small></h4>
+  
+  {% if enforce_quotas %}
+  <form method="get" class="float-sm-right">
+    <div>
+      <input
+        onchange="this.form.submit()"
+        type="checkbox"
+        name="display_exceeded"
+        {% if 'display_exceeded' in request.GET and request.GET.display_exceeded == 'on' %}
+        checked
+        {% endif %}
+      >
+      <label for="display_exceeded">
+        {% trans "Filter by exceeded quota" %}
+      </label>
+    </div>
+  </form>
+  {% endif %}
+
   <table class="table table-hover">
     <tr>
       <th colspan="5"></th>
