@@ -237,9 +237,9 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
 
         print("Written "+filepath)
 
-        job = core.clusterjob.ClusterJob(username='kunzli0', 
+        job = core.clusterjob.ClusterJob(username='kuenzlip', 
                                     cluster_addr='login1.yggdrasil.hpc.unige.ch', 
-                                    workdir='/home/kunzli0/celery-workdir/ketos/')
+                                    workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
 
         send_event('document', document_pk, "training:statechange",{
             "jobid": "Unknown",
@@ -581,9 +581,9 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
 
         print("Written "+filepath)
 
-        job = core.clusterjob.ClusterJob(username='kunzli0', 
+        job = core.clusterjob.ClusterJob(username='kuenzlip', 
                             cluster_addr='login1.yggdrasil.hpc.unige.ch', 
-                            workdir='/home/kunzli0/celery-workdir/ketos/')
+                            workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
 
         job.request_recognizer_training(filepath)
 

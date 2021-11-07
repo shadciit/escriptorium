@@ -20,8 +20,12 @@ class ClusterJob:
         self.state = State.IDLE
         self.jobid = ''
         self.jobdir = str(uuid.uuid4())
+        connect_kwargs = {
+            'passphrase': os.getenv('SSH_PASSPHRASE')
+        }
         self.c = Connection(host=self.cluster_addr, 
-                            user=self.username)
+                            user=self.username,
+                            connect_kwargs=connect_kwargs)
 
     def __del__(self):
         self.reset()
