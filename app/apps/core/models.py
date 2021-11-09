@@ -1366,9 +1366,48 @@ class OcrModelRight(models.Model):
         ]
 
 
+class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
+    django_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cluster_jobs')
+    cluster_username = models.CharField(max_length=256)
+    cluster_hostname = models.CharField(max_length=256)
+    base_workdir = models.CharField(max_length=512)
+
+    job_workdir = models.CharField(max_length=36)
+    # https://slurm.schedmd.com/squeue.html#lbAG
+    last_known_state = models.CharField(max_length=20)
+    job_id = models.CharField(max_length=256, default='')
+
+    slurm_segmenter_train_file = 'segtrain_gpu_sub.sh'
+    slurm_recognizer_train_file = 'train_gpu_sub.sh'
+
+    def __request_training(self, connection, gt_local_path, slurm_file):
+        if self.job_id == '':
+            gt_filename = gt_local_path.split('/')[-1]
+            self.job_workdir = str(uuid.uuid4())
+            workdir = self.base_workdir + '/' + self.job_workdir
+            connection.run('mkdir '+workdir)
+            connection.put(gt_local_path, workdir+'/'+gt_filename)
+            with connection.cd(workdir):
+                connection.run('unzip '+gt_filename+' -d dataset', hide=True)
+                connection.run('cp ../'+slurm_file+' .', hide=True)
+                res = connection.run('sbatch '+slurm_file, hide=True)
+                self.job_id = res.stdout.split()[-1]
+                res = connection.run('sacct -j '+self.job_id+' -X --format=state', hide=True)
+                self.last_known_state = res.stdout.split('\n')[2]
+                
+
+    def request_segmentation_training(self, connection, gt_local_path):
+        self.__request_training(connection, gt_local_path, self.slurm_segmenter_train_file)
+
+    def request_recognization_training(self, connection, gt_local_path):
+        self.__request_training(connection, gt_local_path, self.slurm_recognizer_train_file)
+
+
+
 @receiver(pre_delete, sender=DocumentPart, dispatch_uid='thumbnails_delete_signal')
 def delete_thumbnails(sender, instance, using, **kwargs):
     thumbnailer = get_thumbnailer(instance.image)
     thumbnailer.delete_thumbnails()
     thumbnailer = get_thumbnailer(instance.bw_image)
     thumbnailer.delete_thumbnails()
+

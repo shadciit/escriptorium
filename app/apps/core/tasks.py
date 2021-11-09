@@ -5,6 +5,7 @@ import numpy as np
 import os.path
 import pathlib
 import shutil
+from fabric import Connection
 from itertools import groupby
 from datetime import datetime
 from zipfile import ZipFile
@@ -24,9 +25,10 @@ from easy_thumbnails.files import get_thumbnailer
 from kraken.lib import train as kraken_train
 
 # from core.models import Line
+#from core.models import ClusterJob
 from users.consumers import send_event
 
-import core.clusterjob
+#import core.clusterjob
 
 import time
 
@@ -230,57 +232,84 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
             datetime.now().strftime('%Y%m%d%H%M'))
 
         
-        filename = "%s.zip" % base_filename
-        filepath = os.path.join(user.get_document_store_path(), filename)
+        gt_filename = "%s.zip" % base_filename
+        gt_filepath = os.path.join(user.get_document_store_path(), gt_filename)
 
-        write_to_file(filepath, qs, document)
+        write_to_file(gt_filepath, qs, document)
 
-        print("Written "+filepath)
+        print("Written "+gt_filepath)
 
-        job = core.clusterjob.ClusterJob(username='kuenzlip', 
-                                    cluster_addr='login1.yggdrasil.hpc.unige.ch', 
-                                    workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
+        # job = core.clusterjob.ClusterJob(username='kuenzlip', 
+        #                             cluster_addr='login1.yggdrasil.hpc.unige.ch', 
+        #                             workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
+
+        ClusterJob = apps.get_model('core', 'ClusterJob')
+
+
+        job = ClusterJob(django_user=user, 
+                        cluster_username='kuenzlip',
+                        cluster_hostname='login1.yggdrasil.hpc.unige.ch',
+                        base_workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
+
+        
+
 
         send_event('document', document_pk, "training:statechange",{
             "jobid": "Unknown",
             "state": "Sending"
         })
 
-        jobid = job.request_segmenter_training(filepath)
+        # jobid = job.request_segmenter_training(filepath)
+
+        connect_kwargs = {
+            'passphrase': os.getenv('SSH_PASSPHRASE')
+        }
+
+        connection = Connection(host=job.cluster_hostname,
+                                user=job.cluster_username,
+                                connect_kwargs=connect_kwargs)
+
+        job.request_segmentation_training(connection, gt_filepath)
+
+        job.save()
+
+        #time.sleep(10)
 
         send_event('document', document_pk, "training:statechange",{
-            "jobid": jobid,
-            "state": "PD"
+            "jobid": job.job_id,
+            "state": job.last_known_state
         })
 
-        while not job.task_is_complete():
-            state = job.current_state()
-            send_event('document', document_pk, "training:statechange",{
-                "jobid": jobid,
-                "state": state
-            })
-            time.sleep(10)
         
-        send_event('document', document_pk, "training:statechange",{
-            "jobid": jobid,
-            "state": "Finished"
-        })
 
-        print('Training done')
+        # while not job.task_is_complete():
+        #     state = job.current_state()
+        #     send_event('document', document_pk, "training:statechange",{
+        #         "jobid": jobid,
+        #         "state": state
+        #     })
+        #     time.sleep(10)
+        
+        # send_event('document', document_pk, "training:statechange",{
+        #     "jobid": jobid,
+        #     "state": "Finished"
+        # })
 
-        best_version = job.result_path()
-        model.training_accuracy = job.best_accuracy()
+        # print('Training done')
 
-        shutil.copy(best_version, model.file.path)
+        # best_version = job.result_path()
+        # model.training_accuracy = job.best_accuracy()
+
+        # shutil.copy(best_version, model.file.path)
 
     finally:
-        
-        model.training = False
-        model.save()
+        pass        
+        # model.training = False
+        # model.save()
 
-        send_event('document', document_pk, "training:done", {
-            "id": model.pk,
-        })
+        # send_event('document', document_pk, "training:done", {
+        #     "id": model.pk,
+        # })
     
 
 #@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
