@@ -74,7 +74,7 @@ class ContactUsAdmin(admin.ModelAdmin):
 
 
 class QuotaEventAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'reached_disk_storage', 'reached_cpu', 'reached_gpu', 'created')
+    list_display = ('id', 'user', 'reached_disk_storage', 'reached_cpu', 'reached_gpu', 'sent', 'created')
     ordering = ('-created',)
 
     def has_add_permission(self, request, obj=None):
