@@ -1,7 +1,9 @@
 from datetime import date, timedelta
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, Sum
+from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, Sum, fields
+from django.db.models.expressions import OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.views.generic import ListView, DetailView
 
 from reporting.models import TaskReport
@@ -78,40 +80,37 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
             output_field=DurationField()
         )
 
-        results = list(
-            qs.annotate(
-                total_cpu_usage=Sum('taskreport__cpu_cost'),
-                total_gpu_usage=Sum('taskreport__gpu_cost'),
-                last_week_cpu_usage=Sum('taskreport__cpu_cost', filter=filter_last_week),
-                last_week_gpu_usage=Sum('taskreport__gpu_cost', filter=filter_last_week),
-                total_tasks=Count('taskreport'),
-                total_runtime=Sum(runtime),
-                last_week_tasks=Count('taskreport', filter=filter_last_week),
-                last_week_runtime=Sum(runtime, filter=filter_last_week),
-                last_day_tasks=Count('taskreport', filter=filter_last_day),
-                last_day_runtime=Sum(runtime, filter=filter_last_day)
-            ).order_by(F('total_runtime').desc(nulls_last=True))
-        )
-        disk_usages_left = dict(qs.values('id').annotate(disk_usage=Sum('ocrmodel__file_size')).values_list('id', 'disk_usage'))
-        disk_usages_right = dict(qs.values('id').annotate(disk_usage=Sum('document__parts__image_file_size')).values_list('id', 'disk_usage'))
-
-        for user in results:
-            user.disk_usage = (disk_usages_left[user.id] or 0) + (disk_usages_right[user.id] or 0)
+        disk_usages_left = User.objects.annotate(disk_usage=Coalesce(Sum('ocrmodel__file_size'), 0)).filter(pk=OuterRef('pk'))
+        disk_usages_right = User.objects.annotate(disk_usage=Coalesce(Sum('document__parts__image_file_size'), 0)).filter(pk=OuterRef('pk'))
+        results = qs.annotate(
+            total_cpu_usage=Sum('taskreport__cpu_cost'),
+            total_gpu_usage=Sum('taskreport__gpu_cost'),
+            last_week_cpu_usage=Sum('taskreport__cpu_cost', filter=filter_last_week),
+            last_week_gpu_usage=Sum('taskreport__gpu_cost', filter=filter_last_week),
+            total_tasks=Count('taskreport'),
+            total_runtime=Sum(runtime),
+            last_week_tasks=Count('taskreport', filter=filter_last_week),
+            last_week_runtime=Sum(runtime, filter=filter_last_week),
+            last_day_tasks=Count('taskreport', filter=filter_last_day),
+            last_day_runtime=Sum(runtime, filter=filter_last_day),
+            disk_usage=Subquery(disk_usages_left.values('disk_usage'), output_field=fields.IntegerField()) + Subquery(disk_usages_right.values('disk_usage'), output_field=fields.IntegerField())
+        ).order_by(F('total_runtime').desc(nulls_last=True))
 
         only_display_exceeded = self.request.GET.get('display_exceeded', 'off') in ('on', 'ON')
         if only_display_exceeded and not settings.DISABLE_QUOTAS:
             # Excluding users that still have free usage in all of their quotas
-            results = [
-                user
-                for user in results
+            to_exclude = [
+                user.pk
+                for user in list(results)
                 if (
-                    user.disk_storage_limit() != None and user.disk_usage >= user.disk_storage_limit()
-                ) or (
-                    user.cpu_minutes_limit() != None and (user.last_week_cpu_usage or 0) >= user.cpu_minutes_limit()
-                ) or (
-                    user.gpu_minutes_limit() != None and (user.last_week_gpu_usage or 0) >= user.gpu_minutes_limit()
+                    user.disk_storage_limit() == None or user.disk_usage < user.disk_storage_limit()
+                ) and (
+                    user.cpu_minutes_limit() == None or (user.last_week_cpu_usage or 0) < user.cpu_minutes_limit()
+                ) and (
+                    user.gpu_minutes_limit() == None or (user.last_week_gpu_usage or 0) < user.gpu_minutes_limit()
                 )
             ]
+            results = results.exclude(pk__in=to_exclude)
 
         return results
 
