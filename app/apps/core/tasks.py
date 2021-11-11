@@ -271,8 +271,6 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
 
         job.request_segmentation_training(connection, gt_filepath)
 
-        job.save()
-
         #time.sleep(10)
 
         send_event('document', document_pk, "training:statechange",{
@@ -280,7 +278,21 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
             "state": job.last_known_state
         })
 
+
+        job.save()
+
+        redis_.rpush('job-ids', job.job_id)
+        monitoring_task_counter = redis_.incr('monitoring-task-counter')
         
+        if monitoring_task_counter == 1:
+            print('Launching a new monitoring task !')
+            redis_.expire('monitoring-task-counter', 30)
+            monitor_cluster_jobs.delay()
+
+        print('Done submitting segtrain job')
+        
+
+
 
         # while not job.task_is_complete():
         #     state = job.current_state()
@@ -912,3 +924,12 @@ def done_state(sender=None, body=None, **kwargs):
     else:
         result = None
     update_client_state(instance_id, sender.name, status, task_id=sender.request.id, data=result)
+
+
+
+@shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
+def monitor_cluster_jobs(**kwargs):
+    while(True):
+        print('Monitoring !')
+        redis_.expire('monitoring-task-counter', 30)
+        time.sleep(10)
