@@ -481,6 +481,13 @@ class UserModels(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['script_filter'] = self.request.GET.get('script_filter', '')
+
+        page_obj = context['page_obj']
+        documents = dict(map(lambda model: [
+            model.id,
+            ', '.join(list(map(lambda d: f"{d.name} ({d.id})", model.documents.filter())))], page_obj))
+        context['documents'] = documents
+
         return context
 
 

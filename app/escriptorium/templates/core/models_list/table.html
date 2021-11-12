@@ -1,8 +1,9 @@
-{% load i18n staticfiles %}
+{% load i18n staticfiles select_key %}
 
 <table id="models-table" class="table table-hover">
   <tr>
     <th></th>
+    <th>{% trans "Document(s)" %}</th>
     <th>{% trans "Role" %}</th>
     <th>
       {% trans "Script" %}
@@ -25,7 +26,8 @@
   </tr>
   {% for model in page_obj %}
   <tr id="tr-{{model.pk}}" class="model-head" data-id="{{model.pk}}">
-    <td title="{% trans "Model name" %}">{{ model.name }}</td>
+    <td title="{% trans "Model name" %}">{{ model.name }} (#{{ model.id }})</td>
+    <td title="{% trans "Name and IDs of documents" %}">{{ documents|select_key:model.id|truncatechars:35 }}</td>
     <td title="{% trans "Model role" %}">{{ model.get_job_display }}</td>
     <td title="{% trans "Model script" %}">
       {{ model.script.name }}
