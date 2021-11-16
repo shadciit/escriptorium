@@ -19,7 +19,7 @@ from django.utils.translation import gettext as _
 from django.template import loader
 
 from celery import shared_task
-from celery.signals import before_task_publish, task_prerun, task_success, task_failure
+from celery.signals import before_task_publish, task_prerun, task_success, task_failure, worker_ready
 from django_redis import get_redis_connection
 from easy_thumbnails.files import get_thumbnailer
 from kraken.lib import train as kraken_train
@@ -279,20 +279,22 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         })
 
 
+        # save job in bdd 
         job.save()
 
-        redis_.rpush('job-ids', job.job_id)
+        # launch a monitoring task if necessary, there should be no race condition
         monitoring_task_counter = redis_.incr('monitoring-task-counter')
-        
         if monitoring_task_counter == 1:
-            print('Launching a new monitoring task !')
+            print('Launching a new monitoring task')
             redis_.expire('monitoring-task-counter', 30)
             monitor_cluster_jobs.delay()
+        else:
+            # else write the task in redis
+            print('writing in redis ', job.cluster_hostname+':'+job.job_id)
+            redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
 
         print('Done submitting segtrain job')
         
-
-
 
         # while not job.task_is_complete():
         #     state = job.current_state()
@@ -855,7 +857,7 @@ def check_signal_order(old_signal, new_signal):
 
 @before_task_publish.connect
 def before_publish_state(sender=None, body=None, **kwargs):
-    if not sender.startswith('core.tasks') or sender.endswith('train'):
+    if not sender.startswith('core.tasks') or sender.endswith('train') or sender.endswith('monitor_cluster_jobs'):
         return
     instance_id = body[0][0]
     data = json.loads(redis_.get('process-%d' % instance_id) or '{}')
@@ -885,7 +887,7 @@ def before_publish_state(sender=None, body=None, **kwargs):
 @task_success.connect
 @task_failure.connect
 def done_state(sender=None, body=None, **kwargs):
-    if not sender.name.startswith('core.tasks') or sender.name.endswith('train'):
+    if not sender.name.startswith('core.tasks') or sender.name.endswith('train') or sender.name.endswith('monitor_cluster_jobs'):
         return
     instance_id = sender.request.args[0]
 
@@ -926,10 +928,63 @@ def done_state(sender=None, body=None, **kwargs):
     update_client_state(instance_id, sender.name, status, task_id=sender.request.id, data=result)
 
 
+def new_jobs_to_monitor():
+    jobref = redis_.lpop('job-ids')
+    new_jobs = []
+    ClusterJob = apps.get_model('core', 'ClusterJob')
+    while jobref:
+        cluster_hostname = jobref.decode("utf-8").split(':')[0]
+        job_id = jobref.decode("utf-8").split(':')[1]
+        print('found job ' + cluster_hostname + ':' + job_id)
+
+        job = ClusterJob.objects.get(cluster_hostname=cluster_hostname, job_id=job_id)
+        new_jobs += [job]
+
+        jobref = redis_.lpop('job-ids')
+    return new_jobs
+
+
+@shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
+@worker_ready.connect
+def launch_monitor_cluster_jobs(**kwargs):
+    redis_.expire('monitoring-task-counter', 30)
+    monitor_cluster_jobs.delay()
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
 def monitor_cluster_jobs(**kwargs):
-    while(True):
-        print('Monitoring !')
+    #jobs = []
+    # load unfinished jobs from bdd
+    ClusterJob = apps.get_model('core', 'ClusterJob')
+
+    jobs = list(ClusterJob.objects.filter(is_finished=False))
+
+    #for i in range(1):
+    while True:
+
+        #print('Monitoring !')
+
+
+        # pop new jobs to monitor from redis
+
+        # pull new jobs from bdd into in memory job pool
+
+        jobs += new_jobs_to_monitor()
+
+        print(str(len(jobs))+' jobs monitored :')
+
+        #print(jobs)
+        for job in jobs:
+            print(job.cluster_hostname + ':' + job.job_id)
+
+
+        # request cluster for job states
+
+        # update job state in bdd if necessary
+
+        # download results if necessary (and if possible)
+
+        # remove jobs from in memory job pool if necessary
+
         redis_.expire('monitoring-task-counter', 30)
         time.sleep(10)
+

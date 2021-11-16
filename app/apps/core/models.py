@@ -1375,6 +1375,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
     job_workdir = models.CharField(max_length=36)
     # https://slurm.schedmd.com/squeue.html#lbAG
     last_known_state = models.CharField(max_length=20)
+    is_finished = models.BooleanField(default=False)
     job_id = models.CharField(max_length=256, default='')
 
     slurm_segmenter_train_file = 'segtrain_gpu_sub.sh'
@@ -1392,6 +1393,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
                 connection.run('cp ../'+slurm_file+' .', hide=True)
                 res = connection.run('sbatch '+slurm_file, hide=True)
                 self.job_id = res.stdout.split()[-1]
+                time.sleep(5)
                 res = connection.run('sacct -j '+self.job_id+' -X --format=state', hide=True)
                 self.last_known_state = res.stdout.split('\n')[2]
                 

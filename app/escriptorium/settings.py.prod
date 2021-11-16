@@ -219,6 +219,7 @@ CELERY_TASK_ROUTES = {
 
 REPORTING_TASKS_BLACKLIST = [
     'users.tasks.async_email',
+    'core.tasks.monitor_cluster_jobs',
 ]
 
 CHANNEL_LAYERS = {
