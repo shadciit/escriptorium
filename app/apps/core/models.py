@@ -1393,9 +1393,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
                 connection.run('cp ../'+slurm_file+' .', hide=True)
                 res = connection.run('sbatch '+slurm_file, hide=True)
                 self.job_id = res.stdout.split()[-1]
-                time.sleep(5)
-                res = connection.run('sacct -j '+self.job_id+' -X --format=state', hide=True)
-                self.last_known_state = res.stdout.split('\n')[2]
+            self.update_state(connection)
                 
 
     def request_segmentation_training(self, connection, gt_local_path):
@@ -1403,6 +1401,26 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
 
     def request_recognization_training(self, connection, gt_local_path):
         self.__request_training(connection, gt_local_path, self.slurm_recognizer_train_file)
+
+    def __scontrol(self, connection):
+        res = connection.run('scontrol show job '+self.job_id, hide=True)
+        res = res.stdout.split('\n')
+        if len(res)>3:
+            return res[3].split('=')[1].split()[0].strip()
+        return None
+
+    def __sacct(self, connection):
+        res = connection.run('sacct -j '+self.job_id+' -X --format=state', hide=True)
+        return res.stdout.split('\n')[2].strip()
+
+    def update_state(self, connection):
+        new_state = self.__scontrol(connection)
+        if not new_state:
+            print('sacct')
+            new_state = self.__sacct(connection)
+        self.last_known_state = new_state
+        return self.last_known_state
+
 
 
 

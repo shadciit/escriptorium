@@ -268,6 +268,7 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         connection = Connection(host=job.cluster_hostname,
                                 user=job.cluster_username,
                                 connect_kwargs=connect_kwargs)
+                                
 
         job.request_segmentation_training(connection, gt_filepath)
 
@@ -283,15 +284,15 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         job.save()
 
         # launch a monitoring task if necessary, there should be no race condition
-        monitoring_task_counter = redis_.incr('monitoring-task-counter')
-        if monitoring_task_counter == 1:
-            print('Launching a new monitoring task')
-            redis_.expire('monitoring-task-counter', 30)
-            monitor_cluster_jobs.delay()
-        else:
-            # else write the task in redis
-            print('writing in redis ', job.cluster_hostname+':'+job.job_id)
-            redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
+        # monitoring_task_counter = redis_.incr('monitoring-task-counter')
+        # if monitoring_task_counter == 1:
+        #     print('Launching a new monitoring task')
+        #     redis_.expire('monitoring-task-counter', 30)
+        #     monitor_cluster_jobs.delay()
+        # else:
+        # else write the task in redis
+        print('writing in redis ', job.cluster_hostname+':'+job.job_id)
+        redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
 
         print('Done submitting segtrain job')
         
@@ -930,18 +931,31 @@ def done_state(sender=None, body=None, **kwargs):
 
 def new_jobs_to_monitor():
     jobref = redis_.lpop('job-ids')
-    new_jobs = []
+    new_jobs = {}
     ClusterJob = apps.get_model('core', 'ClusterJob')
     while jobref:
-        cluster_hostname = jobref.decode("utf-8").split(':')[0]
-        job_id = jobref.decode("utf-8").split(':')[1]
+        jobref = jobref.decode("utf-8")
+        cluster_hostname = jobref.split(':')[0]
+        job_id = jobref.split(':')[1]
         print('found job ' + cluster_hostname + ':' + job_id)
 
         job = ClusterJob.objects.get(cluster_hostname=cluster_hostname, job_id=job_id)
-        new_jobs += [job]
+        new_jobs[jobref] = job
 
         jobref = redis_.lpop('job-ids')
     return new_jobs
+
+
+def establish_connections(jobs, existing_connections):
+    connect_kwargs = {
+        'passphrase': os.getenv('SSH_PASSPHRASE')
+    }
+    for job in jobs:
+        if job not in existing_connections:
+            existing_connections[jobs[job].cluster_hostname+':'+jobs[job].cluster_username] = Connection(host=jobs[job].cluster_hostname,
+                                                                                            user=jobs[job].cluster_username,
+                                                                                            connect_kwargs=connect_kwargs)
+    return existing_connections
 
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
@@ -950,13 +964,18 @@ def launch_monitor_cluster_jobs(**kwargs):
     redis_.expire('monitoring-task-counter', 30)
     monitor_cluster_jobs.delay()
 
+
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
 def monitor_cluster_jobs(**kwargs):
     #jobs = []
     # load unfinished jobs from bdd
     ClusterJob = apps.get_model('core', 'ClusterJob')
 
-    jobs = list(ClusterJob.objects.filter(is_finished=False))
+    jobs = {}
+    for job in list(ClusterJob.objects.filter(is_finished=False)):
+        jobs[job.cluster_hostname+':'+job.cluster_username] = job
+
+    connections = establish_connections(jobs, {})
 
     #for i in range(1):
     while True:
@@ -968,13 +987,33 @@ def monitor_cluster_jobs(**kwargs):
 
         # pull new jobs from bdd into in memory job pool
 
-        jobs += new_jobs_to_monitor()
+        new_jobs = new_jobs_to_monitor()
+        jobs.update(new_jobs)
+        connections = establish_connections(new_jobs, connections)
+
+        
 
         print(str(len(jobs))+' jobs monitored :')
 
+        jobs_to_delete = []
+
         #print(jobs)
         for job in jobs:
-            print(job.cluster_hostname + ':' + job.job_id)
+            c = jobs[job].cluster_hostname+':'+jobs[job].cluster_username
+            state = jobs[job].update_state(connections[c])
+            print(jobs[job].cluster_hostname + ':' + jobs[job].job_id + ' ' +state)
+            if state=='COMPLETED':
+                jobs[job].is_finished = True
+                jobs[job].save()
+                jobs_to_delete.append(job)
+
+
+        for job in jobs_to_delete:
+            del jobs[job]
+
+        # print(str(len(connections)) + ' connections established :')
+        # for key in connections:
+        #     print(key)
 
 
         # request cluster for job states
@@ -985,6 +1024,6 @@ def monitor_cluster_jobs(**kwargs):
 
         # remove jobs from in memory job pool if necessary
 
-        redis_.expire('monitoring-task-counter', 30)
+        # redis_.expire('monitoring-task-counter', 30)
         time.sleep(10)
 
