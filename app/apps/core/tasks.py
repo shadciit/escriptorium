@@ -247,12 +247,18 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
 
 
         job = ClusterJob(django_user=user, 
+                        ocr_model=model,
                         cluster_username='kuenzlip',
                         cluster_hostname='login1.yggdrasil.hpc.unige.ch',
                         base_workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
 
         
-
+        job.save()
+        
+        model.cluster_job = job
+ 
+        model.save()
+        
 
         send_event('document', document_pk, "training:statechange",{
             "jobid": "Unknown",
@@ -322,9 +328,9 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         # model.training = False
         # model.save()
 
-        # send_event('document', document_pk, "training:done", {
-        #     "id": model.pk,
-        # })
+        send_event('document', document_pk, "training:done", {
+            "id": model.pk,
+        })
     
 
 #@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
@@ -972,9 +978,12 @@ def monitor_cluster_jobs(**kwargs):
 
     jobs = {}
     jobs_queryset = ClusterJob.objects.filter(is_finished=False)
-    print(jobs_queryset)
-    for job in list(jobs_queryset):
-        jobs[job.cluster_hostname+':'+job.cluster_username] = job
+    jobs_queryset_list = list(jobs_queryset)
+    #print('job queryset list : ', jobs_queryset_list)
+    for job in jobs_queryset_list:
+        jobs[job.cluster_hostname+':'+job.job_id] = job
+
+    print(jobs)
 
     connections = establish_connections(jobs, {})
 

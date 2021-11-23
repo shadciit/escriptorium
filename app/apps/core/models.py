@@ -1214,6 +1214,7 @@ def models_path(instance, filename):
 
 
 class OcrModel(ExportModelOperationsMixin('OcrModel'), Versioned, models.Model):
+    cluster_job = models.ForeignKey('ClusterJob', null=True, on_delete=models.SET_NULL)
     name = models.CharField(max_length=256)
     file = models.FileField(upload_to=models_path, null=True,
                             validators=[FileExtensionValidator(
@@ -1368,6 +1369,7 @@ class OcrModelRight(models.Model):
 
 class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
     django_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cluster_jobs')
+    ocr_model = models.ForeignKey(OcrModel, on_delete=models.SET_NULL, null=True, related_name='cluster_jobs')
     cluster_username = models.CharField(max_length=256)
     cluster_hostname = models.CharField(max_length=256)
     base_workdir = models.CharField(max_length=512)

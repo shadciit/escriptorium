@@ -22,6 +22,8 @@
     <th>{% trans "Errors" %}</th>
     <th>{% trans "Right" %}</th>
     <th>{# buttons #}</th>
+    <th>{% trans "Cluster job id" %}</th>
+    <th>{% trans "Cluster job state" %}</th>
   </tr>
   {% for model in page_obj %}
   <tr id="tr-{{model.pk}}" class="model-head" data-id="{{model.pk}}">
@@ -100,6 +102,24 @@
           </form>
         </span>
       {% endif %}
+    </td>
+    <td>
+      {% if not model.cluster_job.job_id %}
+      Unknown
+      {% else %}
+      {{ model.cluster_job.job_id }}
+      {% endif %}
+    </td>
+    <td>
+      {% if model.cluster_job.last_known_state == "PENDING" %}
+      <p style="color:blue">
+      {% elif model.cluster_job.last_known_state == "RUNNING" %}
+      <p style="color:green">
+      {% else %}
+      <p>
+      {% endif %}
+      {{model.cluster_job.last_known_state}}
+      </p>
     </td>
   </tr>
   {% for version in model.history %}
