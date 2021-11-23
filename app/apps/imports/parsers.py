@@ -391,7 +391,7 @@ class XMLParser(ParserDocument):
                                 self.make_transcription(line, lineTag, tc, user=user)
 
                 # TODO: store glyphs too
-                logger.info("Uncompressed and parsed %s (%i page/s, %i block/s, %i line/s)" % (self.file.name, n_pages, n_blocks, n_lines))
+                logger.info("Uncompressed and parsed %s (%i page(s), %i block(s), %i line(s))" % (self.file.name, n_pages, n_blocks, n_lines))
                 part.calculate_progress()
                 yield part
 
@@ -429,10 +429,10 @@ The ALTO file should contain a Description/sourceImageInformation/fileName tag f
         return self.root.findall("Layout/Page", self.root.nsmap)
 
     def get_blocks(self, pageTag):
-        blocks = [(b.get("ID"), b) for b in pageTag.findall("PrintSpace/TextBlock", self.root.nsmap)] # kraken style
-        if not blocks:
-            blocks = [(b.get("ID"), b) for b in pageTag.findall("PrintSpace/ComposedBlock/TextBlock", self.root.nsmap)] # tesseract style
-        return blocks
+        return [
+            (b.get("ID"), b)
+            for b in pageTag.findall("PrintSpace//TextBlock", self.root.nsmap)
+        ]
 
     def get_lines(self, blockTag):
         return [(l.get("ID"), l) for l in blockTag.findall("TextLine", self.root.nsmap)]
