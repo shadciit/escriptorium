@@ -961,7 +961,6 @@ def establish_connections(jobs, existing_connections):
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
 @worker_ready.connect
 def launch_monitor_cluster_jobs(**kwargs):
-    redis_.expire('monitoring-task-counter', 30)
     monitor_cluster_jobs.delay()
 
 
@@ -972,7 +971,9 @@ def monitor_cluster_jobs(**kwargs):
     ClusterJob = apps.get_model('core', 'ClusterJob')
 
     jobs = {}
-    for job in list(ClusterJob.objects.filter(is_finished=False)):
+    jobs_queryset = ClusterJob.objects.filter(is_finished=False)
+    print(jobs_queryset)
+    for job in list(jobs_queryset):
         jobs[job.cluster_hostname+':'+job.cluster_username] = job
 
     connections = establish_connections(jobs, {})
@@ -1000,9 +1001,11 @@ def monitor_cluster_jobs(**kwargs):
         #print(jobs)
         for job in jobs:
             c = jobs[job].cluster_hostname+':'+jobs[job].cluster_username
-            state = jobs[job].update_state(connections[c])
-            print(jobs[job].cluster_hostname + ':' + jobs[job].job_id + ' ' +state)
-            if state=='COMPLETED':
+            state_changed = jobs[job].update_state(connections[c])
+            print(jobs[job].cluster_hostname + ':' + jobs[job].job_id + ' ' +jobs[job].last_known_state)
+            if state_changed:
+                jobs[job].save()
+            if 'COMPLETED' in jobs[job].last_known_state or 'CANCELLED' in jobs[job].last_known_state:
                 jobs[job].is_finished = True
                 jobs[job].save()
                 jobs_to_delete.append(job)

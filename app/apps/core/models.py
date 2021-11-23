@@ -1371,6 +1371,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
     cluster_username = models.CharField(max_length=256)
     cluster_hostname = models.CharField(max_length=256)
     base_workdir = models.CharField(max_length=512)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     job_workdir = models.CharField(max_length=36)
     # https://slurm.schedmd.com/squeue.html#lbAG
@@ -1414,12 +1415,14 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
         return res.stdout.split('\n')[2].strip()
 
     def update_state(self, connection):
-        new_state = self.__scontrol(connection)
-        if not new_state:
-            print('sacct')
+        new_state = None
+        try:
+            new_state = self.__scontrol(connection)
+        except:
             new_state = self.__sacct(connection)
+        state_changed = not (self.last_known_state == new_state)
         self.last_known_state = new_state
-        return self.last_known_state
+        return state_changed
 
 
 

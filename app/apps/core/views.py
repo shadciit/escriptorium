@@ -15,7 +15,7 @@ from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView
 
 from core.models import (Project, Document, DocumentPart, Metadata,
-                         OcrModel, OcrModelRight, AlreadyProcessingException)
+                         OcrModel, OcrModelRight, AlreadyProcessingException, ClusterJob)
 
 from core.forms import (ProjectForm,
                         DocumentForm,
@@ -254,16 +254,6 @@ class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
         return context
 
 
-class DocumentJobs(LoginRequiredMixin, DocumentMixin, DetailView):
-    model = Document
-    template_name = "core/document_jobs.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        return context
-
-
-
 class ShareDocument(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Document
     form_class = DocumentShareForm
@@ -464,6 +454,23 @@ class DocumentModels(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['document'] = self.document
         context['object'] = self.document  # legacy
+        return context
+
+
+class UserClusterJobs(LoginRequiredMixin, ListView):
+    model = ClusterJob
+    template_name = "core/clusterjobs_list.html"
+    http_method_names = ('get',)
+    paginate_by = 20
+
+    def get_queryset(self):
+        user = self.request.user
+        jobs = ClusterJob.objects.filter(django_user=user).order_by('-created_at')
+        print(jobs)
+        return jobs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         return context
 
 
