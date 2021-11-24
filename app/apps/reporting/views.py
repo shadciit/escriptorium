@@ -1,13 +1,11 @@
 from datetime import date, timedelta
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, Sum, fields
-from django.db.models.expressions import OuterRef, Subquery
-from django.db.models.functions import Coalesce
+from django.db.models import DurationField, ExpressionWrapper, F
 from django.views.generic import ListView, DetailView
 
 from reporting.models import TaskReport
-from users.models import User
+from users.models import MEGABYTES_TO_BYTES, User
 
 
 class ReportList(LoginRequiredMixin, ListView):
@@ -73,44 +71,104 @@ class QuotasLeaderboard(LoginRequiredMixin, ListView):
     def get_queryset(self):
         qs = super().get_queryset()
         today = date.today()
-        filter_last_week = Q(taskreport__started_at__gte=today - timedelta(days=7))
-        filter_last_day = Q(taskreport__started_at__gte=today - timedelta(days=1))
-        runtime = ExpressionWrapper(
-            F('taskreport__done_at') - F('taskreport__started_at'),
-            output_field=DurationField()
-        )
+        last_week = today - timedelta(days=7)
+        last_day = today - timedelta(days=1)
 
-        disk_usages_left = User.objects.annotate(disk_usage=Coalesce(Sum('ocrmodel__file_size'), 0)).filter(pk=OuterRef('pk'))
-        disk_usages_right = User.objects.annotate(disk_usage=Coalesce(Sum('document__parts__image_file_size'), 0)).filter(pk=OuterRef('pk'))
-        results = qs.annotate(
-            total_cpu_usage=Sum('taskreport__cpu_cost'),
-            total_gpu_usage=Sum('taskreport__gpu_cost'),
-            last_week_cpu_usage=Sum('taskreport__cpu_cost', filter=filter_last_week),
-            last_week_gpu_usage=Sum('taskreport__gpu_cost', filter=filter_last_week),
-            total_tasks=Count('taskreport'),
-            total_runtime=Sum(runtime),
-            last_week_tasks=Count('taskreport', filter=filter_last_week),
-            last_week_runtime=Sum(runtime, filter=filter_last_week),
-            last_day_tasks=Count('taskreport', filter=filter_last_day),
-            last_day_runtime=Sum(runtime, filter=filter_last_day),
-            disk_usage=Subquery(disk_usages_left.values('disk_usage'), output_field=fields.IntegerField()) + Subquery(disk_usages_right.values('disk_usage'), output_field=fields.IntegerField())
-        ).order_by(F('total_runtime').desc(nulls_last=True))
-
+        having_clause = ""
         only_display_exceeded = self.request.GET.get('display_exceeded', 'off') in ('on', 'ON')
         if only_display_exceeded and not settings.DISABLE_QUOTAS:
-            # Excluding users that still have free usage in all of their quotas
-            to_exclude = [
-                user.pk
-                for user in list(results)
-                if (
-                    user.disk_storage_limit() == None or user.disk_usage < user.disk_storage_limit()
-                ) and (
-                    user.cpu_minutes_limit() == None or (user.last_week_cpu_usage or 0) < user.cpu_minutes_limit()
-                ) and (
-                    user.gpu_minutes_limit() == None or (user.last_week_gpu_usage or 0) < user.gpu_minutes_limit()
-                )
-            ]
-            results = results.exclude(pk__in=to_exclude)
+            # HAVING clause to exclude users that still have free usage in all of their quotas
+            having_clause = """
+                HAVING
+                    (
+                        (COALESCE(users_user.quota_disk_storage, %(settings_disk_storage)s) * %(mb_to_b)s) IS NOT NULL 
+                        AND (
+                            (
+                                SELECT
+                                    COALESCE(SUM(file_size), 0)
+                                FROM
+                                    core_ocrmodel
+                                WHERE
+                                    core_ocrmodel.owner_id = users_user.id
+                            ) + (
+                                SELECT
+                                    COALESCE(SUM(image_file_size), 0)
+                                FROM
+                                    core_document
+                                    LEFT JOIN core_documentpart ON core_documentpart.document_id = core_document.id
+                                WHERE
+                                    core_document.owner_id = users_user.id
+                            )
+                        ) >= (COALESCE(users_user.quota_disk_storage, %(settings_disk_storage)s) * %(mb_to_b)s)
+                    )
+                    OR (
+                        COALESCE(users_user.quota_cpu, %(settings_cpu_minutes)s) IS NOT NULL
+                        AND
+                            COALESCE(SUM(reporting_taskreport.cpu_cost) FILTER (WHERE reporting_taskreport.started_at >= %(last_week)s), 0)
+                            >= COALESCE(users_user.quota_cpu, %(settings_cpu_minutes)s)
+                    )
+                    OR (
+                        COALESCE(users_user.quota_gpu, %(settings_gpu_minutes)s) IS NOT NULL
+                        AND
+                            COALESCE(SUM(reporting_taskreport.gpu_cost) FILTER (WHERE reporting_taskreport.started_at >= %(last_week)s),0)
+                            >= COALESCE(users_user.quota_gpu, %(settings_gpu_minutes)s)
+                    )
+            """
+    
+        results = qs.raw(
+            f"""
+            SELECT
+                users_user.id,
+                users_user.username,
+                COALESCE(SUM(reporting_taskreport.cpu_cost), 0) AS total_cpu_usage,
+                COALESCE(SUM(reporting_taskreport.gpu_cost), 0) AS total_gpu_usage,
+                COALESCE(SUM(reporting_taskreport.cpu_cost) FILTER (WHERE reporting_taskreport.started_at >= %(last_week)s), 0) AS last_week_cpu_usage,
+                COALESCE(SUM(reporting_taskreport.gpu_cost) FILTER (WHERE reporting_taskreport.started_at >= %(last_week)s), 0) AS last_week_gpu_usage,
+                COUNT(reporting_taskreport.id) AS total_tasks,
+                SUM((reporting_taskreport.done_at - reporting_taskreport.started_at)) AS total_runtime,
+                COUNT(reporting_taskreport.id) FILTER (WHERE reporting_taskreport.started_at >= %(last_week)s) AS last_week_tasks,
+                SUM((reporting_taskreport.done_at - reporting_taskreport.started_at)) FILTER (WHERE reporting_taskreport.started_at >= %(last_week)s) AS last_week_runtime,
+                COUNT(reporting_taskreport.id) FILTER (WHERE reporting_taskreport.started_at >= %(last_day)s) AS last_day_tasks,
+                SUM((reporting_taskreport.done_at - reporting_taskreport.started_at)) FILTER (WHERE reporting_taskreport.started_at >= %(last_day)s) AS last_day_runtime,
+                (
+                    (
+                        SELECT
+                            COALESCE(SUM(file_size), 0)
+                        FROM
+                            core_ocrmodel
+                        WHERE
+                            core_ocrmodel.owner_id = users_user.id
+                    ) + (
+                        SELECT
+                            COALESCE(SUM(image_file_size), 0)
+                        FROM
+                            core_document
+                            LEFT JOIN core_documentpart ON core_documentpart.document_id = core_document.id
+                        WHERE
+                            core_document.owner_id = users_user.id
+                    )
+                ) AS disk_usage,
+                COALESCE(users_user.quota_disk_storage, %(settings_disk_storage)s) * %(mb_to_b)s AS disk_storage_limit,
+                COALESCE(users_user.quota_cpu, %(settings_cpu_minutes)s) AS cpu_minutes_limit,
+                COALESCE(users_user.quota_gpu, %(settings_gpu_minutes)s) AS gpu_minutes_limit
+            FROM
+                users_user
+                LEFT JOIN reporting_taskreport ON reporting_taskreport.user_id = users_user.id
+            GROUP BY
+                users_user.id
+            {having_clause}
+            ORDER BY
+                SUM((reporting_taskreport.done_at - reporting_taskreport.started_at)) DESC NULLS LAST;
+            """,
+            {
+                "last_week": last_week,
+                "last_day": last_day,
+                "mb_to_b": MEGABYTES_TO_BYTES,
+                "settings_disk_storage": settings.QUOTA_DISK_STORAGE,
+                "settings_cpu_minutes": settings.QUOTA_CPU_MINUTES,
+                "settings_gpu_minutes": settings.QUOTA_GPU_MINUTES
+            }
+        )
 
         return results
 
