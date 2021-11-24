@@ -254,7 +254,6 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
                         cluster_hostname='login1.yggdrasil.hpc.unige.ch',
                         base_workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
 
-        
         job.save()
         
         model.cluster_job = job
@@ -1022,7 +1021,7 @@ def monitor_cluster_jobs(**kwargs):
             print(job.cluster_hostname + ':' + job.job_id + ' ' +job.last_known_state)
             if state_changed:
                 job.save()
-            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state:
+            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state or job.job_id=='':
                 job.is_finished = True
                 job.ocr_model.training = False
                 try:
