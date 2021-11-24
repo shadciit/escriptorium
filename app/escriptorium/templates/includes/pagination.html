@@ -14,18 +14,14 @@
     {% endif %}
 
     <li class="page-item">
-      {% if filters %}
-        <select class="page-link" onchange="location = '?page=' + this.value + '{{ filters|format_tags }}';">
-      {% else %}
-        <select class="page-link" onchange="location = '?page=' + this.value;">
-      {% endif %}
+      <select class="page-link h-100" onchange="location = this.value;">
       {% for item in "x"|ljust:page_obj.paginator.num_pages %}
         {% if page_obj.number == forloop.counter %}
-            <option value="{{ page_obj.number}}" selected>
+            <option value="?{% url_replace request 'page' page_obj.number %}" selected>
                 {{ page_obj.number }} out of {{ page_obj.paginator.num_pages }}
             </option>
         {% else %}
-            <option value="{{ forloop.counter }}">
+            <option value="?{% url_replace request 'page' forloop.counter %}">
                 {{ forloop.counter }} out of {{ page_obj.paginator.num_pages }}
             </option>
         {% endif %}
