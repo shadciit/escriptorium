@@ -12,6 +12,7 @@ from PIL import Image
 from datetime import datetime
 from shapely import affinity
 from shapely.geometry import Polygon, LineString
+from fabric import Connection
 
 from django.db import models, transaction
 from django.db.models import Q, Prefetch, Value
@@ -1297,7 +1298,7 @@ class OcrModel(ExportModelOperationsMixin('OcrModel'), Versioned, models.Model):
                     model_pk=self.pk,
                     user_pk=user and user.pk or None)
 
-    def cancel_training(self):
+    def cancel_training(self):            
         try:
             if self.job == self.MODEL_JOB_RECOGNIZE:
                 task_id = json.loads(redis_.get('training-%d' % self.pk))['task_id']
@@ -1310,6 +1311,21 @@ class OcrModel(ExportModelOperationsMixin('OcrModel'), Versioned, models.Model):
                 revoke(task_id, terminate=True)
                 self.training = False
                 self.save()
+
+        if self.cluster_job:
+            try:
+                job = self.cluster_job
+                connect_kwargs = {
+                    'passphrase': os.getenv('SSH_PASSPHRASE')
+                }
+                connection = Connection(host=job.cluster_hostname,
+                                        user=job.cluster_username,
+                                        connect_kwargs=connect_kwargs)
+                job.cancel(connection)
+                job.update_state(connection)
+                job.save()
+            except:
+                print('Could not cancel the job on cluster')
 
     # versioning
     def pack(self, **kwargs):
@@ -1381,7 +1397,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
 
     job_uuid = models.CharField(max_length=36)
     # https://slurm.schedmd.com/squeue.html#lbAG
-    last_known_state = models.CharField(max_length=20)
+    last_known_state = models.CharField(max_length=20, default='Unsubmitted')
     is_finished = models.BooleanField(default=False)
     job_id = models.CharField(max_length=256, default='')
 
@@ -1449,6 +1465,9 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
                 if 'Accuracy report ('+best_model_number+')' in line:
                     return float(line.split('accuracy: ')[1])
         raise Exception('Unable to read accuracy')
+
+    def cancel(self, connection):
+        connection.run('scancel '+self.job_id, hide=True)
 
 
 
