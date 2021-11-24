@@ -22,8 +22,8 @@
     <th>{% trans "Errors" %}</th>
     <th>{% trans "Right" %}</th>
     <th>{# buttons #}</th>
-    <th>{% trans "Cluster job id" %}</th>
-    <th>{% trans "Cluster job state" %}</th>
+    <th>{% trans "Job id" %}</th>
+    <th>{% trans "Job state" %}</th>
   </tr>
   {% for model in page_obj %}
   <tr id="tr-{{model.pk}}" class="model-head" data-id="{{model.pk}}">

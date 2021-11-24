@@ -958,8 +958,8 @@ def establish_connections(jobs, existing_connections):
     }
     for job in jobs:
         if job not in existing_connections:
-            existing_connections[jobs[job].cluster_hostname+':'+jobs[job].cluster_username] = Connection(host=jobs[job].cluster_hostname,
-                                                                                            user=jobs[job].cluster_username,
+            existing_connections[job.cluster_hostname+':'+job.cluster_username] = Connection(host=job.cluster_hostname,
+                                                                                            user=job.cluster_username,
                                                                                             connect_kwargs=connect_kwargs)
     return existing_connections
 
@@ -1008,20 +1008,24 @@ def monitor_cluster_jobs(**kwargs):
         jobs_to_delete = []
 
         #print(jobs)
-        for job in jobs:
-            c = jobs[job].cluster_hostname+':'+jobs[job].cluster_username
-            state_changed = jobs[job].update_state(connections[c])
-            print(jobs[job].cluster_hostname + ':' + jobs[job].job_id + ' ' +jobs[job].last_known_state)
+        for job_name in jobs:
+            job = jobs[job_name]
+            c = job.cluster_hostname+':'+job.cluster_username
+            state_changed = job.update_state(connections[c])
+            print(job.cluster_hostname + ':' + job.job_id + ' ' +job.last_known_state)
             if state_changed:
-                jobs[job].save()
-            if 'COMPLETED' in jobs[job].last_known_state or 'CANCELLED' in jobs[job].last_known_state:
-                jobs[job].is_finished = True
-                jobs[job].save()
+                job.save()
+            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state:
+                job.is_finished = True
+                # best_version = job.result_path()
+                # model.training_accuracy = job.best_accuracy()
+                # shutil.copy(best_version, model.file.path)
+                job.save()
                 jobs_to_delete.append(job)
 
 
-        for job in jobs_to_delete:
-            del jobs[job]
+        for job_name in jobs_to_delete:
+            del jobs[job_name]
 
         # print(str(len(connections)) + ' connections established :')
         # for key in connections:
