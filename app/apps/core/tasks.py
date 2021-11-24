@@ -224,6 +224,8 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         # Seems OK to write segments geometry
         # CONTENT is empty in the xml, normal while doing segmentation ?
         document = Document.objects.get(pk=document_pk)
+        document.submitting_job = True
+        document.save()
         #transcription = Transcription.objects.get(document=document, pk=transcription_pk)
         base_filename = "export_doc%d_%s_%s_%s" % (
             document.pk,
@@ -327,6 +329,9 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         pass        
         # model.training = False
         # model.save()
+
+        document.submitting_job = False
+        document.save()
 
         send_event('document', document_pk, "training:done", {
             "id": model.pk,
@@ -956,8 +961,9 @@ def establish_connections(jobs, existing_connections):
     connect_kwargs = {
         'passphrase': os.getenv('SSH_PASSPHRASE')
     }
-    for job in jobs:
-        if job not in existing_connections:
+    for job_name in jobs:
+        job = jobs[job_name]
+        if job_name not in existing_connections:
             existing_connections[job.cluster_hostname+':'+job.cluster_username] = Connection(host=job.cluster_hostname,
                                                                                             user=job.cluster_username,
                                                                                             connect_kwargs=connect_kwargs)
@@ -1010,18 +1016,25 @@ def monitor_cluster_jobs(**kwargs):
         #print(jobs)
         for job_name in jobs:
             job = jobs[job_name]
-            c = job.cluster_hostname+':'+job.cluster_username
-            state_changed = job.update_state(connections[c])
+            connection_name = job.cluster_hostname+':'+job.cluster_username
+            connection = connections[connection_name]
+            state_changed = job.update_state(connection)
             print(job.cluster_hostname + ':' + job.job_id + ' ' +job.last_known_state)
             if state_changed:
                 job.save()
-            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state:
+            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state:
                 job.is_finished = True
-                # best_version = job.result_path()
-                # model.training_accuracy = job.best_accuracy()
-                # shutil.copy(best_version, model.file.path)
-                job.save()
-                jobs_to_delete.append(job)
+                job.ocr_model.training = False
+                try:
+                    best_version_path = job.download_result(connection)
+                    shutil.copy(best_version_path, job.ocr_model.file.path)
+                    job.ocr_model.training_accuracy = job.best_accuracy(connection)
+                except:
+                    print('Error occured in retrieving data')
+                finally:
+                    job.ocr_model.save()
+                    job.save()
+                    jobs_to_delete.append(job_name)
 
 
         for job_name in jobs_to_delete:

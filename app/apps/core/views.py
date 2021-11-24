@@ -448,7 +448,7 @@ class DocumentModels(LoginRequiredMixin, ListView):
             self.document = Document.objects.for_user(self.request.user).get(pk=self.kwargs.get('document_pk'))
         except Document.DoesNotExist:
             raise PermissionDenied
-        return self.document.ocr_models.all()
+        return self.document.ocr_models.all().order_by('-created_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -487,7 +487,7 @@ class UserModels(LoginRequiredMixin, ListView):
             Q(owner=user) |
             Q(ocr_model_rights__user=user) |
             Q(ocr_model_rights__group__user=user)
-        ).distinct()
+        ).order_by('-created_at').distinct()
 
         script_filter = self.request.GET.get('script_filter', '')
         if script_filter:
