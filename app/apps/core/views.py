@@ -15,7 +15,7 @@ from django.views.generic import View, TemplateView, ListView, DetailView
 from django.views.generic import CreateView, UpdateView, DeleteView
 
 from core.models import (Project, Document, DocumentPart, Metadata,
-                         OcrModel, OcrModelRight, AlreadyProcessingException)
+                         OcrModel, OcrModelRight, AlreadyProcessingException, ClusterJob)
 
 from core.forms import (ProjectForm,
                         DocumentForm,
@@ -254,16 +254,6 @@ class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
         return context
 
 
-class DocumentJobs(LoginRequiredMixin, DocumentMixin, DetailView):
-    model = Document
-    template_name = "core/document_jobs.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        return context
-
-
-
 class ShareDocument(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     model = Document
     form_class = DocumentShareForm
@@ -458,12 +448,29 @@ class DocumentModels(LoginRequiredMixin, ListView):
             self.document = Document.objects.for_user(self.request.user).get(pk=self.kwargs.get('document_pk'))
         except Document.DoesNotExist:
             raise PermissionDenied
-        return self.document.ocr_models.all()
+        return self.document.ocr_models.all().order_by('-created_at')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['document'] = self.document
         context['object'] = self.document  # legacy
+        return context
+
+
+class UserClusterJobs(LoginRequiredMixin, ListView):
+    model = ClusterJob
+    template_name = "core/clusterjobs_list.html"
+    http_method_names = ('get',)
+    paginate_by = 20
+
+    def get_queryset(self):
+        user = self.request.user
+        jobs = ClusterJob.objects.filter(django_user=user).order_by('-created_at')
+        print(jobs)
+        return jobs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         return context
 
 
@@ -480,7 +487,7 @@ class UserModels(LoginRequiredMixin, ListView):
             Q(owner=user) |
             Q(ocr_model_rights__user=user) |
             Q(ocr_model_rights__group__user=user)
-        ).distinct()
+        ).order_by('-created_at').distinct()
 
         script_filter = self.request.GET.get('script_filter', '')
         if script_filter:

@@ -22,7 +22,6 @@
       {% with models_count=document.ocr_models.count %}
       <a href="{% if document and models_count %}{% url 'document-models' document_pk=document.pk %}{% else %}#{% endif %}" class="nav-item nav-link {% if not document or not models_count %}disabled{% endif %}" id="nav-models-tab" role="tab" aria-controls="nav-doc" aria-selected="true">{% trans "Models" %}</a>
       {% endwith %}
-      <a href="{% if object %}{% url 'document-jobs' pk=document.pk %}{% else %}#{% endif %}" class="nav-item nav-link {% if not object %}disabled{% endif %} {% block nav-jobs-active %}{% endblock %}" id="nav-job-tab" role="tab" aria-controls="nav-job" aria-selected="true">{% trans "Current jobs" %}</a>
 
       {% endblock nav %}
 

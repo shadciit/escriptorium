@@ -316,6 +316,8 @@ class Document(ExportModelOperationsMixin('Document'), models.Model):
 
     objects = DocumentManager()
 
+    submitting_job = models.BooleanField(default=False)
+
     class Meta:
         ordering = ('-updated_at',)
 
@@ -1219,6 +1221,7 @@ def models_path(instance, filename):
 
 
 class OcrModel(ExportModelOperationsMixin('OcrModel'), Versioned, models.Model):
+    cluster_job = models.ForeignKey('ClusterJob', null=True, on_delete=models.SET_NULL)
     name = models.CharField(max_length=256)
     file = models.FileField(upload_to=models_path, null=True,
                             validators=[FileExtensionValidator(
@@ -1249,6 +1252,8 @@ class OcrModel(ExportModelOperationsMixin('OcrModel'), Versioned, models.Model):
     public = models.BooleanField(default=False)
 
     parent = models.ForeignKey('self', blank=True, null=True, on_delete=models.SET_NULL)
+
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ('-version_updated_at',)
@@ -1371,9 +1376,94 @@ class OcrModelRight(models.Model):
         ]
 
 
+class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
+    django_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cluster_jobs')
+    ocr_model = models.ForeignKey(OcrModel, on_delete=models.SET_NULL, null=True, related_name='cluster_jobs')
+    cluster_username = models.CharField(max_length=256)
+    cluster_hostname = models.CharField(max_length=256)
+    base_workdir = models.CharField(max_length=512)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    job_uuid = models.CharField(max_length=36)
+    # https://slurm.schedmd.com/squeue.html#lbAG
+    last_known_state = models.CharField(max_length=20)
+    is_finished = models.BooleanField(default=False)
+    job_id = models.CharField(max_length=256, default='')
+
+    slurm_segmenter_train_file = 'segtrain_gpu_sub.sh'
+    slurm_recognizer_train_file = 'train_gpu_sub.sh'
+
+    def __request_training(self, connection, gt_local_path, slurm_file):
+        if self.job_id == '':
+            gt_filename = gt_local_path.split('/')[-1]
+            self.job_uuid = str(uuid.uuid4())
+            workdir = self.base_workdir + '/' + self.job_uuid
+            connection.run('mkdir '+workdir)
+            connection.put(gt_local_path, workdir+'/'+gt_filename)
+            with connection.cd(workdir):
+                connection.run('unzip '+gt_filename+' -d dataset', hide=True)
+                connection.run('cp ../'+slurm_file+' .', hide=True)
+                res = connection.run('sbatch '+slurm_file, hide=True)
+                self.job_id = res.stdout.split()[-1]
+            self.update_state(connection)
+                
+
+    def request_segmentation_training(self, connection, gt_local_path):
+        self.__request_training(connection, gt_local_path, self.slurm_segmenter_train_file)
+
+    def request_recognization_training(self, connection, gt_local_path):
+        self.__request_training(connection, gt_local_path, self.slurm_recognizer_train_file)
+
+    def __scontrol(self, connection):
+        res = connection.run('scontrol show job '+self.job_id, hide=True)
+        res = res.stdout.split('\n')
+        if len(res)>3:
+            return res[3].split('=')[1].split()[0].strip()
+        return None
+
+    def __sacct(self, connection):
+        res = connection.run('sacct -j '+self.job_id+' -X --format=state', hide=True)
+        return res.stdout.split('\n')[2].strip()
+
+    def update_state(self, connection):
+        new_state = None
+        try:
+            new_state = self.__scontrol(connection)
+        except:
+            new_state = self.__sacct(connection)
+        state_changed = not (self.last_known_state == new_state)
+        self.last_known_state = new_state
+        return state_changed
+
+    def download_result(self, connection):
+        remote_path = self.base_workdir + '/' + self.job_uuid + '/train_output_best.mlmodel'
+        local_path = '/tmp/train_output_best-' + self.job_uuid + '.mlmodel'
+        connection.get(remote_path, local_path)
+        return local_path
+
+    def best_accuracy(self, connection):
+        remote_path = self.base_workdir + '/' + self.job_uuid + '/' + self.job_id + '.out'
+        local_path = '/tmp/' + self.job_id + '.out'
+        connection.get(remote_path, local_path)
+        with open(local_path) as f:
+            for line in f:
+                    pass
+            best_model_number = line.split('train_output_')[1].split('.')[0]
+        with open(local_path) as f:
+            for line in f:
+                if 'Accuracy report ('+best_model_number+')' in line:
+                    return float(line.split('accuracy: ')[1])
+        raise Exception('Unable to read accuracy')
+
+
+
+
+
+
 @receiver(pre_delete, sender=DocumentPart, dispatch_uid='thumbnails_delete_signal')
 def delete_thumbnails(sender, instance, using, **kwargs):
     thumbnailer = get_thumbnailer(instance.image)
     thumbnailer.delete_thumbnails()
     thumbnailer = get_thumbnailer(instance.bw_image)
     thumbnailer.delete_thumbnails()
+

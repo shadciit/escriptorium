@@ -488,6 +488,7 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     var max_accuracy = 0;
     $alertsContainer.on('training:start', function(ev, data) {
         $('#train-selected').addClass('blink');
+        $('#train-selected').prop('disabled', true);
         $('#cancel-training').show();
         $('#monitoring').show();
     });
@@ -501,6 +502,7 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     });
     $alertsContainer.on('training:done', function(ev, data) {
         $('#train-selected').removeClass('blink');
+        $('#train-selected').prop('disabled', false);
         $('#cancel-training').hide();
         $('#monitoring').hide();
     });
