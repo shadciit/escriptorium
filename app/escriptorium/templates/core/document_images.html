@@ -109,14 +109,14 @@
     </div>
     <button
       id="cancel-training"
-      class="btn btn-sm btn-warning {% if not submitting_job %}hide{% endif %}"
+      class="btn btn-sm btn-warning hide"
       title="{% trans 'Cancel training' %}"
     ><i class="fas fa-ban"></i></button>
     {% endwith %}
     {% endif %}
     {% with submitting_job=document.submitting_job %}
       <div id="monitoring" class="{% if not submitting_job %}hide{% endif %}">
-        <span>Submitting the job, please wait</span>
+        <span>Submitting job, monitoring from the "Models" tab</span>
       </div>
     {% endwith %}
     <button

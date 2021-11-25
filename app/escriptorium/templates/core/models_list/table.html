@@ -24,6 +24,8 @@
     <th>{# buttons #}</th>
     <th>{% trans "Job id" %}</th>
     <th>{% trans "Job state" %}</th>
+    <th>{% trans "Job UUID" %}</th>
+    <th>{% trans "Job is finished" %}</th>
   </tr>
   {% for model in page_obj %}
   <tr id="tr-{{model.pk}}" class="model-head" data-id="{{model.pk}}">
@@ -115,11 +117,19 @@
       <p style="color:blue">
       {% elif model.cluster_job.last_known_state == "RUNNING" %}
       <p style="color:green">
+        {% elif model.cluster_job.last_known_state == "CANCELLED" or model.cluster_job.last_known_state == "OUT_OF_MEMORY" or model.cluster_job.last_known_state == "TIMEOUT" or model.cluster_job.last_known_state == "Unsubmitted"%}
+        <p style="color:red">
       {% else %}
       <p>
       {% endif %}
       {{model.cluster_job.last_known_state}}
       </p>
+    </td>
+    <td>
+      {{model.cluster_job.job_uuid}}
+    </td>
+    <td>
+      {{model.cluster_job.is_finished}}
     </td>
   </tr>
   {% for version in model.history %}

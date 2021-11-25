@@ -488,33 +488,33 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     var max_accuracy = 0;
     $alertsContainer.on('training:start', function(ev, data) {
         $('#train-selected').addClass('blink');
-        $('#train-selected').prop('disabled', true);
-        $('#cancel-training').show();
+        // $('#train-selected').prop('disabled', true);
+        // $('#cancel-training').show();
         $('#monitoring').show();
     });
-    $alertsContainer.on('training:gathering', function(ev, data) {
-        $('#train-selected').addClass('blink');
-        $('#cancel-training').show();
-    });
-    $alertsContainer.on('training:eval', function(ev, data) {
-        $('#train-selected').addClass('blink');
-        $('#cancel-training').show();
-    });
+    // $alertsContainer.on('training:gathering', function(ev, data) {
+    //     $('#train-selected').addClass('blink');
+    //     $('#cancel-training').show();
+    // });
+    // $alertsContainer.on('training:eval', function(ev, data) {
+    //     $('#train-selected').addClass('blink');
+    //     $('#cancel-training').show();
+    // });
     $alertsContainer.on('training:done', function(ev, data) {
         $('#train-selected').removeClass('blink');
-        $('#train-selected').prop('disabled', false);
-        $('#cancel-training').hide();
+        // $('#train-selected').prop('disabled', false);
+        // $('#cancel-training').hide();
         $('#monitoring').hide();
     });
-    $alertsContainer.on('training:error', function(ev, data) {
-        $('#train-selected').removeClass('blink').addClass('btn-danger');
-        $('#cancel-training').hide();
-        $('#monitoring').hide();
-    });
-    $alertsContainer.on('training:statechange', function(ev, data) {
-        $('#job-id').html(data["jobid"]);
-        $('#job-state').html(data["state"]);
-    });
+    // $alertsContainer.on('training:error', function(ev, data) {
+    //     $('#train-selected').removeClass('blink').addClass('btn-danger');
+    //     $('#cancel-training').hide();
+    //     $('#monitoring').hide();
+    // });
+    // $alertsContainer.on('training:statechange', function(ev, data) {
+    //     $('#job-id').html(data["jobid"]);
+    //     $('#job-state').html(data["state"]);
+    // });
     $('#cancel-training').click(function(ev, data) {
         let url = API.document + '/cancel_training/';
         $.post(url, {})

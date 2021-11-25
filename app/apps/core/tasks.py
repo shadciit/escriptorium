@@ -325,7 +325,7 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         # shutil.copy(best_version, model.file.path)
 
     finally:
-        pass        
+        # pass        
         # model.training = False
         # model.save()
 
@@ -607,6 +607,8 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
         transcription = Transcription.objects.get(pk=transcription_pk)
         document_pk = transcription.document.pk
         document = Document.objects.get(pk=document_pk)
+        document.submitting_job = True
+        document.save()
         
         # print("transcription_pk : ", transcription_pk)
         # print("document_pk : ", document_pk)
@@ -628,49 +630,76 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
             datetime.now().strftime('%Y%m%d%H%M'))
 
         
-        filename = "%s.zip" % base_filename
-        filepath = os.path.join(user.get_document_store_path(), filename)
+        gt_filename = "%s.zip" % base_filename
+        gt_filepath = os.path.join(user.get_document_store_path(), filename)
 
-        write_to_file(filepath, qs, document, transcription=transcription)
+        write_to_file(gt_filepath, qs, document, transcription=transcription)
 
-        print("Written "+filepath)
+        print("Written "+gt_filepath)
+        ClusterJob = apps.get_model('core', 'ClusterJob')
 
-        job = core.clusterjob.ClusterJob(username='kuenzlip', 
-                            cluster_addr='login1.yggdrasil.hpc.unige.ch', 
-                            workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
+        job = ClusterJob(django_user=user, 
+                        ocr_model=model,
+                        cluster_username='kuenzlip',
+                        cluster_hostname='login1.yggdrasil.hpc.unige.ch',
+                        base_workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
 
-        job.request_recognizer_training(filepath)
-
-        while not job.task_is_complete():
-            time.sleep(10)
+        job.save()
         
-        print('Training done')
+        model.cluster_job = job
+ 
+        model.save()
 
-        best_version = job.result_path()
+        connect_kwargs = {
+            'passphrase': os.getenv('SSH_PASSPHRASE')
+        }
+
+        connection = Connection(host=job.cluster_hostname,
+                                user=job.cluster_username,
+                                connect_kwargs=connect_kwargs)
+
+        job.request_recognition_training(connection, gt_filepath)
+
+        job.save()
+
+        print('writing in redis ', job.cluster_hostname+':'+job.job_id)
+        redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
+
+        print('Done submitting train job')
+
+        # while not job.task_is_complete():
+        #     time.sleep(10)
+        
+        # print('Training done')
+
+        # best_version = job.result_path()
 
         # print('best version file : '+best_version)
 
-        model.training_accuracy = job.best_accuracy()
+        # model.training_accuracy = job.best_accuracy()
 
-        shutil.copy(best_version, model.file.path)
+        # shutil.copy(best_version, model.file.path)
 
 
-    except Exception as e:
-        send_event('document', document.pk, "training:error", {
-            "id": model.pk,
-        })
-        if user:
-            user.notify(_("Something went wrong during the training process!"),
-                        id="training-error", level='danger')
-        logger.exception(e)
-    else:
-        if user:
-            user.notify(_("Training finished!"),
-                        id="training-success",
-                        level='success')
+    # except Exception as e:
+    #     send_event('document', document.pk, "training:error", {
+    #         "id": model.pk,
+    #     })
+    #     if user:
+    #         user.notify(_("Something went wrong during the training process!"),
+    #                     id="training-error", level='danger')
+    #     logger.exception(e)
+    # else:
+    #     if user:
+    #         user.notify(_("Training finished!"),
+    #                     id="training-success",
+    #                     level='success')
     finally:
-        model.training = False
-        model.save()
+        # model.training = False
+        # model.save()
+
+        document.submitting_job = False
+        document.save()
 
         send_event('document', document.pk, "training:done", {
             "id": model.pk,
@@ -679,8 +708,6 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
     pass
 
 def train_(qs, document, transcription, model=None, user=None):
-
-    print("train_")
 
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
@@ -758,8 +785,6 @@ def train_(qs, document, transcription, model=None, user=None):
 
 # @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
 def train_local(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
-
-    print("train")
 
     if user_pk:
         try:
@@ -1021,21 +1046,22 @@ def monitor_cluster_jobs(**kwargs):
             print(job.cluster_hostname + ':' + job.job_id + ' ' +job.last_known_state)
             if state_changed:
                 job.save()
-            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state or job.job_id=='':
-                job.is_finished = True
-                job.ocr_model.training = False
+            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state or 'OUT_OF_MEMORY' in job.last_known_state or job.job_id=='':
                 try:
                     best_version_path = job.download_result(connection)
                     shutil.copy(best_version_path, job.ocr_model.file.path)
-                    job.ocr_model.training_accuracy = job.best_accuracy(connection)
+                    # job.ocr_model.training_accuracy = job.best_accuracy(connection)
                 except:
                     print('Error occured in retrieving data')
                 finally:
+                    job.ocr_model.training_accuracy = job.best_accuracy(connection)
+                    job.is_finished = True
+                    job.ocr_model.training = False
                     job.ocr_model.save()
                     job.save()
                     jobs_to_delete.append(job_name)
 
-
+    
         for job_name in jobs_to_delete:
             del jobs[job_name]
 

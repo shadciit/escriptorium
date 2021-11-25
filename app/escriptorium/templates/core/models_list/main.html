@@ -6,6 +6,24 @@
 <h2>{% trans "My Models" %}</h2>
 {% include 'core/models_list/table.html' %}
 {% endblock %}
+
 {% block scripts %}
-    {% include 'core/models_list/scripts.html' %}
+<script type="text/javascript">
+    'use strict';
+    {% if user.onboarding %}
+     const ONBOARDING_PAGE  = "onboarding_models";
+    {% endif %}
+</script>
+
+{{ block.super }}
+<script type="text/javascript">
+'use strict';
+$(document).ready(function() {
+  // join the ws room
+  {% if document.pk %}joinDocumentRoom('{{document.pk}}');{% endif %}
+  bootModels();
+});
+</script>
+
+<p>document pk : {% if document.pk %} {{document.pk}} {% else %} None {% endif %}</p>
 {% endblock %}

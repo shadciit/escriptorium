@@ -1427,7 +1427,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
     def request_segmentation_training(self, connection, gt_local_path):
         self.__request_training(connection, gt_local_path, self.slurm_segmenter_train_file)
 
-    def request_recognization_training(self, connection, gt_local_path):
+    def request_recognition_training(self, connection, gt_local_path):
         self.__request_training(connection, gt_local_path, self.slurm_recognizer_train_file)
 
     def __scontrol(self, connection):
@@ -1442,6 +1442,8 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
         return res.stdout.split('\n')[2].strip()
 
     def update_state(self, connection):
+        if self.job_id == '':
+            return False
         new_state = None
         try:
             new_state = self.__scontrol(connection)
@@ -1466,9 +1468,16 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
                     pass
             best_model_number = line.split('train_output_')[1].split('.')[0]
         with open(local_path) as f:
-            for line in f:
-                if 'Accuracy report ('+best_model_number+')' in line:
-                    return float(line.split('accuracy: ')[1])
+            if self.ocr_model.job == self.ocr_model.MODEL_JOB_SEGMENT:
+                for line in f:
+                    if 'Accuracy report ('+best_model_number+')' in line:
+                        return float(line.split('accuracy: ')[1])
+            if self.ocr_model.job == self.ocr_model.MODEL_JOB_RECOGNIZE:
+                for line in f:
+                    if 'Accuracy report ('+best_model_number+')' in line:
+                        res = float(line.split(')')[1].strip().split(' ')[0])
+                        print(res)
+                        return res
         raise Exception('Unable to read accuracy')
 
     def cancel(self, connection):
