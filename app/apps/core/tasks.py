@@ -1050,11 +1050,10 @@ def monitor_cluster_jobs(**kwargs):
                 try:
                     best_version_path = job.download_result(connection)
                     shutil.copy(best_version_path, job.ocr_model.file.path)
-                    # job.ocr_model.training_accuracy = job.best_accuracy(connection)
+                    job.ocr_model.training_accuracy = job.best_accuracy(connection)
                 except:
                     print('Error occured in retrieving data')
                 finally:
-                    job.ocr_model.training_accuracy = job.best_accuracy(connection)
                     job.is_finished = True
                     job.ocr_model.training = False
                     job.ocr_model.save()
