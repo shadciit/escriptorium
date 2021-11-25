@@ -279,6 +279,7 @@ class GroupOwner(models.Model):
 
 class QuotaEvent(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quota_events')
+    # reached_disk_storage is to be defined in Mb
     reached_disk_storage = models.PositiveIntegerField(null=True, blank=True)
     reached_cpu = models.PositiveIntegerField(null=True, blank=True)
     reached_gpu = models.PositiveIntegerField(null=True, blank=True)

@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand
 from django.utils.translation import gettext as _
 
 from escriptorium.utils import send_email
-from users.models import QuotaEvent, User
+from users.models import MEGABYTES_TO_BYTES, QuotaEvent, User
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class Command(BaseCommand):
             gpu_minutes_usage = user.calc_gpu_usage()
             events = QuotaEvent.objects.filter(
                 user=user,
-                reached_disk_storage=None if has_disk_storage else disk_storage_usage,
+                reached_disk_storage=None if has_disk_storage else disk_storage_usage / MEGABYTES_TO_BYTES,
                 reached_cpu=None if has_cpu_minutes else cpu_minutes_usage,
                 reached_gpu=None if has_gpu_minutes else gpu_minutes_usage,
                 sent=True,
@@ -54,7 +54,7 @@ class Command(BaseCommand):
 
             event = QuotaEvent.objects.create(
                 user=user,
-                reached_disk_storage=None if has_disk_storage else disk_storage_usage,
+                reached_disk_storage=None if has_disk_storage else disk_storage_usage / MEGABYTES_TO_BYTES,
                 reached_cpu=None if has_cpu_minutes else cpu_minutes_usage,
                 reached_gpu=None if has_gpu_minutes else gpu_minutes_usage
             )
