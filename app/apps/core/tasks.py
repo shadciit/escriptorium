@@ -261,10 +261,10 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         model.save()
         
 
-        send_event('document', document_pk, "training:statechange",{
-            "jobid": "Unknown",
-            "state": "Sending"
-        })
+        # send_event('document', document_pk, "training:statechange",{
+        #     "jobid": "Unknown",
+        #     "state": "Sending"
+        # })
 
         # jobid = job.request_segmenter_training(filepath)
 
@@ -281,10 +281,10 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
 
         #time.sleep(10)
 
-        send_event('document', document_pk, "training:statechange",{
-            "jobid": job.job_id,
-            "state": job.last_known_state
-        })
+        # send_event('document', document_pk, "training:statechange",{
+        #     "jobid": job.job_id,
+        #     "state": job.last_known_state
+        # })
 
 
         # save job in bdd 
@@ -332,8 +332,12 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         document.submitting_job = False
         document.save()
 
-        send_event('document', document_pk, "training:done", {
+        send_event('document', document_pk, "training:senddone", {
             "id": model.pk,
+            "jobid" : job.job_id,
+            "state": job.last_known_state,
+            "jobuuid": job.job_uuid,
+            "is_finished": str(job.is_finished)
         })
     
 
@@ -701,11 +705,15 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
         document.submitting_job = False
         document.save()
 
-        send_event('document', document.pk, "training:done", {
+        send_event('document', document_pk, "training:senddone", {
             "id": model.pk,
+            "jobid" : job.job_id,
+            "state": job.last_known_state,
+            "jobuuid": job.job_uuid,
+            "is_finished": str(job.is_finished)
         })
 
-    pass
+
 
 def train_(qs, document, transcription, model=None, user=None):
 
@@ -1045,6 +1053,12 @@ def monitor_cluster_jobs(**kwargs):
             state_changed = job.update_state(connection)
             print(job.cluster_hostname + ':' + job.job_id + ' ' +job.last_known_state)
             if state_changed:
+                for doc in job.ocr_model.documents.all():
+                    send_event('document', doc.pk, "training:statechange",{
+                                "id": job.ocr_model.pk,
+                                "state": job.last_known_state,
+                                "is_finished": str(job.is_finished)
+                    })
                 job.save()
             if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state or 'OUT_OF_MEMORY' in job.last_known_state or job.job_id=='':
                 try:
@@ -1054,10 +1068,19 @@ def monitor_cluster_jobs(**kwargs):
                 except:
                     print('Error occured in retrieving data')
                 finally:
+
                     job.is_finished = True
                     job.ocr_model.training = False
                     job.ocr_model.save()
                     job.save()
+
+                    for doc in job.ocr_model.documents.all():
+                        send_event('document', doc.pk, "training:done", {
+                            "id": job.ocr_model.pk,
+                            "accuracy": str(job.ocr_model.training_accuracy),
+                            "is_finished": str(job.is_finished)
+                        })
+
                     jobs_to_delete.append(job_name)
 
     

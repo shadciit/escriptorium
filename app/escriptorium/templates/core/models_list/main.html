@@ -20,7 +20,8 @@
 'use strict';
 $(document).ready(function() {
   // join the ws room
-  {% if document.pk %}joinDocumentRoom('{{document.pk}}');{% endif %}
+  //{% if document.pk %}joinDocumentRoom('{{document.pk}}');{% endif %}
+  joinDocumentRoom('{{document.pk}}');
   bootModels();
 });
 </script>

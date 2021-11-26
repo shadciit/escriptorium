@@ -58,7 +58,7 @@
         <button type="submit" class="cancel-training btn btn-sm btn-warning {% if not model.training %}hide{% endif %}" title="{% trans "Cancel training" %}"><i class="fas fa-ban"></i></button>
       </form>
     </td>
-    <td id="accuracy-{{model.pk}}" data-value="{{ model.training_accuracy }}" title="{% trans "Accuracy" %}">{% if model.accuracy_percent %}{{ model.accuracy_percent|floatformat:1 }}%{% else %}-{% endif %}</td>
+    <td class="accuracy" id="accuracy-{{model.pk}}" data-value="{{ model.training_accuracy }}" title="{% trans "Accuracy" %}">{% if model.accuracy_percent %}{{ model.accuracy_percent|floatformat:1 }}%{% else %}-{% endif %}</td>
     <td title="{% trans "Number of errors/Total number of characters" %}">{% if model.training_total %}{{ model.training_errors }}/{{model.training_total}}{% else %}-{% endif %}</td>
     <td>
       {% if model.owner == request.user %}
@@ -94,8 +94,8 @@
         </span>
         {% endif %}
 
-        {% if model.owner == request.user and not model.training %}
-        <span title="{% trans "Delete model" %}">
+        {% if model.owner == request.user %}
+        <span class="delete-model {% if model.training %}hide{% endif %}" title="{% trans "Delete model" %}">
           <form method="POST" class="inline-form" action="{% url 'model-delete' model.pk %}?next={{request.path}}">
             {% csrf_token %}
             <button type="submit" class="btn btn-sm btn-danger" ">
@@ -105,19 +105,19 @@
         </span>
       {% endif %}
     </td>
-    <td>
+    <td class="job-id"> 
       {% if not model.cluster_job.job_id %}
       Unknown
       {% else %}
       {{ model.cluster_job.job_id }}
       {% endif %}
     </td>
-    <td>
+    <td class="job-state">
       {% if model.cluster_job.last_known_state == "PENDING" %}
       <p style="color:blue">
       {% elif model.cluster_job.last_known_state == "RUNNING" %}
       <p style="color:green">
-        {% elif model.cluster_job.last_known_state == "CANCELLED" or model.cluster_job.last_known_state == "OUT_OF_MEMORY" or model.cluster_job.last_known_state == "TIMEOUT" or model.cluster_job.last_known_state == "Unsubmitted"%}
+        {% elif model.cluster_job.last_known_state == "CANCELLED" or model.cluster_job.last_known_state == "OUT_OF_MEMORY" or model.cluster_job.last_known_state == "TIMEOUT"%}
         <p style="color:red">
       {% else %}
       <p>
@@ -125,10 +125,10 @@
       {{model.cluster_job.last_known_state}}
       </p>
     </td>
-    <td>
+    <td class="job-uuid">
       {{model.cluster_job.job_uuid}}
     </td>
-    <td>
+    <td class="job-is-finished">
       {{model.cluster_job.is_finished}}
     </td>
   </tr>

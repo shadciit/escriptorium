@@ -500,7 +500,7 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     //     $('#train-selected').addClass('blink');
     //     $('#cancel-training').show();
     // });
-    $alertsContainer.on('training:done', function(ev, data) {
+    $alertsContainer.on('training:senddone', function(ev, data) {
         $('#train-selected').removeClass('blink');
         // $('#train-selected').prop('disabled', false);
         // $('#cancel-training').hide();
