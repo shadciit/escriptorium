@@ -122,12 +122,11 @@ class DocumentViewSet(ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def tasks(self, request):
-        if request.user.is_staff:
-            documents = Document.objects.all()
-        else:
-            documents = Document.objects.for_user(request.user)
+        extra = {}
+        if not request.user.is_staff:
+            extra = {"owner": request.user}
 
-        documents = documents.filter(reports__isnull=False).distinct()
+        documents = Document.objects.filter(reports__isnull=False, **extra).distinct()
 
         page = self.paginate_queryset(documents)
         if page is not None:
