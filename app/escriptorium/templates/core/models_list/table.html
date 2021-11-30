@@ -117,7 +117,7 @@
       <p style="color:blue">
       {% elif model.cluster_job.last_known_state == "RUNNING" %}
       <p style="color:green">
-        {% elif model.cluster_job.last_known_state == "CANCELLED" or model.cluster_job.last_known_state == "OUT_OF_MEMORY" or model.cluster_job.last_known_state == "TIMEOUT"%}
+        {% elif model.cluster_job.last_known_state == "CANCELLED" or model.cluster_job.last_known_state == "OUT_OF_MEMORY" or model.cluster_job.last_known_state == "TIMEOUT" or model.cluster_job.last_known_state == "FAILED"%}
         <p style="color:red">
       {% else %}
       <p>

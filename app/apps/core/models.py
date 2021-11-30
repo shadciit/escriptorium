@@ -1393,6 +1393,10 @@ class OcrModelRight(models.Model):
 
 
 class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
+    """
+    Represents a job that is runned on a cluster, it is linked to a user on the cluster, a django user
+    and an ocr model
+    """
     django_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cluster_jobs')
     ocr_model = models.ForeignKey(OcrModel, on_delete=models.SET_NULL, null=True, related_name='cluster_jobs')
     cluster_username = models.CharField(max_length=256)
@@ -1418,7 +1422,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
             connection.put(gt_local_path, workdir+'/'+gt_filename)
             with connection.cd(workdir):
                 connection.run('unzip '+gt_filename+' -d dataset', hide=True)
-                connection.run('cp ../'+slurm_file+' .', hide=True)
+                connection.run('cp ../'+slurm_file+'.template '+slurm_file, hide=True)
                 res = connection.run('sbatch '+slurm_file, hide=True)
                 self.job_id = res.stdout.split()[-1]
             self.update_state(connection)
@@ -1479,6 +1483,20 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
                         print(res)
                         return res
         raise Exception('Unable to read accuracy')
+
+    def clean_remote_files(self, connection):
+        workdir = self.base_workdir + '/' + self.job_uuid
+        with connection.cd(workdir):
+            connection.run('rm '+self.job_id+'.out', hide=True, warn=True)
+            connection.run('rm *.sh', hide=True, warn=True)
+            connection.run('rm *.zip', hide=True, warn=True)
+            connection.run('rm dataset/*.png', hide=True, warn=True)
+            connection.run('rm dataset/*.xml', hide=True, warn=True)
+            connection.run('rm *.mlmodel', hide=True, warn=True)
+            connection.run('rm .mlmodel', hide=True, warn=True)
+            connection.run('rmdir dataset', hide=True, warn=True)
+        connection.run('rmdir '+workdir, hide=True)
+
 
     def cancel(self, connection):
         connection.run('scancel '+self.job_id, hide=True)

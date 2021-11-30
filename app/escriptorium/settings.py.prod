@@ -17,6 +17,11 @@ from kombu import Queue
 from django.utils.translation import gettext_lazy as _
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 
+CLUSTER_USERNAME = ''
+CLUSTER_HOSTNAME = ''
+BASE_WORKDIR = ''
+CONNECT_KWARGS = {}
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))

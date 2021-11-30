@@ -173,7 +173,8 @@ def make_segmentation_training_data(part):
 def segtrain(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
     segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk, **kwargs)
 
-
+# This function asks for execution of a segtrain job on a cluster
+# The monitoring of the evolution of this job is delegated to the task monitor_cluster_jobs
 def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
     from imports.tasks import write_to_file
 
@@ -198,7 +199,6 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
     DocumentPart = apps.get_model('core', 'DocumentPart')
     OcrModel = apps.get_model('core', 'OcrModel')
     Transcription = apps.get_model('core', 'Transcription')
-
     model = OcrModel.objects.get(pk=model_pk)
 
     try:
@@ -220,115 +220,45 @@ def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwar
         })
         qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')
 
-        # Writing ground truth data on disk
-        # Seems OK to write segments geometry
-        # CONTENT is empty in the xml, normal while doing segmentation ?
         document = Document.objects.get(pk=document_pk)
         document.submitting_job = True
         document.save()
-        #transcription = Transcription.objects.get(document=document, pk=transcription_pk)
+
         base_filename = "export_doc%d_%s_%s_%s" % (
             document.pk,
             slugify(document.name).replace('-', '_')[:32],
             "alto",
             datetime.now().strftime('%Y%m%d%H%M'))
-
         
         gt_filename = "%s.zip" % base_filename
         gt_filepath = os.path.join(user.get_document_store_path(), gt_filename)
-
         write_to_file(gt_filepath, qs, document)
 
         print("Written "+gt_filepath)
 
-        # job = core.clusterjob.ClusterJob(username='kuenzlip', 
-        #                             cluster_addr='login1.yggdrasil.hpc.unige.ch', 
-        #                             workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
-
         ClusterJob = apps.get_model('core', 'ClusterJob')
-
-
         job = ClusterJob(django_user=user, 
                         ocr_model=model,
-                        cluster_username='kuenzlip',
-                        cluster_hostname='login1.yggdrasil.hpc.unige.ch',
-                        base_workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
+                        cluster_username=settings.CLUSTER_USERNAME,
+                        cluster_hostname=settings.CLUSTER_HOSTNAME,
+                        base_workdir=settings.BASE_WORKDIR)
 
         job.save()
-        
         model.cluster_job = job
- 
         model.save()
-        
-
-        # send_event('document', document_pk, "training:statechange",{
-        #     "jobid": "Unknown",
-        #     "state": "Sending"
-        # })
-
-        # jobid = job.request_segmenter_training(filepath)
-
-        connect_kwargs = {
-            'passphrase': os.getenv('SSH_PASSPHRASE')
-        }
 
         connection = Connection(host=job.cluster_hostname,
                                 user=job.cluster_username,
-                                connect_kwargs=connect_kwargs)
+                                connect_kwargs=settings.CONNECT_KWARGS)
                                 
-
         job.request_segmentation_training(connection, gt_filepath)
-
-        #time.sleep(10)
-
-        # send_event('document', document_pk, "training:statechange",{
-        #     "jobid": job.job_id,
-        #     "state": job.last_known_state
-        # })
-
-
-        # save job in bdd 
         job.save()
 
-        # launch a monitoring task if necessary, there should be no race condition
-        # monitoring_task_counter = redis_.incr('monitoring-task-counter')
-        # if monitoring_task_counter == 1:
-        #     print('Launching a new monitoring task')
-        #     redis_.expire('monitoring-task-counter', 30)
-        #     monitor_cluster_jobs.delay()
-        # else:
-        # else write the task in redis
         print('writing in redis ', job.cluster_hostname+':'+job.job_id)
         redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
-
         print('Done submitting segtrain job')
-        
-
-        # while not job.task_is_complete():
-        #     state = job.current_state()
-        #     send_event('document', document_pk, "training:statechange",{
-        #         "jobid": jobid,
-        #         "state": state
-        #     })
-        #     time.sleep(10)
-        
-        # send_event('document', document_pk, "training:statechange",{
-        #     "jobid": jobid,
-        #     "state": "Finished"
-        # })
-
-        # print('Training done')
-
-        # best_version = job.result_path()
-        # model.training_accuracy = job.best_accuracy()
-
-        # shutil.copy(best_version, model.file.path)
 
     finally:
-        # pass        
-        # model.training = False
-        # model.save()
-
         document.submitting_job = False
         document.save()
 
@@ -567,7 +497,8 @@ def recalculate_masks(instance_pk, user_pk=None, only=None, **kwargs):
 def train(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
     train_cluster(task, part_pks, transcription_pk, model_pk, user_pk, **kwargs)
 
-
+# This function asks for execution of a train job on a cluster
+# The monitoring of the evolution of this job is delegated to the task monitor_cluster_jobs
 def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
     from imports.tasks import write_to_file
 
@@ -589,7 +520,6 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
 
     try:
         model = OcrModel.objects.get(pk=model_pk)
-
         load = None
         try:
             load = model.file.path
@@ -607,26 +537,17 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
         model.training = True
         model.save()
         
-        # document = transcription.document
         transcription = Transcription.objects.get(pk=transcription_pk)
         document_pk = transcription.document.pk
         document = Document.objects.get(pk=document_pk)
         document.submitting_job = True
         document.save()
-        
-        # print("transcription_pk : ", transcription_pk)
-        # print("document_pk : ", document_pk)
 
         send_event('document', document_pk, "training:start", {
             "id": model.pk,
         })
-        # qs = (LineTranscription.objects
-        #       .filter(transcription=transcription,
-        #               line__document_part__pk__in=part_pks)
-        #       .exclude(Q(content='') | Q(content=None)))
-        qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')
 
-        
+        qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')        
         base_filename = "export_doc%d_%s_%s_%s" % (
             document.pk,
             slugify(document.name).replace('-', '_')[:32],
@@ -636,72 +557,31 @@ def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kw
         
         gt_filename = "%s.zip" % base_filename
         gt_filepath = os.path.join(user.get_document_store_path(), filename)
-
         write_to_file(gt_filepath, qs, document, transcription=transcription)
 
         print("Written "+gt_filepath)
         ClusterJob = apps.get_model('core', 'ClusterJob')
-
         job = ClusterJob(django_user=user, 
                         ocr_model=model,
-                        cluster_username='kuenzlip',
-                        cluster_hostname='login1.yggdrasil.hpc.unige.ch',
-                        base_workdir='/home/users/k/kuenzlip/celery-workdir/ketos/')
-
+                        cluster_username=settings.CLUSTER_USERNAME,
+                        cluster_hostname=settings.CLUSTER_HOSTNAME,
+                        base_workdir=settings.BASE_WORKDIR)
         job.save()
-        
         model.cluster_job = job
- 
         model.save()
-
-        connect_kwargs = {
-            'passphrase': os.getenv('SSH_PASSPHRASE')
-        }
 
         connection = Connection(host=job.cluster_hostname,
                                 user=job.cluster_username,
-                                connect_kwargs=connect_kwargs)
+                                connect_kwargs=settings.CONNECT_KWARGS)
 
         job.request_recognition_training(connection, gt_filepath)
-
         job.save()
 
         print('writing in redis ', job.cluster_hostname+':'+job.job_id)
         redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
-
         print('Done submitting train job')
 
-        # while not job.task_is_complete():
-        #     time.sleep(10)
-        
-        # print('Training done')
-
-        # best_version = job.result_path()
-
-        # print('best version file : '+best_version)
-
-        # model.training_accuracy = job.best_accuracy()
-
-        # shutil.copy(best_version, model.file.path)
-
-
-    # except Exception as e:
-    #     send_event('document', document.pk, "training:error", {
-    #         "id": model.pk,
-    #     })
-    #     if user:
-    #         user.notify(_("Something went wrong during the training process!"),
-    #                     id="training-error", level='danger')
-    #     logger.exception(e)
-    # else:
-    #     if user:
-    #         user.notify(_("Training finished!"),
-    #                     id="training-success",
-    #                     level='success')
     finally:
-        # model.training = False
-        # model.save()
-
         document.submitting_job = False
         document.save()
 
@@ -1010,42 +890,26 @@ def launch_monitor_cluster_jobs(**kwargs):
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
 def monitor_cluster_jobs(**kwargs):
-    #jobs = []
+
     # load unfinished jobs from bdd
     ClusterJob = apps.get_model('core', 'ClusterJob')
-
     jobs = {}
     jobs_queryset = ClusterJob.objects.filter(is_finished=False)
     jobs_queryset_list = list(jobs_queryset)
-    #print('job queryset list : ', jobs_queryset_list)
     for job in jobs_queryset_list:
         jobs[job.cluster_hostname+':'+job.job_id] = job
-
     print(jobs)
 
     connections = establish_connections(jobs, {})
 
-    #for i in range(1):
+    # Needs refactoring
     while True:
-
-        #print('Monitoring !')
-
-
-        # pop new jobs to monitor from redis
-
         # pull new jobs from bdd into in memory job pool
-
         new_jobs = new_jobs_to_monitor()
         jobs.update(new_jobs)
         connections = establish_connections(new_jobs, connections)
-
-        
-
         print(str(len(jobs))+' jobs monitored :')
-
         jobs_to_delete = []
-
-        #print(jobs)
         for job_name in jobs:
             job = jobs[job_name]
             connection_name = job.cluster_hostname+':'+job.cluster_username
@@ -1060,46 +924,35 @@ def monitor_cluster_jobs(**kwargs):
                                 "is_finished": str(job.is_finished)
                     })
                 job.save()
-            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state or 'OUT_OF_MEMORY' in job.last_known_state or job.job_id=='':
+            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state or 'OUT_OF_MEMORY' in job.last_known_state or 'FAILED' in job.last_known_state or job.job_id=='':
                 try:
                     best_version_path = job.download_result(connection)
                     shutil.copy(best_version_path, job.ocr_model.file.path)
                     job.ocr_model.training_accuracy = job.best_accuracy(connection)
-                except:
+                except Exception as e:
                     print('Error occured in retrieving data')
+                    print(e)
                 finally:
-
                     job.is_finished = True
                     job.ocr_model.training = False
                     job.ocr_model.save()
                     job.save()
-
                     for doc in job.ocr_model.documents.all():
                         send_event('document', doc.pk, "training:done", {
                             "id": job.ocr_model.pk,
                             "accuracy": str(job.ocr_model.training_accuracy),
                             "is_finished": str(job.is_finished)
                         })
-
                     jobs_to_delete.append(job_name)
+                    try:
+                        job.clean_remote_files(connection)
+                    except Exception as e:
+                        print('Error occured in cleaning remote files')
+                        print(e)
 
-    
+
         for job_name in jobs_to_delete:
             del jobs[job_name]
 
-        # print(str(len(connections)) + ' connections established :')
-        # for key in connections:
-        #     print(key)
-
-
-        # request cluster for job states
-
-        # update job state in bdd if necessary
-
-        # download results if necessary (and if possible)
-
-        # remove jobs from in memory job pool if necessary
-
-        # redis_.expire('monitoring-task-counter', 30)
         time.sleep(10)
 

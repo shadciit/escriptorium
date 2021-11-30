@@ -63,7 +63,7 @@ export function bootModels() {
             $('.job-state', $row).html('<p style="color:blue">PENDING</p>');
         }else if(data.state == "RUNNING"){
             $('.job-state', $row).html('<p style="color:green">RUNNING</p>');
-        }else if(data.state == "CANCELLED" || data.state == "OUT_OF_MEMORY" || data.state == "TIMEOUT"){
+        }else if(data.state == "CANCELLED" || data.state == "OUT_OF_MEMORY" || data.state == "TIMEOUT" || data.state == "FAILED"){
             $('.job-state', $row).html('<p style="color:red">'+data.state+'</p>');
         }else{
             $('.job-state', $row).html('<p>'+data.state+'</p>');
@@ -79,7 +79,7 @@ export function bootModels() {
             $('.job-state', $row).html('<p style="color:blue">PENDING</p>');
         }else if(data.state == "RUNNING"){
             $('.job-state', $row).html('<p style="color:green">RUNNING</p>');
-        }else if(data.state == "CANCELLED" || data.state == "OUT_OF_MEMORY" || data.state == "TIMEOUT"){
+        }else if(data.state == "CANCELLED" || data.state == "OUT_OF_MEMORY" || data.state == "TIMEOUT" || data.state == "FAILED"){
             $('.job-state', $row).html('<p style="color:red">'+data.state+'</p>');
         }else{
             $('.job-state', $row).html('<p>'+data.state+'</p>');
