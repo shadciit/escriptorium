@@ -1410,8 +1410,8 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
     is_finished = models.BooleanField(default=False)
     job_id = models.CharField(max_length=256, default='')
 
-    slurm_segmenter_train_file = 'segtrain_gpu_sub.sh'
-    slurm_recognizer_train_file = 'train_gpu_sub.sh'
+    slurm_segmenter_train_file = settings.SLURM_SEGMENTER_TRAIN_FILE 
+    slurm_recognizer_train_file = settings.SLURM_RECOGNIZER_TRAIN_FILE 
 
     def __request_training(self, connection, gt_local_path, slurm_file):
         if self.job_id == '':
@@ -1422,7 +1422,7 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
             connection.put(gt_local_path, workdir+'/'+gt_filename)
             with connection.cd(workdir):
                 connection.run('unzip '+gt_filename+' -d dataset', hide=True)
-                connection.run('cp ../'+slurm_file+'.template '+slurm_file, hide=True)
+                connection.put('apps/core/cluster_scripts/'+slurm_file, workdir+'/'+slurm_file)
                 res = connection.run('sbatch '+slurm_file, hide=True)
                 self.job_id = res.stdout.split()[-1]
             self.update_state(connection)
@@ -1486,16 +1486,17 @@ class ClusterJob(ExportModelOperationsMixin('ClusterJob'), models.Model):
 
     def clean_remote_files(self, connection):
         workdir = self.base_workdir + '/' + self.job_uuid
-        with connection.cd(workdir):
-            connection.run('rm '+self.job_id+'.out', hide=True, warn=True)
-            connection.run('rm *.sh', hide=True, warn=True)
-            connection.run('rm *.zip', hide=True, warn=True)
-            connection.run('rm dataset/*.png', hide=True, warn=True)
-            connection.run('rm dataset/*.xml', hide=True, warn=True)
-            connection.run('rm *.mlmodel', hide=True, warn=True)
-            connection.run('rm .mlmodel', hide=True, warn=True)
-            connection.run('rmdir dataset', hide=True, warn=True)
-        connection.run('rmdir '+workdir, hide=True)
+        if self.job_uuid != '':
+            with connection.cd(workdir):
+                connection.run('rm '+self.job_id+'.out', hide=True, warn=True)
+                connection.run('rm *.sh', hide=True, warn=True)
+                connection.run('rm *.zip', hide=True, warn=True)
+                connection.run('rm dataset/*.png', hide=True, warn=True)
+                connection.run('rm dataset/*.xml', hide=True, warn=True)
+                connection.run('rm *.mlmodel', hide=True, warn=True)
+                connection.run('rm .mlmodel', hide=True, warn=True)
+                connection.run('rmdir dataset', hide=True, warn=True)
+            connection.run('rmdir '+workdir, hide=True)
 
 
     def cancel(self, connection):
