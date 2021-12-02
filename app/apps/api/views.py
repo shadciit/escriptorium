@@ -1,6 +1,7 @@
 import json
 import logging
 
+from celery.task.control import revoke
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
@@ -56,6 +57,7 @@ from core.tasks import recalculate_masks
 from users.models import User
 from imports.forms import ImportForm, ExportForm
 from imports.parsers import ParseError
+from reporting.models import TaskReport
 from versioning.models import NoChangeException
 from reporting.models import TaskReport
 
@@ -168,6 +170,44 @@ class DocumentViewSet(ModelViewSet):
 
         serializer = DocumentTasksSerializer(documents, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def cancel_tasks(self, request, pk=None):
+        try:
+            document = Document.objects.get(pk=pk)
+        except Document.DoesNotExist:
+            return Response(
+                status=status.HTTP_404_NOT_FOUND,
+                data={'status': 'Not Found', 'error': f"Document with pk {pk} doesn't exist"}
+            )
+
+        if not request.user.is_staff and document.owner != request.user:
+            raise PermissionDenied
+
+        # Revoking all pending/running tasks for the specified document
+        count = 0
+        for report in document.reports.filter(workflow_state=TaskReport.WORKFLOW_STATE_STARTED):
+            revoke(report.task_id, terminate=True)
+            count += 1
+
+        # Executing all the glue code outside the real revoking of tasks to maintain db objects
+        # up-to-date with the real state of the app (e.g.: we stopped a training, we need to set
+        # the model.training attribute to False)
+        for part in document.parts.all():
+            part.cancel_tasks(revoke_task=False)  # We already revoked the Celery task
+            part.refresh_from_db()
+            del part.tasks  # reset cached property
+
+        for model in document.ocr_models.filter(training=True):
+            model.cancel_training(revoke_task=False)  # We already revoked the Celery task
+        
+        for doc_import in document.documentimport_set.all():
+            doc_import.cancel(revoke_task=False)  # We already revoked the Celery task
+
+        return Response({
+            'status': 'canceled',
+            'details': f'Canceled {count} running tasks linked to document {document.name}.'
+        })
 
     @action(detail=True, methods=['post'])
     def imports(self, request, pk=None):

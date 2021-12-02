@@ -644,7 +644,7 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
         except (KeyError, TypeError):
             return False
 
-    def cancel_tasks(self):
+    def cancel_tasks(self, revoke_task=True):
         uncancelable = ['core.tasks.convert',
                         'core.tasks.lossless_compression',
                         'core.tasks.generate_part_thumbnails']
@@ -654,7 +654,7 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
 
         for task_name, task in self.tasks.items():
             if task_name not in uncancelable:
-                if 'task_id' in task:  # if not, it is still pending
+                if revoke_task and 'task_id' in task:  # if not, it is still pending
                     revoke(task['task_id'], terminate=True)
                 redis_.set('process-%d' % self.pk, json.dumps({task_name: {"status": "canceled"}}))
 
@@ -1386,19 +1386,24 @@ class OcrModel(ExportModelOperationsMixin('OcrModel'), Versioned, models.Model):
                     part_pks=list(parts_qs.values_list('pk', flat=True)),
                     user_pk=user and user.pk or None)
 
-    def cancel_training(self):
-        try:
-            if self.job == self.MODEL_JOB_RECOGNIZE:
-                task_id = json.loads(redis_.get('training-%d' % self.pk))['task_id']
-            elif self.job == self.MODEL_JOB_SEGMENT:
-                task_id = json.loads(redis_.get('segtrain-%d' % self.pk))['task_id']
-        except (TypeError, KeyError):
-            raise ProcessFailureException(_("Couldn't find the training task."))
-        else:
-            if task_id:
-                revoke(task_id, terminate=True)
-                self.training = False
-                self.save()
+    def cancel_training(self, revoke_task=True):
+        task_id = None
+
+        # We don't need to search for the task_id if the training task was already revoked
+        if revoke_task:
+            try:
+                if self.job == self.MODEL_JOB_RECOGNIZE:
+                    task_id = json.loads(redis_.get('training-%d' % self.pk))['task_id']
+                elif self.job == self.MODEL_JOB_SEGMENT:
+                    task_id = json.loads(redis_.get('segtrain-%d' % self.pk))['task_id']
+            except (TypeError, KeyError):
+                raise ProcessFailureException(_("Couldn't find the training task."))
+
+        if task_id:
+            revoke(task_id, terminate=True)
+
+        self.training = False
+        self.save()
 
     # versioning
     def pack(self, **kwargs):
