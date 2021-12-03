@@ -6,12 +6,15 @@ So no need to test the content unless there is some magic in the serializer.
 
 import unittest
 import os
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.urls import reverse
+from unittest.mock import patch
 
 from core.models import Block, Line, Transcription, LineTranscription, OcrModel
 from core.tests.factory import CoreFactoryTestCase
+from reporting.models import TaskReport
 
 
 class UserViewSetTestCase(CoreFactoryTestCase):
@@ -322,6 +325,120 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
                 'last_started_task': other_doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             },
         ])
+
+    def test_cancel_all_tasks_for_document_not_found(self):
+        self.client.force_login(self.doc.owner)
+        with self.assertNumQueries(3):
+            resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': 2000}))
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json(), {
+            'error': "Document with pk 2000 doesn't exist",
+            'status': 'Not Found'
+        })
+
+    def test_cancel_all_tasks_for_document_forbidden(self):
+        # A normal user can't stop all tasks on a document he don't own
+        user = self.factory.make_user()
+        self.client.force_login(user)
+        with self.assertNumQueries(4):
+            resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json(), {
+            'detail': 'You do not have permission to perform this action.'
+        })
+
+    @patch('api.views.revoke')
+    def test_cancel_all_tasks_for_document(self, mock_revoke):
+        self.client.force_login(self.doc.owner)
+
+        # Simulating a training task
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report")
+        report.start(report.pk, "core.tasks.train")
+        model = self.factory.make_model(self.doc, job=OcrModel.MODEL_JOB_SEGMENT)
+        model.training = True
+        model.save()
+
+        # Asserting that there is a running task on self.doc
+        resp = self.client.get(reverse('api:document-tasks'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'], [{
+            'pk': self.doc.pk,
+            'name': self.doc.name,
+            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6},
+            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        }])
+
+        # Stopping all tasks on self.doc
+        mock_revoke.side_effect = lambda x, terminate=False: report.error('Canceled by celery')
+        with self.assertNumQueries(12):
+            resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {
+            'status': 'canceled',
+            'details': f'Canceled 1 running tasks linked to document {self.doc.name}.'
+        })
+        mock_revoke.assert_called_once()
+
+        # Assert that there is no more tasks running on self.doc
+        resp = self.client.get(reverse('api:document-tasks'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'], [{
+            'pk': self.doc.pk,
+            'name': self.doc.name,
+            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 1, 'Finished': 6},
+            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        }])
+        model.refresh_from_db()
+        self.assertEqual(model.training, False)
+
+    @patch('api.views.revoke')
+    def test_cancel_all_tasks_for_document_staff_user(self, mock_revoke):
+        # This user doesn't own self.doc but can cancel all of its tasks since he is a staff member
+        user = self.factory.make_user()
+        user.is_staff = True
+        user.save()
+        self.client.force_login(user)
+
+        # Simulating a training task
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report")
+        report.start(report.pk, "core.tasks.train")
+        model = self.factory.make_model(self.doc, job=OcrModel.MODEL_JOB_SEGMENT)
+        model.training = True
+        model.save()
+
+        # Asserting that there is a running task on self.doc
+        resp = self.client.get(reverse('api:document-tasks'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'], [{
+            'pk': self.doc.pk,
+            'name': self.doc.name,
+            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6},
+            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        }])
+
+        # Stopping all tasks on self.doc
+        mock_revoke.side_effect = lambda x, terminate=False: report.error('Canceled by celery')
+        with self.assertNumQueries(11):
+            resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {
+            'status': 'canceled',
+            'details': f'Canceled 1 running tasks linked to document {self.doc.name}.'
+        })
+        mock_revoke.assert_called_once()
+
+        # Assert that there is no more tasks running on self.doc
+        resp = self.client.get(reverse('api:document-tasks'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'], [{
+            'pk': self.doc.pk,
+            'name': self.doc.name,
+            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 1, 'Finished': 6},
+            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        }])
+        model.refresh_from_db()
+        self.assertEqual(model.training, False)
+
 
 
 class PartViewSetTestCase(CoreFactoryTestCase):
