@@ -157,6 +157,17 @@ class ProfileInfos(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     def get_object(self):
         return self.request.user
 
+    
+class ProfileCluster(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
+    model = User
+    form_class = ProfileForm
+    success_url = '/profile/cluster/'
+    success_message = _('Cluster parameters successfully saved.')
+    template_name = 'users/profile_cluster.html'
+
+    def get_object(self):
+        return self.request.user
+
 
 class ProfileApiKey(LoginRequiredMixin, TemplateView):
     template_name = 'users/profile_api_key.html'

@@ -77,12 +77,12 @@
     {% endif %}
 
     {% if perms.core.can_train %}
-    {% with training_model=document.training_model %}
+    {% with submitting_job=document.submitting_job %}
     <div class="btn-group ml-auto mr-1" role="group">
     <button
       id="train-selected"
       type="button"
-      class="btn btn-sm btn-primary dropdown-toggle {% if has_cpu_minutes_left and has_gpu_minutes_left and has_disk_storage_left and training_model %}blink{% endif %}"
+      class="btn btn-sm btn-primary dropdown-toggle {% if has_cpu_minutes_left and has_gpu_minutes_left and has_disk_storage_left and submitting_job %}blink{% endif %}"
       data-toggle="dropdown"
       {% if not has_cpu_minutes_left %}
         disabled
@@ -93,6 +93,8 @@
       {% elif not has_disk_storage_left %}
         disabled
         title="{% trans 'You don\'t have any disk storage left' %}"
+      {% elif submitting_job %}
+        title="{% trans 'Currently submitting a job' %}"
       {% else %}
         title="{% trans 'Train a segmenter/recognizer model.' %}"
       {% endif %}
@@ -106,11 +108,16 @@
     </div>
     <button
       id="cancel-training"
-      class="btn btn-sm btn-warning {% if not training_model %}hide{% endif %}"
+      class="btn btn-sm btn-warning hide"
       title="{% trans 'Cancel training' %}"
     ><i class="fas fa-ban"></i></button>
     {% endwith %}
     {% endif %}
+    {% with submitting_job=document.submitting_job %}
+      <div id="monitoring" class="{% if not submitting_job %}hide{% endif %}">
+        <span>Submitting job, monitoring from the "Models" tab</span>
+      </div>
+    {% endwith %}
     <button
       id="binarize-selected"
       class="btn btn-sm btn-primary mr-1 ml-auto js-proc-selected"
@@ -202,6 +209,8 @@
   <div class="dropable js-drop"></div>
 </div>
 
+
+
 {# Process wizards #}
 {% include 'core/wizards/import_iiif.html' with proc='import-iiif' %}
 {% include 'core/wizards/import_file.html' with proc='import-xml' %}
@@ -213,6 +222,8 @@
 {% include 'core/wizards/train.html' with proc='train' %}
 {% include 'core/wizards/transcribe.html' with proc='transcribe' %}
 {% endblock %}
+
+
 
 {% block scripts %}
 <script type="text/javascript">

@@ -231,3 +231,52 @@ def document_export(task, file_format, document_pk, part_pks,
                    (user.email,),
                    context={'domain': Site.objects.get_current().domain,
                             'export_uri': rel_path})
+
+
+def write_to_file(filepath, qs, document, transcription=None):
+    with ZipFile(filepath, 'w') as zip_:
+        tplt = loader.get_template('export/alto.xml')
+        for part in qs:
+            zip_.write(part.image.path, part.filename)
+            try:
+                if not transcription:
+                    page = tplt.render({
+                        'valid_block_types': document.valid_block_types.all(),
+                        'valid_line_types': document.valid_line_types.all(),
+                        'part': part,
+                        'blocks': (part.blocks.order_by('order')
+                                    .prefetch_related(
+                                        Prefetch(
+                                            'lines'#,
+                                            # queryset=Line.objects.prefetch_transcription(
+                                            #     transcription))
+                                                )))#,
+
+                        # 'orphan_lines': (part.lines.prefetch_transcription(transcription)
+                        #                     .filter(block=None))
+                    })
+                else:
+                    page = tplt.render({
+                        'valid_block_types': document.valid_block_types.all(),
+                        'valid_line_types': document.valid_line_types.all(),
+                        'part': part,
+                        'blocks': (part.blocks.order_by('order')
+                                    .prefetch_related(
+                                        Prefetch(
+                                            'lines',
+                                            queryset=Line.objects.prefetch_transcription(
+                                            transcription))
+                                                )),
+                        'orphan_lines': (part.lines.prefetch_transcription(transcription)
+                                             .filter(block=None))
+                    })
+
+
+            except Exception as e:
+                print("Skipped {element}({image}) because '{reason}'.".format(
+                            element=part.name, image=part.filename, reason=str(e)
+                        ))
+            else:
+                zip_.writestr('%s.xml' % os.path.splitext(part.filename)[0], page)
+
+        zip_.close()

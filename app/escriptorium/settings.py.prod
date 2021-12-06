@@ -17,6 +17,13 @@ from kombu import Queue
 from django.utils.translation import gettext_lazy as _
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 
+CLUSTER_USERNAME = ''
+CLUSTER_HOSTNAME = ''
+BASE_WORKDIR = ''
+CONNECT_KWARGS = {}
+SLURM_SEGMENTER_TRAIN_FILE = 'segtrain_gpu_sub.sh'
+SLURM_RECOGNIZER_TRAIN_FILE = 'train_gpu_sub.sh'
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -43,7 +50,7 @@ DEBUG = os.getenv('DEBUG', False)
 
 CUSTOM_HOME = os.getenv('CUSTOM_HOME', False) == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['escriptorium.kunzli.net']
 
 ASGI_APPLICATION = "escriptorium.routing.application"
 
@@ -128,10 +135,13 @@ DATABASES = {
     'default': {
         'ENGINE': os.getenv('SQL_ENGINE', 'django.db.backends.postgresql'),
         'NAME': os.getenv('POSTGRES_DB', 'escriptorium'),
-        'USER': os.getenv('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
-        'HOST': os.getenv('SQL_HOST', 'localhost'),
-        'PORT': os.getenv('SQL_PORT', '5432'),
+        #'USER': os.getenv('POSTGRES_USER', 'postgres'),
+        #'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgrespasswd'),
+        #'HOST': os.getenv('SQL_HOST', 'localhost'),
+        #'PORT': os.getenv('SQL_PORT', '5432'),
+        'OPTIONS': {
+            'sslmode': 'disable'
+        }
     }
 }
 
@@ -216,6 +226,7 @@ CELERY_TASK_ROUTES = {
 
 REPORTING_TASKS_BLACKLIST = [
     'users.tasks.async_email',
+    'core.tasks.monitor_cluster_jobs',
 ]
 
 CHANNEL_LAYERS = {

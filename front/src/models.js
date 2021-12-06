@@ -43,6 +43,10 @@ export function bootModels() {
         // $('.training-error', $row).hide();
         $('.training-gathering', $row).hide();
         $('.cancel-training', $row).hide();
+        $('.cancel-training', $row).hide();
+        $('.delete-model', $row).show();
+        $('.job-is-finished', $row).html('<p>'+data.is_finished+'</p>');
+        $('.accuracy', $row).html('<p>'+data.accuracy+'</p>');
     });
     $alertsContainer.on('training:error', function(ev, data) {
         let $row = $('tr#tr-'+data.id);
@@ -50,5 +54,40 @@ export function bootModels() {
         $('.training-done', $row).hide();
         $('.training-error', $row).show();
         $('.cancel-training', $row).hide();
+    });
+
+    $alertsContainer.on('training:statechange', function(ev, data) {
+        let $row = $('tr#tr-'+data.id);
+        // $('#job-state').html(data["state"]);
+        if(data.state == "PENDING"){
+            $('.job-state', $row).html('<p style="color:blue">PENDING</p>');
+        }else if(data.state == "RUNNING"){
+            $('.job-state', $row).html('<p style="color:green">RUNNING</p>');
+        }else if(data.state == "CANCELLED" || data.state == "OUT_OF_MEMORY" || data.state == "TIMEOUT" || data.state == "FAILED"){
+            $('.job-state', $row).html('<p style="color:red">'+data.state+'</p>');
+        }else{
+            $('.job-state', $row).html('<p>'+data.state+'</p>');
+        }
+        $('.job-is-finished', $row).html('<p>'+data.is_finished+'</p>');
+    });
+
+
+    $alertsContainer.on('training:senddone', function(ev, data) {
+        let $row = $('tr#tr-'+data.id);
+        // $('#job-state').html(data["state"]);
+        if(data.state == "PENDING"){
+            $('.job-state', $row).html('<p style="color:blue">PENDING</p>');
+        }else if(data.state == "RUNNING"){
+            $('.job-state', $row).html('<p style="color:green">RUNNING</p>');
+        }else if(data.state == "CANCELLED" || data.state == "OUT_OF_MEMORY" || data.state == "TIMEOUT" || data.state == "FAILED"){
+            $('.job-state', $row).html('<p style="color:red">'+data.state+'</p>');
+        }else{
+            $('.job-state', $row).html('<p>'+data.state+'</p>');
+        }
+
+        $('.job-id', $row).html('<p>'+data.jobid+'</p>');
+
+        $('.job-uuid', $row).html('<p>'+data.jobuuid+'</p>');
+
     });
 }

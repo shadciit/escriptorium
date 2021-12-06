@@ -4,23 +4,32 @@ import logging
 import numpy as np
 import os.path
 import shutil
+from fabric import Connection
 from itertools import groupby
+from datetime import datetime
+from zipfile import ZipFile
 
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db.models import F, Q
+from django.db.models import F, Q, Prefetch
 from django.utils.text import slugify
 from django.utils.translation import gettext as _
+from django.template import loader
 
 from celery import shared_task
-from celery.signals import before_task_publish, task_prerun, task_success, task_failure
+from celery.signals import before_task_publish, task_prerun, task_success, task_failure, worker_ready
 from django_redis import get_redis_connection
 from easy_thumbnails.files import get_thumbnailer
 from kraken.lib import train as kraken_train
 
-
+# from core.models import Line
+#from core.models import ClusterJob
 from users.consumers import send_event
+
+#import core.clusterjob
+
+import time
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -161,6 +170,108 @@ def make_segmentation_training_data(part):
 
 @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
 def segtrain(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
+    segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk, **kwargs)
+
+# This function asks for execution of a segtrain job on a cluster
+# The monitoring of the evolution of this job is delegated to the task monitor_cluster_jobs
+def segtrain_cluster(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
+    from imports.tasks import write_to_file
+
+    # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
+    from multiprocessing import current_process
+    current_process().daemon = False
+
+    if user_pk:
+        try:
+            user = User.objects.get(pk=user_pk)
+        except User.DoesNotExist:
+            user = None
+    else:
+        user = None
+
+    def msg(txt, fg=None, nl=False):
+        logger.info(txt)
+
+    redis_.set('segtrain-%d' % model_pk, json.dumps({'task_id': task.request.id}))
+
+    Document = apps.get_model('core', 'Document')
+    DocumentPart = apps.get_model('core', 'DocumentPart')
+    OcrModel = apps.get_model('core', 'OcrModel')
+    Transcription = apps.get_model('core', 'Transcription')
+    model = OcrModel.objects.get(pk=model_pk)
+
+    try:
+        load = model.file.path
+    except ValueError:  # model is empty
+        load = settings.KRAKEN_DEFAULT_SEGMENTATION_MODEL
+        model.file = model.file.field.upload_to(model, slugify(model.name) + '.mlmodel')
+
+    model_dir = os.path.join(settings.MEDIA_ROOT, os.path.split(model.file.path)[0])
+
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+
+    try:
+        model.training = True
+        model.save()
+        send_event('document', document_pk, "training:start", {
+            "id": model.pk,
+        })
+        qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')
+
+        document = Document.objects.get(pk=document_pk)
+        document.submitting_job = True
+        document.save()
+
+        base_filename = "export_doc%d_%s_%s_%s" % (
+            document.pk,
+            slugify(document.name).replace('-', '_')[:32],
+            "alto",
+            datetime.now().strftime('%Y%m%d%H%M'))
+        
+        gt_filename = "%s.zip" % base_filename
+        gt_filepath = os.path.join(user.get_document_store_path(), gt_filename)
+        write_to_file(gt_filepath, qs, document)
+
+        print("Written "+gt_filepath)
+
+        ClusterJob = apps.get_model('core', 'ClusterJob')
+        job = ClusterJob(django_user=user, 
+                        ocr_model=model,
+                        cluster_username=settings.CLUSTER_USERNAME,
+                        cluster_hostname=settings.CLUSTER_HOSTNAME,
+                        base_workdir=settings.BASE_WORKDIR)
+
+        job.save()
+        model.cluster_job = job
+        model.save()
+
+        connection = Connection(host=job.cluster_hostname,
+                                user=job.cluster_username,
+                                connect_kwargs=settings.CONNECT_KWARGS)
+                                
+        job.request_segmentation_training(connection, gt_filepath)
+        job.save()
+
+        print('writing in redis ', job.cluster_hostname+':'+job.job_id)
+        redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
+        print('Done submitting segtrain job')
+
+    finally:
+        document.submitting_job = False
+        document.save()
+
+        send_event('document', document_pk, "training:senddone", {
+            "id": model.pk,
+            "jobid" : job.job_id,
+            "state": job.last_known_state,
+            "jobuuid": job.job_uuid,
+            "is_finished": str(job.is_finished)
+        })
+    
+
+#@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
+def segtrain_local(task, model_pk, document_pk, part_pks, user_pk=None, **kwargs):
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
     current_process().daemon = False
@@ -381,7 +492,110 @@ def recalculate_masks(instance_pk, user_pk=None, only=None, **kwargs):
     })
 
 
+@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
+def train(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+    train_cluster(task, part_pks, transcription_pk, model_pk, user_pk, **kwargs)
+
+# This function asks for execution of a train job on a cluster
+# The monitoring of the evolution of this job is delegated to the task monitor_cluster_jobs
+def train_cluster(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+    from imports.tasks import write_to_file
+
+    if user_pk:
+        try:
+            user = User.objects.get(pk=user_pk)
+        except User.DoesNotExist:
+            user = None
+    else:
+        user = None
+
+    redis_.set('training-%d' % model_pk, json.dumps({'task_id': task.request.id}))
+
+    DocumentPart = apps.get_model('core', 'DocumentPart')
+    Document = apps.get_model('core', 'Document')
+    Transcription = apps.get_model('core', 'Transcription')
+    LineTranscription = apps.get_model('core', 'LineTranscription')
+    OcrModel = apps.get_model('core', 'OcrModel')
+
+    try:
+        model = OcrModel.objects.get(pk=model_pk)
+        load = None
+        try:
+            load = model.file.path
+        except ValueError:  # model is empty
+            filename = slugify(model.name) + '.mlmodel'
+            model.file = model.file.field.upload_to(model, filename)
+            model.save()
+
+        model_dir = os.path.join(settings.MEDIA_ROOT, os.path.split(model.file.path)[0])
+
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+
+
+        model.training = True
+        model.save()
+        
+        transcription = Transcription.objects.get(pk=transcription_pk)
+        document_pk = transcription.document.pk
+        document = Document.objects.get(pk=document_pk)
+        document.submitting_job = True
+        document.save()
+
+        send_event('document', document_pk, "training:start", {
+            "id": model.pk,
+        })
+
+        qs = DocumentPart.objects.filter(pk__in=part_pks).prefetch_related('lines')        
+        base_filename = "export_doc%d_%s_%s_%s" % (
+            document.pk,
+            slugify(document.name).replace('-', '_')[:32],
+            "alto",
+            datetime.now().strftime('%Y%m%d%H%M'))
+
+        
+        gt_filename = "%s.zip" % base_filename
+        gt_filepath = os.path.join(user.get_document_store_path(), filename)
+        write_to_file(gt_filepath, qs, document, transcription=transcription)
+
+        print("Written "+gt_filepath)
+        ClusterJob = apps.get_model('core', 'ClusterJob')
+        job = ClusterJob(django_user=user, 
+                        ocr_model=model,
+                        cluster_username=settings.CLUSTER_USERNAME,
+                        cluster_hostname=settings.CLUSTER_HOSTNAME,
+                        base_workdir=settings.BASE_WORKDIR)
+        job.save()
+        model.cluster_job = job
+        model.save()
+
+        connection = Connection(host=job.cluster_hostname,
+                                user=job.cluster_username,
+                                connect_kwargs=settings.CONNECT_KWARGS)
+
+        job.request_recognition_training(connection, gt_filepath)
+        job.save()
+
+        print('writing in redis ', job.cluster_hostname+':'+job.job_id)
+        redis_.rpush('job-ids', job.cluster_hostname+':'+job.job_id)
+        print('Done submitting train job')
+
+    finally:
+        document.submitting_job = False
+        document.save()
+
+        send_event('document', document_pk, "training:senddone", {
+            "id": model.pk,
+            "jobid" : job.job_id,
+            "state": job.last_known_state,
+            "jobuuid": job.job_uuid,
+            "is_finished": str(job.is_finished)
+        })
+
+
+
 def train_(qs, document, transcription, model=None, user=None):
+
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
     current_process().daemon = False
@@ -456,8 +670,9 @@ def train_(qs, document, transcription, model=None, user=None):
     shutil.copy(best_version, model.file.path)
 
 
-@shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
-def train(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+# @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
+def train_local(task, part_pks, transcription_pk, model_pk, user_pk=None, **kwargs):
+
     if user_pk:
         try:
             user = User.objects.get(pk=user_pk)
@@ -565,7 +780,7 @@ def check_signal_order(old_signal, new_signal):
 
 @before_task_publish.connect
 def before_publish_state(sender=None, body=None, **kwargs):
-    if not sender.startswith('core.tasks') or sender.endswith('train'):
+    if not sender.startswith('core.tasks') or sender.endswith('train') or sender.endswith('monitor_cluster_jobs'):
         return
     instance_id = body[0][0]
     data = json.loads(redis_.get('process-%d' % instance_id) or '{}')
@@ -595,7 +810,7 @@ def before_publish_state(sender=None, body=None, **kwargs):
 @task_success.connect
 @task_failure.connect
 def done_state(sender=None, body=None, **kwargs):
-    if not sender.name.startswith('core.tasks') or sender.name.endswith('train'):
+    if not sender.name.startswith('core.tasks') or sender.name.endswith('train') or sender.name.endswith('monitor_cluster_jobs'):
         return
     instance_id = sender.request.args[0]
 
@@ -634,3 +849,109 @@ def done_state(sender=None, body=None, **kwargs):
     else:
         result = None
     update_client_state(instance_id, sender.name, status, task_id=sender.request.id, data=result)
+
+
+def new_jobs_to_monitor():
+    jobref = redis_.lpop('job-ids')
+    new_jobs = {}
+    ClusterJob = apps.get_model('core', 'ClusterJob')
+    while jobref:
+        jobref = jobref.decode("utf-8")
+        cluster_hostname = jobref.split(':')[0]
+        job_id = jobref.split(':')[1]
+        print('found job ' + cluster_hostname + ':' + job_id)
+
+        job = ClusterJob.objects.get(cluster_hostname=cluster_hostname, job_id=job_id)
+        new_jobs[jobref] = job
+
+        jobref = redis_.lpop('job-ids')
+    return new_jobs
+
+
+def establish_connections(jobs, existing_connections):
+    connect_kwargs = {
+        'passphrase': os.getenv('SSH_PASSPHRASE')
+    }
+    for job_name in jobs:
+        job = jobs[job_name]
+        if job_name not in existing_connections:
+            existing_connections[job.cluster_hostname+':'+job.cluster_username] = Connection(host=job.cluster_hostname,
+                                                                                            user=job.cluster_username,
+                                                                                            connect_kwargs=connect_kwargs)
+    return existing_connections
+
+
+@shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
+@worker_ready.connect
+def launch_monitor_cluster_jobs(**kwargs):
+    monitor_cluster_jobs.delay()
+
+
+@shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
+def monitor_cluster_jobs(**kwargs):
+
+    # load unfinished jobs from bdd
+    ClusterJob = apps.get_model('core', 'ClusterJob')
+    jobs = {}
+    jobs_queryset = ClusterJob.objects.filter(is_finished=False)
+    jobs_queryset_list = list(jobs_queryset)
+    for job in jobs_queryset_list:
+        jobs[job.cluster_hostname+':'+job.job_id] = job
+    print(jobs)
+
+    connections = establish_connections(jobs, {})
+
+    # Needs refactoring
+    while True:
+        # pull new jobs from bdd into in memory job pool
+        new_jobs = new_jobs_to_monitor()
+        jobs.update(new_jobs)
+        connections = establish_connections(new_jobs, connections)
+        print(str(len(jobs))+' jobs monitored :')
+        jobs_to_delete = []
+        for job_name in jobs:
+            job = jobs[job_name]
+            connection_name = job.cluster_hostname+':'+job.cluster_username
+            connection = connections[connection_name]
+            state_changed = job.update_state(connection)
+            print(job.cluster_hostname + ':' + job.job_id + ' ' +job.last_known_state)
+            if state_changed:
+                for doc in job.ocr_model.documents.all():
+                    send_event('document', doc.pk, "training:statechange",{
+                                "id": job.ocr_model.pk,
+                                "state": job.last_known_state,
+                                "is_finished": str(job.is_finished)
+                    })
+                job.save()
+            if 'COMPLETED' in job.last_known_state or 'CANCELLED' in job.last_known_state or 'TIMEOUT' in job.last_known_state or 'OUT_OF_MEMORY' in job.last_known_state or 'FAILED' in job.last_known_state or job.job_id=='':
+                try:
+                    best_version_path = job.download_result(connection)
+                    shutil.copy(best_version_path, job.ocr_model.file.path)
+                    job.ocr_model.training_accuracy = job.best_accuracy(connection)
+                except Exception as e:
+                    print('Error occured in retrieving data')
+                    print(e)
+                finally:
+                    job.is_finished = True
+                    job.ocr_model.training = False
+                    job.ocr_model.save()
+                    job.save()
+                    for doc in job.ocr_model.documents.all():
+                        send_event('document', doc.pk, "training:done", {
+                            "id": job.ocr_model.pk,
+                            "accuracy": str(job.ocr_model.training_accuracy),
+                            "is_finished": str(job.is_finished)
+                        })
+                    jobs_to_delete.append(job_name)
+                    try:
+                        job.clean_remote_files(connection)
+                    except Exception as e:
+                        print('Error occured in cleaning remote files')
+                        print(e)
+
+
+        for job_name in jobs_to_delete:
+            del jobs[job_name]
+
+        time.sleep(10)
+

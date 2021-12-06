@@ -14,7 +14,8 @@ from core.models import (Project,
                          DocumentType,
                          DocumentPartType,
                          BlockType,
-                         LineType)
+                         LineType,
+                         ClusterJob)
 
 
 class MetadataInline(admin.TabularInline):
@@ -80,6 +81,9 @@ class OcrModelRightAdmin(admin.ModelAdmin):
 class DocumentTagAdmin(admin.ModelAdmin):
     list_display = ['name', 'color', 'project']
 
+class ClusterJobAdmin(admin.ModelAdmin):
+    list_display = ['django_user', 'cluster_username', 'cluster_hostname', 'last_known_state', 'job_id']
+
 
 admin.site.register(Project, ProjectAdmin)
 admin.site.register(Document, DocumentAdmin)
@@ -95,3 +99,4 @@ admin.site.register(OcrModel, OcrModelAdmin)
 admin.site.register(OcrModelDocument, OcrModelDocumentAdmin)
 admin.site.register(OcrModelRight, OcrModelRightAdmin)
 admin.site.register(DocumentTag, DocumentTagAdmin)
+admin.site.register(ClusterJob, ClusterJobAdmin)
