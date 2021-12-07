@@ -108,7 +108,7 @@ class TasksTestCase(CoreFactoryTestCase):
             self.assertEqual(self.part.lines.count(), 19)
 
     @unittest.skipIf(
-        True,
+        os.environ.get("CI") is not None,
         "Too heavy on resources"
     )
     def test_train_new_segmentation_model(self):

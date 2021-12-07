@@ -101,7 +101,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
             'Segmentation training requires at least 2 images.']})
 
     @unittest.skipIf(
-        True,
+        os.environ.get("CI") is not None,
         "Too heavy on resources"
     )
     def test_segtrain_new_model(self):
