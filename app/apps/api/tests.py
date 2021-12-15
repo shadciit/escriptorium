@@ -186,7 +186,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(json['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6},
+            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
             'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
 
@@ -209,13 +209,13 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
             {
                 'pk': other_doc.pk,
                 'name': other_doc.name,
-                'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 0},
+                'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 0, 'Canceled': 0},
                 'last_started_task': other_doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             },
             {
                 'pk': self.doc.pk,
                 'name': self.doc.name,
-                'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6},
+                'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
                 'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             },
         ])
@@ -347,7 +347,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
             'detail': 'You do not have permission to perform this action.'
         })
 
-    @patch('api.views.revoke')
+    @patch('reporting.models.revoke')
     def test_cancel_all_tasks_for_document(self, mock_revoke):
         self.client.force_login(self.doc.owner)
 
@@ -364,13 +364,13 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6},
+            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
             'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
 
         # Stopping all tasks on self.doc
         mock_revoke.side_effect = lambda x, terminate=False: report.error('Canceled by celery')
-        with self.assertNumQueries(12):
+        with self.assertNumQueries(13):
             resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {
@@ -385,13 +385,13 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 1, 'Finished': 6},
+            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 1},
             'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
         model.refresh_from_db()
         self.assertEqual(model.training, False)
 
-    @patch('api.views.revoke')
+    @patch('reporting.models.revoke')
     def test_cancel_all_tasks_for_document_staff_user(self, mock_revoke):
         # This user doesn't own self.doc but can cancel all of its tasks since he is a staff member
         user = self.factory.make_user()
@@ -412,13 +412,13 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6},
+            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
             'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
 
         # Stopping all tasks on self.doc
         mock_revoke.side_effect = lambda x, terminate=False: report.error('Canceled by celery')
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(12):
             resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {
@@ -433,7 +433,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 1, 'Finished': 6},
+            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 1},
             'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
         model.refresh_from_db()

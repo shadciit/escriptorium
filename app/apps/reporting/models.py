@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from celery.task.control import revoke
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models
@@ -16,11 +17,13 @@ class TaskReport(models.Model):
     WORKFLOW_STATE_STARTED = 1
     WORKFLOW_STATE_ERROR = 2
     WORKFLOW_STATE_DONE = 3
+    WORKFLOW_STATE_CANCELED = 4
     WORKFLOW_STATE_CHOICES = (
         (WORKFLOW_STATE_QUEUED, _("Queued")),
         (WORKFLOW_STATE_STARTED, _("Running")),
         (WORKFLOW_STATE_ERROR, _("Crashed")),
-        (WORKFLOW_STATE_DONE, _("Finished"))
+        (WORKFLOW_STATE_DONE, _("Finished")),
+        (WORKFLOW_STATE_CANCELED, _("Canceled")),
     )
 
     workflow_state = models.PositiveSmallIntegerField(
@@ -61,6 +64,13 @@ class TaskReport(models.Model):
         self.method = method
         self.workflow_state = self.WORKFLOW_STATE_STARTED
         self.started_at = datetime.now(timezone.utc)
+        self.save()
+
+    def cancel(self, user_email):
+        self.workflow_state = self.WORKFLOW_STATE_CANCELED
+        self.done_at = datetime.now(timezone.utc)
+        self.append(f"Canceled by user {user_email}")
+        revoke(self.task_id, terminate=True)
         self.save()
 
     def error(self, message):

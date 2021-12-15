@@ -1,7 +1,6 @@
 import json
 import logging
 
-from celery.task.control import revoke
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
@@ -187,7 +186,7 @@ class DocumentViewSet(ModelViewSet):
         # Revoking all pending/running tasks for the specified document
         count = 0
         for report in document.reports.filter(workflow_state=TaskReport.WORKFLOW_STATE_STARTED):
-            revoke(report.task_id, terminate=True)
+            report.cancel(request.user.email)
             count += 1
 
         # Executing all the glue code outside the real revoking of tasks to maintain db objects
