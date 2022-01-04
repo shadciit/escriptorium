@@ -435,11 +435,14 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     $alertsContainer.on('import:warning', function(ev, data) {
         Alert.add(Date.now(), data.reason, 'warning');
     });
-    $alertsContainer.on('import:fail', function(ev, data) {
+    $alertsContainer.on('import:error', function(ev, data) {
         $('#import-counter').text('Failed.');
         $('#import-selected').removeClass('blink');
         $('#cancel-import').hide();
-        Alert.add('import-failed', "Import failed because '"+data.reason+"'", 'danger');
+        if (data.reason) {
+            Alert.add('import-failed',
+                      "Import failed because '"+data.reason+"'", 'danger');
+        }
     });
     $alertsContainer.on('import:done', function(ev, data) {
         $('#import-counter').text('Done.');
@@ -465,9 +468,13 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     $alertsContainer.on('export:start', function(ev, data)  {
         $exportBtn.addClass('blink');
     });
-    $alertsContainer.on('export:fail', function(ev, data)  {
+    $alertsContainer.on('export:error', function(ev, data)  {
         $exportBtn.removeClass('blink');
         $exportBtn.addClass('error');
+        if (data.reason) {
+            Alert.add('export-failed',
+                      "Export failed because '"+data.reason+"'", 'danger');
+        }
     });
     $alertsContainer.on('export:done', function(ev, data)  {
         $exportBtn.removeClass('blink');
@@ -505,6 +512,10 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     $alertsContainer.on('training:error', function(ev, data) {
         $('#train-selected').removeClass('blink').addClass('btn-danger');
         $('#cancel-training').hide();
+        if (data.reason) {
+            Alert.add('training-failed',
+                      "Training failed because '"+data.reason+"'", 'danger');
+        }
     });
     $('#cancel-training').click(function(ev, data) {
         let url = API.document + '/cancel_training/';

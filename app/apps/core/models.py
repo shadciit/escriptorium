@@ -653,9 +653,21 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
             self.save()
 
         for task_name, task in self.tasks.items():
-            if task_name not in uncancelable:
+            if (task_name not in uncancelable
+                and task['status'] not in ['canceled', 'error', 'done']):
                 if revoke_task and 'task_id' in task:  # if not, it is still pending
                     revoke(task['task_id'], terminate=True)
+
+                try:
+                    send_event('document', self.document.pk, 'part:workflow',
+                               {'id': self.id,
+                                'process': task_name.split('.')[-1],
+                                'status': 'error',
+                                'reason': _('Canceled.')})
+                except Exception as e:
+                    # don't crash on websocket error
+                    logger.exception(e)
+
                 redis_.set('process-%d' % self.pk, json.dumps({task_name: {"status": "canceled"}}))
 
     def recoverable(self):

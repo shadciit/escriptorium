@@ -7,6 +7,7 @@ from django.db.models import Prefetch
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils.translation import gettext as _
 
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -54,6 +55,7 @@ from core.models import (Project,
 
 from core.tasks import recalculate_masks
 from users.models import User
+from users.consumers import send_event
 from imports.forms import ImportForm, ExportForm
 from imports.parsers import ParseError
 from reporting.models import TaskReport
@@ -95,7 +97,7 @@ class TagViewSet(ModelViewSet):
     def perform_create(self, serializer):
         project = Project.objects.get(pk=self.kwargs.get('project_pk'))
         return serializer.save(project=project)
-    
+
     def get_queryset(self):
         return DocumentTag.objects.filter(project__pk=self.kwargs.get('project_pk'))
 
@@ -187,6 +189,22 @@ class DocumentViewSet(ModelViewSet):
         count = 0
         for report in document.reports.filter(workflow_state=TaskReport.WORKFLOW_STATE_STARTED):
             report.cancel(request.user.email)
+
+            client_task_name_map = {
+                'segtrain': 'training',
+                'train': 'training',
+                'document_export': 'export',
+                'document_import': 'import'
+            }
+            method_name = report.method.split('.')[-1]
+            task_name = client_task_name_map.get(method_name, method_name)
+            try:
+                send_event('document', document.pk, f'{task_name}:error',
+                           {'reason': _('Canceled.')})
+            except Exception as e:
+                # don't crash on websocket error
+                logger.exception(e)
+
             count += 1
 
         # Executing all the glue code outside the real revoking of tasks to maintain db objects
@@ -199,7 +217,7 @@ class DocumentViewSet(ModelViewSet):
 
         for model in document.ocr_models.filter(training=True):
             model.cancel_training(revoke_task=False)  # We already revoked the Celery task
-        
+
         for doc_import in document.documentimport_set.all():
             doc_import.cancel(revoke_task=False)  # We already revoked the Celery task
 

@@ -4,11 +4,12 @@ import os
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from imports.models import DocumentImport
-from core.models import Document, DocumentPart
 
 from celery import states
 from celery.signals import task_prerun, task_postrun
+
+from imports.models import DocumentImport
+from core.models import Document, DocumentPart
 
 logger = logging.getLogger(__name__)
 User = get_user_model()

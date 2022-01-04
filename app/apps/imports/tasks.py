@@ -59,7 +59,7 @@ def document_import(task, import_pk=None, resume=True, task_id=None, user_pk=Non
                         links=[{'text': 'Report', 'src': imp.report.uri}],
                         id="import-error", level='danger')
 
-        send_event('document', imp.document.pk, "import:fail", {
+        send_event('document', imp.document.pk, "import:error", {
             "id": imp.document.pk,
             "reason": str(e)
         })
@@ -202,7 +202,7 @@ def document_export(task, file_format, part_pks,
                         id="export-error",
                         level='danger')
 
-        send_event('document', document.pk, "import:fail", {
+        send_event('document', document.pk, "import:error", {
             "id": document.pk,
             "reason": str(e)
         })
