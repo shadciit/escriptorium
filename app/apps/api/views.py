@@ -148,23 +148,16 @@ class DocumentViewSet(ModelViewSet):
             extra["name__icontains"] = document_name_filter
 
         # Filter results by TaskReport.workflow_state
-        state_filter = request.GET.get('task_state')
+        state_filter = request.GET.get('task_state', '').lower()
         if state_filter:
-            try:
-                state_filter = int(state_filter)
-            except ValueError:
-                return Response(
-                    {'error': 'Invalid task_state, it should be an int.'},
-                    status=400
-                )
-
-            if state_filter not in [state for state, _ in TaskReport.WORKFLOW_STATE_CHOICES]:
+            mapped_labels = {label.lower():state for state, label in TaskReport.WORKFLOW_STATE_CHOICES}
+            if state_filter not in mapped_labels:
                 return Response(
                     {'error': 'Invalid task_state, it should match a valid workflow_state.'},
                     status=400
                 )
 
-            extra["reports__workflow_state__in"] = [state_filter]
+            extra["reports__workflow_state__in"] = [mapped_labels[state_filter]]
 
         documents = Document.objects.filter(reports__isnull=False, **extra).distinct()
 

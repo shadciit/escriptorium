@@ -295,13 +295,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
 
     def test_list_document_with_tasks_filter_wrong_task_state(self):
         self.client.force_login(self.doc.owner)
-        resp = self.client.get(reverse('api:document-tasks') + '?task_state=blablabla')
-
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(resp.json(), {'error': 'Invalid task_state, it should be an int.'})
-
-        self.client.force_login(self.doc.owner)
-        resp = self.client.get(reverse('api:document-tasks') + '?task_state=42')
+        resp = self.client.get(reverse('api:document-tasks') + '?task_state=wrongstate')
 
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.json(), {'error': 'Invalid task_state, it should match a valid workflow_state.'})
@@ -315,7 +309,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
-            resp = self.client.get(reverse('api:document-tasks') + "?task_state=1")
+            resp = self.client.get(reverse('api:document-tasks') + "?task_state=Running")
 
         self.assertEqual(resp.status_code, 200)
         json = resp.json()
