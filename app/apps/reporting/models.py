@@ -59,8 +59,7 @@ class TaskReport(models.Model):
     def uri(self):
         return reverse('report-detail', kwargs={'pk': self.pk})
 
-    def start(self, method):
-        self.method = method
+    def start(self):
         self.workflow_state = self.WORKFLOW_STATE_STARTED
         self.started_at = datetime.now(timezone.utc)
         self.save()

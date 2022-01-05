@@ -174,7 +174,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         # Creating a new Document that self.doc.owner shouldn't see
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None)
+        report.start()
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -196,7 +196,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         # Creating a new Document that self.doc.owner should also see since he is a staff member
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None)
+        report.start()
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(8):
@@ -233,7 +233,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         # Creating a new Document that self.doc.owner shouldn't see
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None)
+        report.start()
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -255,7 +255,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.doc.owner.save()
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None)
+        report.start()
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -278,7 +278,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.doc.owner.save()
         other_doc = self.factory.make_document(name="other doc", project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None)
+        report.start()
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -308,7 +308,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.doc.owner.save()
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None)
+        report.start()
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -351,9 +351,12 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
     def test_cancel_all_tasks_for_document(self, mock_revoke):
         self.client.force_login(self.doc.owner)
 
-        # Simulating a training task
-        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="12345")
-        report.start("core.tasks.train")
+        # Simulating a pending task
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="11111", method="core.tasks.train")
+
+        # Simulating a running training task
+        report2 = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="22222", method="core.tasks.train")
+        report2.start()
         model = self.factory.make_model(self.doc, job=OcrModel.MODEL_JOB_SEGMENT)
         model.training = True
         model.save()
@@ -364,20 +367,26 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
-            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            'tasks_stats': {'Queued': 1, 'Running': 1, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
+            'last_started_task': self.doc.reports.filter(started_at__isnull=False).latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
 
         # Stopping all tasks on self.doc
-        mock_revoke.side_effect = lambda x, terminate=False: report.error('Canceled by celery')
-        with self.assertNumQueries(13):
+        def fake_revoke(id, terminate=False):
+            if id == "11111":
+                report.error('Canceled by celery')
+            else:
+                report2.error('Canceled by celery')
+
+        mock_revoke.side_effect = fake_revoke
+        with self.assertNumQueries(15):
             resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {
             'status': 'canceled',
-            'details': f'Canceled 1 running tasks linked to document {self.doc.name}.'
+            'details': f'Canceled 2 pending/running tasks linked to document {self.doc.name}.'
         })
-        mock_revoke.assert_called_once()
+        self.assertEqual(mock_revoke.call_count, 2)
 
         # Assert that there is no more tasks running on self.doc
         resp = self.client.get(reverse('api:document-tasks'))
@@ -385,8 +394,8 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 1},
-            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 2},
+            'last_started_task': self.doc.reports.filter(started_at__isnull=False).latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
         model.refresh_from_db()
         self.assertEqual(model.training, False)
@@ -399,9 +408,12 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         user.save()
         self.client.force_login(user)
 
-        # Simulating a training task
-        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="12345")
-        report.start("core.tasks.train")
+        # Simulating a pending task
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="11111", method="core.tasks.train")
+
+        # Simulating a running training task
+        report2 = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="22222", method="core.tasks.train")
+        report2.start()
         model = self.factory.make_model(self.doc, job=OcrModel.MODEL_JOB_SEGMENT)
         model.training = True
         model.save()
@@ -412,20 +424,26 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 1, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
-            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            'tasks_stats': {'Queued': 1, 'Running': 1, 'Crashed': 0, 'Finished': 6, 'Canceled': 0},
+            'last_started_task': self.doc.reports.filter(started_at__isnull=False).latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
 
         # Stopping all tasks on self.doc
-        mock_revoke.side_effect = lambda x, terminate=False: report.error('Canceled by celery')
-        with self.assertNumQueries(12):
+        def fake_revoke(id, terminate=False):
+            if id == "11111":
+                report.error('Canceled by celery')
+            else:
+                report2.error('Canceled by celery')
+
+        mock_revoke.side_effect = fake_revoke
+        with self.assertNumQueries(14):
             resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {
             'status': 'canceled',
-            'details': f'Canceled 1 running tasks linked to document {self.doc.name}.'
+            'details': f'Canceled 2 pending/running tasks linked to document {self.doc.name}.'
         })
-        mock_revoke.assert_called_once()
+        self.assertEqual(mock_revoke.call_count, 2)
 
         # Assert that there is no more tasks running on self.doc
         resp = self.client.get(reverse('api:document-tasks'))
@@ -433,8 +451,8 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['results'], [{
             'pk': self.doc.pk,
             'name': self.doc.name,
-            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 1},
-            'last_started_task': self.doc.reports.latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            'tasks_stats': {'Queued': 0, 'Running': 0, 'Crashed': 0, 'Finished': 6, 'Canceled': 2},
+            'last_started_task': self.doc.reports.filter(started_at__isnull=False).latest('started_at').started_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         }])
         model.refresh_from_db()
         self.assertEqual(model.training, False)

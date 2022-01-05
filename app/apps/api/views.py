@@ -187,7 +187,7 @@ class DocumentViewSet(ModelViewSet):
 
         # Revoking all pending/running tasks for the specified document
         count = 0
-        for report in document.reports.filter(workflow_state=TaskReport.WORKFLOW_STATE_STARTED):
+        for report in document.reports.filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED, TaskReport.WORKFLOW_STATE_STARTED]):
             report.cancel(request.user.email)
 
             client_task_name_map = {
@@ -223,7 +223,7 @@ class DocumentViewSet(ModelViewSet):
 
         return Response({
             'status': 'canceled',
-            'details': f'Canceled {count} running tasks linked to document {document.name}.'
+            'details': f'Canceled {count} pending/running tasks linked to document {document.name}.'
         })
 
     @action(detail=True, methods=['post'])

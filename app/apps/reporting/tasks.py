@@ -64,11 +64,12 @@ def create_task_reporting(sender, body, **kwargs):
 
     # TODO: Define an explicit "report_label" kwarg on all tasks
     default_report_label = f"Report for celery task {task_id} of type {sender}"
-    report = TaskReport.objects.create(
+    TaskReport.objects.create(
         user=user,
         label=task_kwargs.get("report_label", default_report_label),
         document=document,
-        task_id=task_id
+        task_id=task_id,
+        method=sender
     )
 
 
@@ -86,7 +87,7 @@ def start_task_reporting(task_id, task, *args, **kwargs):
         logger.error(f"Couldn't retrieve any TaskReport object associated with celery task {task_id}")
         return
 
-    report.start(task.name)
+    report.start()
 
 
 @task_postrun.connect
