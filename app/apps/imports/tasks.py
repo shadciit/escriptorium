@@ -15,6 +15,7 @@ from celery import shared_task
 from core.models import Line
 from users.consumers import send_event
 from escriptorium.utils import send_email
+from reporting.tasks import create_task_reporting
 
 
 logger = logging.getLogger(__name__)

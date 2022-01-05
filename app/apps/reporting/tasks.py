@@ -6,22 +6,23 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from celery import states
-from celery.signals import task_prerun, task_postrun
-
-from imports.models import DocumentImport
-from core.models import Document, DocumentPart
+from celery.signals import after_task_publish, task_prerun, task_postrun
 
 logger = logging.getLogger(__name__)
-User = get_user_model()
 
 
-@task_prerun.connect
-def start_task_reporting(task_id, task, *args, **kwargs):
-    task_kwargs = kwargs.get("kwargs", {})
+@after_task_publish.connect
+def create_task_reporting(sender, body, **kwargs):
+    task_id = kwargs['headers']['id']
+    task_kwargs = body[1]
     # If the reporting is disabled for this task we don't need to execute following code
-    if task.name in settings.REPORTING_TASKS_BLACKLIST:
+    if sender in settings.REPORTING_TASKS_BLACKLIST:
         return
 
+    User = get_user_model()
+    DocumentImport = apps.get_model('imports', 'DocumentImport')
+    Document = apps.get_model('core', 'Document')
+    DocumentPart = apps.get_model('core', 'DocumentPart')
     TaskReport = apps.get_model('reporting', 'TaskReport')
 
     if task_kwargs.get("user_pk"):
@@ -62,9 +63,30 @@ def start_task_reporting(task_id, task, *args, **kwargs):
         document = first_part.document
 
     # TODO: Define an explicit "report_label" kwarg on all tasks
-    default_report_label = f"Report for celery task {task_id} of type {task.name}"
-    report = TaskReport.objects.create(user=user, label=task_kwargs.get("report_label", default_report_label), document=document)
-    report.start(task_id, task.name)
+    default_report_label = f"Report for celery task {task_id} of type {sender}"
+    report = TaskReport.objects.create(
+        user=user,
+        label=task_kwargs.get("report_label", default_report_label),
+        document=document,
+        task_id=task_id
+    )
+
+
+@task_prerun.connect
+def start_task_reporting(task_id, task, *args, **kwargs):
+    # If the reporting is disabled for this task we don't need to execute following code
+    if task.name in settings.REPORTING_TASKS_BLACKLIST:
+        return
+
+    TaskReport = apps.get_model('reporting', 'TaskReport')
+
+    try:
+        report = TaskReport.objects.get(task_id=task_id)
+    except TaskReport.DoesNotExist:
+        logger.error(f"Couldn't retrieve any TaskReport object associated with celery task {task_id}")
+        return
+
+    report.start(task.name)
 
 
 @task_postrun.connect

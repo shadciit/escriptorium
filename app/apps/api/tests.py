@@ -174,7 +174,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         # Creating a new Document that self.doc.owner shouldn't see
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None, None)
+        report.start(None)
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -196,7 +196,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         # Creating a new Document that self.doc.owner should also see since he is a staff member
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None, None)
+        report.start(None)
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(8):
@@ -233,7 +233,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         # Creating a new Document that self.doc.owner shouldn't see
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None, None)
+        report.start(None)
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -255,7 +255,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.doc.owner.save()
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None, None)
+        report.start(None)
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -278,7 +278,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.doc.owner.save()
         other_doc = self.factory.make_document(name="other doc", project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None, None)
+        report.start(None)
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -308,7 +308,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.doc.owner.save()
         other_doc = self.factory.make_document(project=self.factory.make_project(name="Test API"))
         report = other_doc.reports.create(user=other_doc.owner, label="Fake report")
-        report.start(None, None)
+        report.start(None)
 
         self.client.force_login(self.doc.owner)
         with self.assertNumQueries(6):
@@ -352,8 +352,8 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.doc.owner)
 
         # Simulating a training task
-        report = self.doc.reports.create(user=self.doc.owner, label="Fake report")
-        report.start(report.pk, "core.tasks.train")
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="12345")
+        report.start("core.tasks.train")
         model = self.factory.make_model(self.doc, job=OcrModel.MODEL_JOB_SEGMENT)
         model.training = True
         model.save()
@@ -400,8 +400,8 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(user)
 
         # Simulating a training task
-        report = self.doc.reports.create(user=self.doc.owner, label="Fake report")
-        report.start(report.pk, "core.tasks.train")
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="12345")
+        report.start("core.tasks.train")
         model = self.factory.make_model(self.doc, job=OcrModel.MODEL_JOB_SEGMENT)
         model.training = True
         model.save()
@@ -489,7 +489,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:part-list',
                       kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(42):
+        with self.assertNumQueries(44):
             img = self.factory.make_image_file()
             resp = self.client.post(uri, {
                 'image': SimpleUploadedFile(
