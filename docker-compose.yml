@@ -11,6 +11,9 @@ services:
       - static:/usr/src/app/static
       - media:/usr/src/app/media
     command: /bin/true
+    depends_on:
+      - "db"
+      - "redis"
 
   web:
     <<: *app
@@ -40,7 +43,7 @@ services:
       - SERVERNAME=${DOMAIN:-localhost}
     volumes:
       - type: bind
-        source: $PWD/nginx/nginx.conf
+        source: ./nginx/nginx.conf
         target: /etc/nginx/conf.d/nginx.conf
       - static:/usr/src/app/static
       - media:/usr/src/app/media
