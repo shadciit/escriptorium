@@ -26,7 +26,8 @@ ADMINS = [(os.getenv('DJANGO_SU_NAME', 'admin'),
 
 # Add apps directory the sys.path
 APPS_DIR = os.path.join(BASE_DIR, 'apps')
-sys.path.append(APPS_DIR)
+if APPS_DIR not in sys.path:
+    sys.path.append(APPS_DIR)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
