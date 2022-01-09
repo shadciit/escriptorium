@@ -17,3 +17,5 @@ variables.env
 .venv
 WARNING_*
 .nfs*
+
+yarn.lock
