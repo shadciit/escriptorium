@@ -8,6 +8,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.translation import gettext as _
+from django_redis import get_redis_connection
 
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -63,6 +64,14 @@ from versioning.models import NoChangeException
 from reporting.models import TaskReport
 
 logger = logging.getLogger(__name__)
+
+redis_ = get_redis_connection()
+CLIENT_TASK_NAME_MAP = {
+    'segtrain': 'training',
+    'train': 'training',
+    'document_export': 'export',
+    'document_import': 'import'
+}
 
 
 class UserViewSet(ModelViewSet):
@@ -187,34 +196,43 @@ class DocumentViewSet(ModelViewSet):
 
         # Revoking all pending/running tasks for the specified document
         count = 0
-        for report in document.reports.filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED, TaskReport.WORKFLOW_STATE_STARTED]):
+        for report in document.reports.prefetch_related('document_part').filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED, TaskReport.WORKFLOW_STATE_STARTED]):
             report.cancel(request.user.email)
 
-            client_task_name_map = {
-                'segtrain': 'training',
-                'train': 'training',
-                'document_export': 'export',
-                'document_import': 'import'
-            }
             method_name = report.method.split('.')[-1]
-            task_name = client_task_name_map.get(method_name, method_name)
-            try:
-                send_event('document', document.pk, f'{task_name}:error',
-                           {'reason': _('Canceled.')})
-            except Exception as e:
-                # don't crash on websocket error
-                logger.exception(e)
+            task_name = CLIENT_TASK_NAME_MAP.get(method_name, method_name)
+
+            if report.document_part:
+                # Some glue code from DocumentPart.cancel_tasks function is moved here to prevent performance issues
+                if report.document_part.workflow_state == report.document_part.WORKFLOW_STATE_SEGMENTING:
+                    report.document_part.workflow_state = report.document_part.WORKFLOW_STATE_CONVERTED
+                    report.document_part.save()
+
+                try:
+                    send_event('document', report.document.pk, 'part:workflow', {
+                        'id': report.document_part.pk,
+                        'process': task_name,
+                        'status': 'error',
+                        'reason': _('Canceled.')
+                    })
+                except Exception as e:
+                    # don't crash on websocket error
+                    logger.exception(e)
+
+                redis_.set('process-%d' % report.document_part.pk, json.dumps({report.method: {"status": "canceled"}}))
+            else:
+                try:
+                    send_event('document', document.pk, f'{task_name}:error',
+                            {'reason': _('Canceled.')})
+                except Exception as e:
+                    # don't crash on websocket error
+                    logger.exception(e)
 
             count += 1
 
         # Executing all the glue code outside the real revoking of tasks to maintain db objects
         # up-to-date with the real state of the app (e.g.: we stopped a training, we need to set
         # the model.training attribute to False)
-        for part in document.parts.all():
-            part.cancel_tasks(revoke_task=False)  # We already revoked the Celery task
-            part.refresh_from_db()
-            del part.tasks  # reset cached property
-
         for model in document.ocr_models.filter(training=True):
             model.cancel_training(revoke_task=False)  # We already revoked the Celery task
 

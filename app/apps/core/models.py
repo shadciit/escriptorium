@@ -644,7 +644,7 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
         except (KeyError, TypeError):
             return False
 
-    def cancel_tasks(self, revoke_task=True):
+    def cancel_tasks(self):
         uncancelable = ['core.tasks.convert',
                         'core.tasks.lossless_compression',
                         'core.tasks.generate_part_thumbnails']
@@ -655,7 +655,7 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
         for task_name, task in self.tasks.items():
             if (task_name not in uncancelable
                 and task['status'] not in ['canceled', 'error', 'done']):
-                if revoke_task and 'task_id' in task:  # if not, it is still pending
+                if 'task_id' in task:  # if not, it is still pending
                     revoke(task['task_id'], terminate=True)
 
                 try:

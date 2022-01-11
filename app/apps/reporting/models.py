@@ -7,7 +7,7 @@ from django.db import models
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from core.models import Document
+from core.models import Document, DocumentPart
 
 User = get_user_model()
 
@@ -50,6 +50,9 @@ class TaskReport(models.Model):
 
     document = models.ForeignKey(
         Document, blank=True, null=True, on_delete=models.SET_NULL, related_name='reports'
+    )
+    document_part = models.ForeignKey(
+        DocumentPart, blank=True, null=True, on_delete=models.SET_NULL, related_name='reports'
     )
 
     def append(self, text):

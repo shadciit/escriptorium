@@ -38,6 +38,7 @@ def create_task_reporting(sender, body, **kwargs):
         return
 
     document = None
+    part = None
     if task_kwargs.get("document_pk"):
         try:
             document = Document.objects.get(pk=task_kwargs["document_pk"])
@@ -68,6 +69,7 @@ def create_task_reporting(sender, body, **kwargs):
         user=user,
         label=task_kwargs.get("report_label", default_report_label),
         document=document,
+        document_part=part,
         task_id=task_id,
         method=sender
     )
