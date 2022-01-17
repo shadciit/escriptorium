@@ -6,12 +6,12 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from celery import states
-from celery.signals import after_task_publish, task_prerun, task_postrun
+from celery.signals import before_task_publish, task_prerun, task_postrun
 
 logger = logging.getLogger(__name__)
 
 
-@after_task_publish.connect
+@before_task_publish.connect
 def create_task_reporting(sender, body, **kwargs):
     task_id = kwargs['headers']['id']
     task_kwargs = body[1]
