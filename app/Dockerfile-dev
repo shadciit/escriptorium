@@ -1,3 +1,4 @@
+# A Docker file for development of escriptorium inside docker containers
 FROM python:3.7.5-slim
 
 # set environment variables
@@ -27,9 +28,11 @@ COPY ./requirements.txt /usr/src/app/requirements.txt
 RUN pip --no-cache-dir install -r requirements.txt
 COPY ./requirements-dev.txt /usr/src/app/requirements-dev.txt
 RUN pip --no-cache-dir install -r requirements-dev.txt
-
-# Entrypoint script
-COPY ./entrypoint-dev.sh /usr/src/entrypoint.sh
+RUN pip install debugpy -t /tmp
 
 # Django settings file
 ENV DJANGO_SETTINGS_MODULE escriptorium.docker_dev_settings
+
+# run entrypoint.sh
+ENTRYPOINT ["/usr/src/app/entrypoint-dev.sh"]
+

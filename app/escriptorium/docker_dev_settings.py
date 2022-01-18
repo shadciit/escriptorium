@@ -41,3 +41,7 @@ STATICFILES_DIRS = [
     os.path.join(PROJECT_ROOT, 'static'),
     FRONTEND_DIR
 ]
+
+CELERY_TASK_ALWAYS_EAGER = True
+
+LOGGING['handlers']['console']['level'] = 'INFO'

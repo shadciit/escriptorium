@@ -19,11 +19,12 @@ services:
 
   web:
     <<: *app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: python /tmp/debugpy --listen 0.0.0.0:5678 --wait-for-client manage.py runserver 0.0.0.0:8000 --nothreading --noreload
     expose:
       - 8000
     ports:
       - 8000:8000
+      - 5678:5678
 
 
   channelserver:
@@ -31,6 +32,8 @@ services:
     command: daphne --bind 0.0.0.0 --port 5000 -v 1 escriptorium.asgi:application
     expose:
       - 5000
+    ports:
+      - 5000:5000
 
   db:
     image: docker.io/library/postgres:10.5-alpine
@@ -41,19 +44,19 @@ services:
   redis:
     image: docker.io/sickp/alpine-redis:4.0.6
 
-  nginx:
-    image: registry.gitlab.com/scripta/escriptorium/nginx
-    build: ./nginx
-    environment:
-      - SERVERNAME=${DOMAIN:-localhost}
-    volumes:
-      - type: bind
-        source: ./nginx/nginx.conf
-        target: /etc/nginx/conf.d/nginx.conf
-      - static:/usr/src/app/static
-      - media:/usr/src/app/media
-    ports:
-      - 8080:80
+  # nginx:
+  #   image: registry.gitlab.com/scripta/escriptorium/nginx
+  #   build: ./nginx
+  #   environment:
+  #     - SERVERNAME=${DOMAIN:-localhost}
+  #   volumes:
+  #     - type: bind
+  #       source: ./nginx/nginx.conf
+  #       target: /etc/nginx/conf.d/nginx.conf
+  #     - static:/usr/src/app/static
+  #     - media:/usr/src/app/media
+  #   ports:
+  #     - 8080:80
 
   # elasticsearch:
   #   image: docker.elastic.co/elasticsearch/elasticsearch:6.5.1
@@ -74,32 +77,32 @@ services:
   #   # networks:  # use this if adding nodes
   #   #   - esnet
 
-  celery-main:
-    <<: *app
-    environment:
-      - OMP_NUM_THREADS=1
-    command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q default -c ${CELERY_MAIN_CONC:-10} --max-tasks-per-child=10"
+  # celery-main:
+  #   <<: *app
+  #   environment:
+  #     - OMP_NUM_THREADS=1
+  #   command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q default -c ${CELERY_MAIN_CONC:-10} --max-tasks-per-child=10"
 
-  celery-live:
-    <<: *app
-    command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q live -c ${CELERY_LIVE_CONC:-10} --max-tasks-per-child=10"
+  # celery-live:
+  #   <<: *app
+  #   command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q live -c ${CELERY_LIVE_CONC:-10} --max-tasks-per-child=10"
 
-  celery-low-priority:
-    <<: *app
-    command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q low-priority -c ${CELERY_LOW_CONC:-10} --max-tasks-per-child=10"
+  # celery-low-priority:
+  #   <<: *app
+  #   command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q low-priority -c ${CELERY_LOW_CONC:-10} --max-tasks-per-child=10"
 
-  celery-gpu: &celery-gpu
-    <<: *app
-    environment:
-      - KRAKEN_TRAINING_DEVICE=cpu
-    command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q gpu -c 1 --max-tasks-per-child=1"
-    shm_size: '3gb'
+  # celery-gpu: &celery-gpu
+  #   <<: *app
+  #   environment:
+  #     - KRAKEN_TRAINING_DEVICE=cpu
+  #   command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q gpu -c 1 --max-tasks-per-child=1"
+  #   shm_size: '3gb'
 
-  flower:
-    image: docker.io/mher/flower
-    command: ["celery", "flower", "--broker=redis://redis:6379/0", "--port=5555"]
-    ports:
-      - 5555:5555
+  # flower:
+  #   image: docker.io/mher/flower
+  #   command: ["celery", "flower", "--broker=redis://redis:6379/0", "--port=5555"]
+  #   ports:
+  #     - 5555:5555
 
   # No need while we don't have regular tasks
   # celerybeat:

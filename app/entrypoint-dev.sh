@@ -7,6 +7,7 @@ while ! nc -z $SQL_HOST $SQL_PORT; do
 done
 echo "PostgreSQL started"
 
+echo "Running migrations"
 python manage.py migrate
 
 # static files

@@ -13,7 +13,8 @@ app/homepage/
 front/node_modules
 front/dist
 variables.env
-.vscode
+.vscode/*
+!.vscode/launch.json
 .venv
 WARNING_*
 .nfs*
