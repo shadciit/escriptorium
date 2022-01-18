@@ -15,8 +15,11 @@ front/dist
 variables.env
 .vscode/*
 !.vscode/launch.json
+.idea
 .venv
+.python-version
 WARNING_*
 .nfs*
 
 yarn.lock
+**/.DS_Store
