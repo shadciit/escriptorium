@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 def create_task_reporting(sender, body, **kwargs):
     task_id = kwargs['headers']['id']
     task_kwargs = body[1]
+
     # If the reporting is disabled for this task we don't need to execute following code
     if sender in settings.REPORTING_TASKS_BLACKLIST:
         return
@@ -103,7 +104,7 @@ def end_task_reporting(task_id, task, *args, **kwargs):
     try:
         report = TaskReport.objects.get(task_id=task_id)
     except TaskReport.DoesNotExist:
-        logger.error(f"Couldn't retrieve any TaskReport object associated with celery task {task_id}")
+        logger.warning(f"Couldn't retrieve any TaskReport object associated with celery task {task_id}")
         return
 
     # Checking if the report wasn't already ended by tasks like "document_export" or "document_import"

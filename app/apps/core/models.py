@@ -914,6 +914,7 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
         if not self.tasks_finished():
             raise AlreadyProcessingException
         tasks = []
+
         if task_name == 'convert' or self.workflow_state < self.WORKFLOW_STATE_CONVERTED:
             sig = convert.si(instance_pk=self.pk, **kwargs)
 

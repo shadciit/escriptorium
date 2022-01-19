@@ -195,8 +195,13 @@ class DocumentViewSet(ModelViewSet):
             raise PermissionDenied
 
         # Revoking all pending/running tasks for the specified document
-        count = 0
-        for report in document.reports.prefetch_related('document_part').filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED, TaskReport.WORKFLOW_STATE_STARTED]):
+
+        reports = (document.reports
+                   .prefetch_related('document_part')
+                   .filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED,
+                                               TaskReport.WORKFLOW_STATE_STARTED]))
+        count = len(reports)  # evaluate query
+        for report in reports:
             report.cancel(request.user.email)
 
             method_name = report.method.split('.')[-1]
@@ -204,31 +209,30 @@ class DocumentViewSet(ModelViewSet):
 
             if report.document_part:
                 # Some glue code from DocumentPart.cancel_tasks function is moved here to prevent performance issues
-                if report.document_part.workflow_state == report.document_part.WORKFLOW_STATE_SEGMENTING:
-                    report.document_part.workflow_state = report.document_part.WORKFLOW_STATE_CONVERTED
-                    report.document_part.save()
-
-                try:
-                    send_event('document', report.document.pk, 'part:workflow', {
-                        'id': report.document_part.pk,
-                        'process': task_name,
-                        'status': 'error',
-                        'reason': _('Canceled.')
-                    })
-                except Exception as e:
-                    # don't crash on websocket error
-                    logger.exception(e)
-
+                # update redis workflow state
                 redis_.set('process-%d' % report.document_part.pk, json.dumps({report.method: {"status": "canceled"}}))
             else:
                 try:
                     send_event('document', document.pk, f'{task_name}:error',
-                            {'reason': _('Canceled.')})
+                               {'reason': _('Canceled.')})
                 except Exception as e:
                     # don't crash on websocket error
                     logger.exception(e)
 
-            count += 1
+        if count:
+            try:
+                # send a single websocket message for all parts
+                send_event('document', document.pk, 'parts:workflow', {
+                    'parts': [{
+                        'id': report.document_part.pk,
+                        'process': task_name,
+                        'status': 'error',
+                        'reason': _('Canceled.')
+                    } for report in reports]
+                })
+            except Exception as e:
+                # don't crash on websocket error
+                logger.exception(e)
 
         # Executing all the glue code outside the real revoking of tasks to maintain db objects
         # up-to-date with the real state of the app (e.g.: we stopped a training, we need to set
