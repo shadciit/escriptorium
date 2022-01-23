@@ -20,3 +20,4 @@ variables.env
 WARNING_*
 .nfs*
 **/.DS_Store
+yarn.lock
