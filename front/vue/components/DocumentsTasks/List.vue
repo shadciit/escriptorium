@@ -37,12 +37,37 @@
       Filter results
     </button>
 
+    <div class="alert alert-success" role="alert" v-if="cancelSuccessMessages && cancelSuccessMessages.length">
+      <button type="button" class="close" @click="cancelSuccessMessages = null" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+      <ul class="mb-0">
+        <li v-for="(message, index) in cancelSuccessMessages" :key="index">
+          {{ message }}
+        </li>
+      </ul>
+    </div>
+    <div class="alert alert-danger" role="alert" v-if="cancelErrorMessages && cancelErrorMessages.length">
+      <button type="button" class="close" @click="cancelErrorMessages = null" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+      <ul class="mb-0">
+        <li v-for="(message, index) in cancelErrorMessages" :key="index">
+          {{ message }}
+        </li>
+      </ul>
+    </div>
+
     <table class="table table-hover">
       <tr>
+        <th>
+          <input class="ml-0" type="checkbox" v-model="selectAll">
+        </th>
         <th>Name</th>
         <th>User</th>
         <th>Statistics</th>
         <th>Last task started</th>
+        <th>Actions</th>
       </tr>
       <template v-if="$store.state.documentsTasks && $store.state.documentsTasks.results && $store.state.documentsTasks.results.length">
         <Row
@@ -50,14 +75,20 @@
           :timezone="timezone"
           :document-tasks="documentTasks"
           :key="documentTasks.pk"
+          :select-all="selectAll"
+          v-on:cancel-start="cancelStarted"
+          v-on:cancel-success="cancelSucceeded"
+          v-on:cancel-error="cancelFailed"
+          v-on:selected="updateSelectedList"
         />
       </template>
       <template v-else>
         <tr>
-          <td colspan="4">No document tasks to display.</td>
+          <td colspan="6">No document tasks to display.</td>
         </tr>
       </template>
     </table>
+
     <ul class="pagination justify-content-end">
       <li class="page-item">
         <template v-if="$store.state.documentsTasks && $store.state.documentsTasks.previous">
@@ -70,10 +101,29 @@
         </template>
       </li>
     </ul>
+
+    <button
+      data-toggle="modal"
+      data-target="#cancelTasksModal"
+      title="Cancel pending/running tasks for the selected documents"
+      class="btn btn-danger"
+      :disabled="!selectedList || !Object.values(selectedList).length"
+    >
+      Cancel all selected
+    </button>
+
+    <CancelModal
+      id="cancelTasksModal"
+      :documents-tasks="Object.values(selectedList)"
+      v-on:cancel-start="cancelStarted"
+      v-on:cancel-success="cancelSucceeded"
+      v-on:cancel-error="cancelFailed"
+    />
   </div>
 </template>
 
 <script>
+import CancelModal from "./CancelModal.vue";
 import Row from "./Row.vue";
 
 export default {
@@ -88,9 +138,14 @@ export default {
       selectedState: "",
       selectedUser: "",
       documentName: "",
+      cancelSuccessMessages: null,
+      cancelErrorMessages: null,
+      selectAll: false,
+      selectedList: {},
     }
   },
   components: {
+    CancelModal,
     Row,
   },
   async created() {
@@ -109,6 +164,26 @@ export default {
     },
   },
   methods: {
+    cancelStarted() {
+      this.cancelSuccessMessages = null
+      this.cancelErrorMessages = null
+    },
+    cancelSucceeded(message) {
+      this.cancelSuccessMessages = message
+      this.getDocumentTasks()
+    },
+    cancelFailed(message) {
+      this.cancelErrorMessages = message
+    },
+    updateSelectedList(documentTasks, action) {
+      let newList = {...this.selectedList}
+      if (action === 'add') {
+        newList[documentTasks.pk] = documentTasks
+      } else {
+        delete newList[documentTasks.pk]
+      }
+      this.selectedList = {...newList}
+    },
     loadPrev() {
         this.currentPage -= 1;
         this.getDocumentTasks();
@@ -128,7 +203,7 @@ export default {
 
       await this.$store.dispatch("fetchDocumentsTasks", params);
     },
-  }
+  },
 };
 </script>
 
