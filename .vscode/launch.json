@@ -15,7 +15,8 @@
                 "--settings",
                 "escriptorium.wsl_dev_settings"
             ],
-            "django": true
+            "django": true,
+            "justMyCode": false
         }
     ]
 }
