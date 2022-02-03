@@ -37,27 +37,6 @@
       Filter results
     </button>
 
-    <div class="alert alert-success" role="alert" v-if="cancelSuccessMessages && cancelSuccessMessages.length">
-      <button type="button" class="close" @click="cancelSuccessMessages = null" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-      <ul class="mb-0">
-        <li v-for="(message, index) in cancelSuccessMessages" :key="index">
-          {{ message }}
-        </li>
-      </ul>
-    </div>
-    <div class="alert alert-danger" role="alert" v-if="cancelErrorMessages && cancelErrorMessages.length">
-      <button type="button" class="close" @click="cancelErrorMessages = null" aria-label="Close">
-        <span aria-hidden="true">&times;</span>
-      </button>
-      <ul class="mb-0">
-        <li v-for="(message, index) in cancelErrorMessages" :key="index">
-          {{ message }}
-        </li>
-      </ul>
-    </div>
-
     <table class="table table-hover">
       <tr>
         <th>
@@ -76,7 +55,6 @@
           :document-tasks="documentTasks"
           :key="documentTasks.pk"
           :select-all="selectAll"
-          v-on:cancel-start="cancelStarted"
           v-on:cancel-success="cancelSucceeded"
           v-on:cancel-error="cancelFailed"
           v-on:selected="updateSelectedList"
@@ -115,7 +93,6 @@
     <CancelModal
       id="cancelTasksModal"
       :documents-tasks="Object.values(selectedList)"
-      v-on:cancel-start="cancelStarted"
       v-on:cancel-success="cancelSucceeded"
       v-on:cancel-error="cancelFailed"
     />
@@ -138,8 +115,6 @@ export default {
       selectedState: "",
       selectedUser: "",
       documentName: "",
-      cancelSuccessMessages: null,
-      cancelErrorMessages: null,
       selectAll: false,
       selectedList: {},
     }
@@ -164,16 +139,12 @@ export default {
     },
   },
   methods: {
-    cancelStarted() {
-      this.cancelSuccessMessages = null
-      this.cancelErrorMessages = null
-    },
-    cancelSucceeded(message) {
-      this.cancelSuccessMessages = message
+    cancelSucceeded(messages) {
+      messages.forEach((message, i) => Alert.add(`cancel-succeeded-${i}-${Date.now()}`, message, 'success'))
       this.getDocumentTasks()
     },
-    cancelFailed(message) {
-      this.cancelErrorMessages = message
+    cancelFailed(messages) {
+      messages.forEach((message, i) => Alert.add(`cancel-failed-${i}-${Date.now()}`, message, 'danger'))
     },
     updateSelectedList(documentTasks, action) {
       let newList = {...this.selectedList}

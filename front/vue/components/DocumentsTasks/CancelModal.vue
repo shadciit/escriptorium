@@ -39,7 +39,6 @@ export default {
   },
   methods: {
     async cancelTasks() {
-      this.$emit('cancel-start')
       this.loading = true
       const successes = []
       const errors = []
