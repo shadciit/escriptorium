@@ -11,12 +11,32 @@
             "program": "${workspaceFolder}/app/manage.py",
             "cwd": "${workspaceFolder}/app",
             "args": [
-                "runserver", 
+                "runserver",
                 "--settings",
                 "escriptorium.wsl_dev_settings"
             ],
             "django": true,
-            "justMyCode": false
+        },
+        {
+            "name": "Celery Low Priority",
+            "type": "python",
+            "request": "launch",
+            "module": "celery",
+            "cwd": "${workspaceFolder}/app",
+            "args": [
+                "-A",
+                "escriptorium",
+                "-Q",
+                "low-priority",
+                "-l",
+                "INFO",
+                "-P",
+                "solo",
+                "worker"
+            ],
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "escriptorium.wsl_dev_settings"
+            }
         }
     ]
 }
