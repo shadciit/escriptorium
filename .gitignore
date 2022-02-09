@@ -14,7 +14,6 @@ front/node_modules
 front/dist
 variables.env
 .vscode/*
-!.vscode/launch.json
 .idea
 .venv
 .python-version
@@ -22,3 +21,5 @@ WARNING_*
 .nfs*
 **/.DS_Store
 yarn.lock
+wsl-dev*
+wsl_dev*
