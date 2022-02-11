@@ -13,9 +13,6 @@ ALTO_FORMAT = "alto"
 
 
 class BaseExporter:
-    include_orphans = False
-    include_undefined = False
-
     def __init__(
         self,
         part_pks,
@@ -38,11 +35,13 @@ class BaseExporter:
 
     def prepare_for_rendering(self):
         # Check if we have to include orphan lines
+        self.include_orphans = False
         if "Orphan" in self.region_types:
             self.include_orphans = True
             self.region_types.remove("Orphan")
 
         # Check if we have to include lines with an undefined region type
+        self.include_undefined = False
         if "Undefined" in self.region_types:
             self.include_undefined = True
             self.region_types.remove("Undefined")
@@ -53,6 +52,9 @@ class BaseExporter:
             self.file_format,
             datetime.now().strftime("%Y%m%d%H%M"),
         )
+        assert hasattr(
+            self, "file_extension"
+        ), "file_extension attribute is mandatory and must be defined on your exporter"
         filename = f"{base_filename}.{self.file_extension}"
         self.filepath = os.path.join(self.user.get_document_store_path(), filename)
 
@@ -82,9 +84,6 @@ class TextExporter(BaseExporter):
                 "line__document_part", "line__document_part__order", "line__order"
             )
         )
-        # content_type = 'text/plain'
-        # return StreamingHttpResponse(['%s\n' % line.content for line in lines],
-        #                              content_type=content_type)
         with open(self.filepath, "w") as fh:
             fh.writelines(["%s\n" % line.content for line in lines])
             fh.close()
