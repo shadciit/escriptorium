@@ -4,7 +4,7 @@ import shutil
 from unittest.mock import patch
 from zipfile import ZipFile
 
-from django.conf import settings
+from django.test import override_settings
 
 from core.models import Block, BlockType, Line, LineTranscription
 from core.tests.factory import CoreFactoryTestCase
@@ -43,9 +43,6 @@ CONTENTS = [
 class ExportersTestCase(CoreFactoryTestCase):
     def setUp(self):
         super().setUp()
-
-        self.old_version = settings.VERSION_DATE
-        settings.VERSION_DATE = "1.0.0-testing"
 
         user = self.factory.make_user()
         doc = self.factory.make_document(owner=user)
@@ -147,7 +144,6 @@ class ExportersTestCase(CoreFactoryTestCase):
 
     def tearDown(self):
         shutil.rmtree(MEDIA_ROOT)
-        settings.VERSION_DATE = self.old_version
 
     def test_text_exporter_render(self, timezone_mock):
         exporter = TextExporter(
@@ -385,6 +381,7 @@ class ExportersTestCase(CoreFactoryTestCase):
                 .replace(b"\\t", b"\t"),
             )
 
+    @override_settings(VERSION_DATE="1.0.0-testing")
     def test_openiti_markdown_exporter_render(self, timezone_mock):
         exporter = OpenITIMARkdownExporter(
             self.all_parts_pks,
@@ -412,6 +409,7 @@ class ExportersTestCase(CoreFactoryTestCase):
                 ).read(),
             )
 
+    @override_settings(VERSION_DATE="1.0.0-testing")
     def test_openiti_markdown_exporter_render_only_one_part(self, timezone_mock):
         parts_pk = [self.part.pk]
         exporter = OpenITIMARkdownExporter(
@@ -428,6 +426,7 @@ class ExportersTestCase(CoreFactoryTestCase):
                 ).read(),
             )
 
+    @override_settings(VERSION_DATE="1.0.0-testing")
     def test_openiti_markdown_exporter_render_only_one_region(self, timezone_mock):
         region_types = [self.body.pk]
         exporter = OpenITIMARkdownExporter(
@@ -455,6 +454,7 @@ class ExportersTestCase(CoreFactoryTestCase):
                 ).read(),
             )
 
+    @override_settings(VERSION_DATE="1.0.0-testing")
     def test_openiti_markdown_exporter_render_with_images(self, timezone_mock):
         include_images = True
         exporter = OpenITIMARkdownExporter(
