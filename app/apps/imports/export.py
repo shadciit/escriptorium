@@ -7,11 +7,13 @@ from django.conf import settings
 from django.utils.text import slugify
 from django.db.models import Q, Prefetch, Avg
 from django.template import loader
+import oitei
 
 TEXT_FORMAT = "text"
 PAGEXML_FORMAT = "pagexml"
 ALTO_FORMAT = "alto"
 OPENITI_MARKDOWN_FORMAT = "openitimarkdown"
+TEI_XML_FORMAT = "teixml"
 
 
 class BaseExporter:
@@ -174,8 +176,24 @@ class OpenITIMARkdownExporter(BaseExporter):
     file_format = OPENITI_MARKDOWN_FORMAT
     file_extension = "zip"
 
+    def render_part_markdown(self, part, region_filters):
+        LineTranscription = apps.get_model("core", "LineTranscription")
+        return self.template.render(
+            {
+                "version": settings.VERSION_DATE,
+                "part": part,
+                "lines": LineTranscription.objects.filter(
+                    transcription=self.transcription,
+                    line__document_part=part,
+                )
+                .filter(region_filters)
+                .exclude(content="")
+                .order_by("line__order"),
+            }
+        )
+
     def render(self):
-        template = loader.get_template("export/openiti_markdown.mARkdown")
+        self.template = loader.get_template("export/openiti_markdown.mARkdown")
 
         DocumentPart = apps.get_model("core", "DocumentPart")
         parts = DocumentPart.objects.filter(
@@ -190,26 +208,13 @@ class OpenITIMARkdownExporter(BaseExporter):
                 line__block__isnull=False, line__block__typology_id__isnull=True
             )
 
-        LineTranscription = apps.get_model("core", "LineTranscription")
         with ZipFile(self.filepath, "w") as zip_:
             for part in parts:
                 if self.include_images:
                     # Note adds image before the mARkdown file
                     zip_.write(part.image.path, part.filename)
                 try:
-                    page = template.render(
-                        {
-                            "version": settings.VERSION_DATE,
-                            "part": part,
-                            "lines": LineTranscription.objects.filter(
-                                transcription=self.transcription,
-                                line__document_part=part,
-                            )
-                            .filter(region_filters)
-                            .exclude(content="")
-                            .order_by("line__order"),
-                        }
-                    )
+                    page = self.render_part_markdown(part, region_filters)
                 except Exception as e:
                     self.report.append(
                         "Skipped {element}({image}) because '{reason}'.".format(
@@ -219,6 +224,50 @@ class OpenITIMARkdownExporter(BaseExporter):
                 else:
                     zip_.writestr(
                         "%s.mARkdown" % os.path.splitext(part.filename)[0], page
+                    )
+
+            zip_.close()
+
+
+class TEIXMLExporter(OpenITIMARkdownExporter):
+    file_format = TEI_XML_FORMAT
+    file_extension = "zip"
+
+    def render(self):
+        self.template = loader.get_template("export/openiti_markdown.mARkdown")
+
+        DocumentPart = apps.get_model("core", "DocumentPart")
+        parts = DocumentPart.objects.filter(
+            document=self.document, pk__in=self.part_pks
+        )
+
+        region_filters = Q(line__block__typology_id__in=self.region_types)
+        if self.include_orphans:
+            region_filters |= Q(line__block__isnull=True)
+        if self.include_undefined:
+            region_filters |= Q(
+                line__block__isnull=False, line__block__typology_id__isnull=True
+            )
+
+        with ZipFile(self.filepath, "w") as zip_:
+            for part in parts:
+                if self.include_images:
+                    # Note adds image before the TEI file
+                    zip_.write(part.image.path, part.filename)
+                try:
+                    markdown_content = super().render_part_markdown(
+                        part, region_filters
+                    )
+                    tei_content = oitei.convert(markdown_content).tostring()
+                except Exception as e:
+                    self.report.append(
+                        "Skipped {element}({image}) because '{reason}'.".format(
+                            element=part.name, image=part.filename, reason=str(e)
+                        )
+                    )
+                else:
+                    zip_.writestr(
+                        "%s.xml" % os.path.splitext(part.filename)[0], tei_content
                     )
 
             zip_.close()
