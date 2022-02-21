@@ -140,7 +140,6 @@ class ImportForm(BootstrapFormMixin, forms.Form):
 
 
 class ExportForm(BootstrapFormMixin, forms.Form):
-    # OpenITI mARkdown/TEI XML choices are added conditionally in the __init__ function
     FORMAT_CHOICES = (
         (export_format, export["label"])
         for export_format, export in ENABLED_EXPORTERS.items()
