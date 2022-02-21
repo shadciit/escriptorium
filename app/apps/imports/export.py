@@ -96,8 +96,8 @@ class TextExporter(BaseExporter):
 class XMLTemplateExporter(BaseExporter):
     file_extension = "zip"
 
-    def render_xml_template(self, template_path):
-        tplt = loader.get_template(template_path)
+    def render(self):
+        tplt = loader.get_template(self.template_path)
 
         DocumentPart = apps.get_model("core", "DocumentPart")
         parts = DocumentPart.objects.filter(
@@ -160,16 +160,12 @@ class XMLTemplateExporter(BaseExporter):
 
 class PageXMLExporter(XMLTemplateExporter):
     file_format = PAGEXML_FORMAT
-
-    def render(self):
-        super().render_xml_template("export/pagexml.xml")
+    template_path = "export/pagexml.xml"
 
 
 class AltoExporter(XMLTemplateExporter):
     file_format = ALTO_FORMAT
-
-    def render(self):
-        super().render_xml_template("export/alto.xml")
+    template_path = "export/alto.xml"
 
 
 class OpenITIMARkdownExporter(BaseExporter):
@@ -192,7 +188,7 @@ class OpenITIMARkdownExporter(BaseExporter):
             }
         )
 
-    def render(self):
+    def render(self, tei_conversion=False):
         self.template = loader.get_template("export/openiti_markdown.mARkdown")
 
         DocumentPart = apps.get_model("core", "DocumentPart")
@@ -214,7 +210,13 @@ class OpenITIMARkdownExporter(BaseExporter):
                     # Note adds image before the mARkdown file
                     zip_.write(part.image.path, part.filename)
                 try:
-                    page = self.render_part_markdown(part, region_filters)
+                    markdown_content = self.render_part_markdown(part, region_filters)
+
+                    if tei_conversion:
+                        content = oitei.convert(markdown_content).tostring()
+                    else:
+                        content = markdown_content
+
                 except Exception as e:
                     self.report.append(
                         "Skipped {element}({image}) because '{reason}'.".format(
@@ -222,8 +224,9 @@ class OpenITIMARkdownExporter(BaseExporter):
                         )
                     )
                 else:
+                    ext = "xml" if tei_conversion else "mARkdown"
                     zip_.writestr(
-                        "%s.mARkdown" % os.path.splitext(part.filename)[0], page
+                        "%s.%s" % (os.path.splitext(part.filename)[0], ext), content
                     )
 
             zip_.close()
@@ -231,46 +234,10 @@ class OpenITIMARkdownExporter(BaseExporter):
 
 class TEIXMLExporter(OpenITIMARkdownExporter):
     file_format = TEI_XML_FORMAT
-    file_extension = "zip"
 
     def render(self):
-        self.template = loader.get_template("export/openiti_markdown.mARkdown")
-
-        DocumentPart = apps.get_model("core", "DocumentPart")
-        parts = DocumentPart.objects.filter(
-            document=self.document, pk__in=self.part_pks
-        )
-
-        region_filters = Q(line__block__typology_id__in=self.region_types)
-        if self.include_orphans:
-            region_filters |= Q(line__block__isnull=True)
-        if self.include_undefined:
-            region_filters |= Q(
-                line__block__isnull=False, line__block__typology_id__isnull=True
-            )
-
-        with ZipFile(self.filepath, "w") as zip_:
-            for part in parts:
-                if self.include_images:
-                    # Note adds image before the TEI file
-                    zip_.write(part.image.path, part.filename)
-                try:
-                    markdown_content = super().render_part_markdown(
-                        part, region_filters
-                    )
-                    tei_content = oitei.convert(markdown_content).tostring()
-                except Exception as e:
-                    self.report.append(
-                        "Skipped {element}({image}) because '{reason}'.".format(
-                            element=part.name, image=part.filename, reason=str(e)
-                        )
-                    )
-                else:
-                    zip_.writestr(
-                        "%s.xml" % os.path.splitext(part.filename)[0], tei_content
-                    )
-
-            zip_.close()
+        # We need an extra TEI conversion after the OpenITI mARkdown generation
+        super().render(tei_conversion=True)
 
 
 EXPORTER_CLASS = {
