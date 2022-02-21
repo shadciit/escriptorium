@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 from bootstrap.forms import BootstrapFormMixin
 
 from core.models import Transcription, DocumentPart
-from imports.export import ALTO_FORMAT, OPENITI_MARKDOWN_FORMAT, PAGEXML_FORMAT, TEI_XML_FORMAT, TEXT_FORMAT
+from imports.export import ENABLED_EXPORTERS
 from imports.models import DocumentImport
 from imports.parsers import make_parser, ParseError
 from imports.tasks import document_import, document_export
@@ -142,9 +142,8 @@ class ImportForm(BootstrapFormMixin, forms.Form):
 class ExportForm(BootstrapFormMixin, forms.Form):
     # OpenITI mARkdown/TEI XML choices are added conditionally in the __init__ function
     FORMAT_CHOICES = (
-        (ALTO_FORMAT, 'ALTO'),
-        (TEXT_FORMAT, 'Text'),
-        (PAGEXML_FORMAT, 'PAGE')
+        (export_format, export["label"])
+        for export_format, export in ENABLED_EXPORTERS.items()
     )
     parts = forms.ModelMultipleChoiceField(queryset=None)
     transcription = forms.ModelChoiceField(queryset=Transcription.objects.all())
@@ -167,13 +166,6 @@ class ExportForm(BootstrapFormMixin, forms.Form):
         ] + [('Undefined', '(Undefined region type)'), ('Orphan', '(Orphan lines)')]
         self.fields['region_types'].choices = choices
         self.fields['region_types'].initial = [c[0] for c in choices]
-
-        format_choices = self.fields['file_format'].choices
-        if settings.EXPORT_OPENITI_MARKDOWN_ENABLED:
-            format_choices.append((OPENITI_MARKDOWN_FORMAT, 'OpenITI mARkdown'))
-        if settings.EXPORT_TEI_XML_ENABLED:
-            format_choices.append((TEI_XML_FORMAT, 'OpenITI TEI XML'))
-        self.fields['file_format'].choices = format_choices
 
     def clean_parts(self):
         parts = self.cleaned_data['parts']
