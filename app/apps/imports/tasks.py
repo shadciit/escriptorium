@@ -11,7 +11,6 @@ from celery import shared_task
 from users.consumers import send_event
 from escriptorium.utils import send_email
 from imports.export import ENABLED_EXPORTERS
-from reporting.tasks import create_task_reporting
 
 
 logger = logging.getLogger(__name__)

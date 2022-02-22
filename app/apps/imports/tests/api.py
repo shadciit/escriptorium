@@ -1,8 +1,6 @@
-import json
 import os.path
 from unittest import mock
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
@@ -15,7 +13,7 @@ from core.tests.factory import CoreFactoryTestCase
 
 # DO NOT REMOVE THIS IMPORT, it will break a lot of tests
 # It is used to trigger Celery signals when running tests
-from reporting.tasks import end_task_reporting, start_task_reporting
+from reporting.tasks import end_task_reporting, start_task_reporting  # noqa F401
 
 
 class XmlImportTestCase(CoreFactoryTestCase):

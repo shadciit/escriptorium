@@ -5,7 +5,6 @@ So no need to test the content unless there is some magic in the serializer.
 """
 
 import unittest
-import os
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -14,7 +13,6 @@ from unittest.mock import patch
 
 from core.models import Block, Line, Transcription, LineTranscription, OcrModel, Metadata, DocumentMetadata
 from core.tests.factory import CoreFactoryTestCase
-from reporting.models import TaskReport
 
 
 class UserViewSetTestCase(CoreFactoryTestCase):

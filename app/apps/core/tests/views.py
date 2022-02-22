@@ -4,7 +4,6 @@ from django.urls import reverse
 
 from core.models import Document
 from core.tests.factory import CoreFactory
-from users.models import User
 
 
 class DocumentTestCase(TestCase):

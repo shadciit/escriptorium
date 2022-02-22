@@ -361,7 +361,7 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
 if 'test' in sys.argv:
     try:
-        from .test_settings import *
+        from .test_settings import * # noqa F401
     except (ModuleNotFoundError, ImportError):
         pass
 
