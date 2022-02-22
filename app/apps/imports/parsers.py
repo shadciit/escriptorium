@@ -425,7 +425,7 @@ class AltoParser(XMLParser):
             filename = self.root.find(
                 "Description/sourceImageInformation/fileName", self.root.nsmap
             ).text
-        except (IndexError, AttributeError) as e:
+        except (IndexError, AttributeError):
             raise ParseError("""
 The ALTO file should contain a Description/sourceImageInformation/fileName tag for matching.
             """)
@@ -559,7 +559,7 @@ class PagexmlParser(XMLParser):
     def get_filename(self, pageTag):
         try:
             filename = pageTag.get("imageFilename")
-        except (IndexError, AttributeError) as e:
+        except (IndexError, AttributeError):
             raise ParseError("""
 The PAGE file should contain an attribute imageFilename in Page tag for matching.
             """)
@@ -748,7 +748,6 @@ class IIIFManifestParser(ParserDocument):
             try:
                 resource = canvas["images"][0]["resource"]
                 url = resource["@id"]
-                base_url = urlparse(url).hostname
                 uri_template = "{image}/{region}/{size}/{rotation}/{quality}.{format}"
                 url = uri_template.format(
                     image=resource["service"]["@id"],

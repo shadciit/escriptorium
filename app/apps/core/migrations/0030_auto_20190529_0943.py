@@ -6,11 +6,11 @@ from django.db import migrations
 def forward(apps, se):
     with connection.cursor() as cursor:
         # format lines and blocks to polygons, it won't bother because it's a jsonfield
-        res = cursor.execute("UPDATE core_line SET box=array_to_json("
-                             "('{{' || CAST(box->0 as text) || ',' || CAST(box->1 as text) || '},"
-                             "{' || CAST(box->0 as text) || ',' || CAST(box->3 as text) || '},"
-                             "{' || CAST(box->2 as text) || ',' || CAST(box->3 as text) || '},"
-                             "{' || CAST(box->2 as text) || ',' || CAST(box->1 as text) || '}}')::int[])")
+        cursor.execute("UPDATE core_line SET box=array_to_json("
+                       "('{{' || CAST(box->0 as text) || ',' || CAST(box->1 as text) || '},"
+                       "{' || CAST(box->0 as text) || ',' || CAST(box->3 as text) || '},"
+                       "{' || CAST(box->2 as text) || ',' || CAST(box->3 as text) || '},"
+                       "{' || CAST(box->2 as text) || ',' || CAST(box->1 as text) || '}}')::int[])")
 
 
 def backward(apps, se):

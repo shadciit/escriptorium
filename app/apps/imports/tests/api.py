@@ -189,7 +189,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         line = Line.objects.create(document_part=self.part1, block=b, external_id="line_0",
                                    baseline=((5, 5), (5, 10)),
                                    mask=((0, 0), (0, 10), (10, 0), (10, 10)))
-        lt = LineTranscription.objects.create(transcription=trans, line=line)
+        LineTranscription.objects.create(transcription=trans, line=line)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
         filename = 'test_single.alto'
@@ -227,7 +227,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         # historic line without external_id
         b2 = Block.objects.create(document_part=self.part1, box=[[0, 0], [100, 100]])
         l2 = Line.objects.create(document_part=self.part1, block=b2, baseline=((10, 10), (50, 20)))
-        lt2 = LineTranscription.objects.create(transcription=trans, line=l2, content="test dummy")
+        LineTranscription.objects.create(transcription=trans, line=l2, content="test dummy")
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
         filename = 'test_single.alto'
@@ -287,7 +287,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         line = Line.objects.create(document_part=self.part3, block=block, external_id="r2l1",
                                    baseline=((5, 5), (5, 10)),
                                    mask=((0, 0), (0, 10), (10, 0), (10, 10)))
-        lt = LineTranscription.objects.create(transcription=trans, line=line)
+        LineTranscription.objects.create(transcription=trans, line=line)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
         filename = 'pagexml_test.xml'
@@ -313,7 +313,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
                                    external_id="r2l1",
                                    baseline=((5, 5), (5, 10)),
                                    mask=((0, 0), (0, 10), (10, 0), (10, 10)))
-        lt = LineTranscription.objects.create(transcription=trans, line=line)
+        LineTranscription.objects.create(transcription=trans, line=line)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
         filename = 'transkribus_test.xml'

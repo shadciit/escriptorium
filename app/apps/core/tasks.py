@@ -273,7 +273,7 @@ def segtrain(task, model_pk, part_pks, document_pk=None, user_pk=None, **kwargs)
 
         try:
             shutil.copy(best_version, model.file.path)  # os.path.join(model_dir, filename)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             user.notify(_("Training didn't get better results than base model!"),
                         id="seg-no-gain-error", level='warning')
             shutil.copy(load, model.file.path)
@@ -312,7 +312,7 @@ def segment(instance_pk=None, user_pk=None, model_pk=None,
     try:
         DocumentPart = apps.get_model('core', 'DocumentPart')
         part = DocumentPart.objects.get(pk=instance_pk)
-    except DocumentPart.DoesNotExist as e:
+    except DocumentPart.DoesNotExist:
         logger.error('Trying to segment non-existent DocumentPart : %d', instance_pk)
         return
 
@@ -369,7 +369,7 @@ def recalculate_masks(instance_pk=None, user_pk=None, only=None, **kwargs):
     try:
         DocumentPart = apps.get_model('core', 'DocumentPart')
         part = DocumentPart.objects.get(pk=instance_pk)
-    except DocumentPart.DoesNotExist as e:
+    except DocumentPart.DoesNotExist:
         logger.error('Trying to recalculate masks of non-existent DocumentPart : %d', instance_pk)
         return
 

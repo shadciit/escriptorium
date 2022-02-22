@@ -110,14 +110,14 @@ class TasksTestCase(CoreFactoryTestCase):
         self.part = self.factory.make_part(image_asset='segmentation/default.png')
         baselines = [[[13, 31], [848, 37]], [[99, 93], [850, 106]], [[15, 157], [837, 165]]]
         for baseline in baselines:
-            line = Line.objects.create(document_part=self.part, baseline=baseline)
+            Line.objects.create(document_part=self.part, baseline=baseline)
         self.part2 = self.factory.make_part(image_asset='segmentation/default2.png', document=self.part.document)
         baselines = [[[24, 33], [225, 42], [376, 40], [524, 46], [657, 43], [731, 56]],
                      [[52, 81], [701, 91]],
                      [[51, 120], [233, 123], [360, 119], [673, 127], [722, 136]],
                      [[5, 158], [155, 165], [305, 165], [540, 170], [554, 165], [689, 177], [733, 196]]]
         for baseline in baselines:
-            line = Line.objects.create(document_part=self.part2, baseline=baseline)
+            Line.objects.create(document_part=self.part2, baseline=baseline)
 
         self.client.force_login(self.part.document.owner)
         uri = reverse('document-parts-process', kwargs={'pk': self.part.document.pk})
