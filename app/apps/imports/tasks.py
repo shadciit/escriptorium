@@ -26,9 +26,9 @@ def document_import(task, import_pk=None, resume=True, task_id=None, user_pk=Non
     user = User.objects.get(pk=user_pk)
     # If quotas are enforced, assert that the user still has free CPU minutes and disk storage
     if not settings.DISABLE_QUOTAS:
-        if user.cpu_minutes_limit() != None:
+        if user.cpu_minutes_limit() is not None:
             assert user.has_free_cpu_minutes(), f"User {user.id} doesn't have any CPU minutes left"
-        if user.disk_storage_limit() != None:
+        if user.disk_storage_limit() is not None:
             assert user.has_free_disk_storage(), f"User {user.id} doesn't have any disk storage left"
 
     imp = DocumentImport.objects.get(
@@ -86,7 +86,7 @@ def document_export(task, file_format, part_pks,
     user = User.objects.get(pk=user_pk)
 
     # If quotas are enforced, assert that the user still has free CPU minutes
-    if not settings.DISABLE_QUOTAS and user.cpu_minutes_limit() != None:
+    if not settings.DISABLE_QUOTAS and user.cpu_minutes_limit() is not None:
         assert user.has_free_cpu_minutes(), f"User {user.id} doesn't have any CPU minutes left"
 
     document = Document.objects.get(pk=document_pk)
