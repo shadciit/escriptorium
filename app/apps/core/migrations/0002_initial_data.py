@@ -16,7 +16,7 @@ def initial_data(apps, schema_editor):
     OcrModel = apps.get_model('core', 'OcrModel')
     try:
         error = subprocess.check_call(["kraken", "get", "default"])
-    except:
+    except Exception:
         pass
     else:
         # TODO: ask for ben@kraken to give a higher level function that returns the name of the model

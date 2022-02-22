@@ -43,7 +43,7 @@ def async_email(subject, message, recipients, html=None, result_interface=None):
             recipients,
             fail_silently=False,
             html_message=html)
-    except:  # Good old catch all, fine in this case
+    except Exception:  # Good old catch all, fine in this case
         logger.exception('Error sending email %s to %s.', subject, recipients)
         if result_interface:
             email_result(result_interface, success=False)
