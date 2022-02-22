@@ -585,7 +585,7 @@ The PAGE file should contain an attribute imageFilename in Page tag for matching
         if not type_:
             custom = blockTag.get("custom")
             if custom:
-                match = re.search('structure\s?{.*?type:\s?(\w+);', custom)
+                match = re.search(r'structure\s?{.*?type:\s?(\w+);', custom)
                 if match:
                     type_ = match.groups()[0]
 
@@ -616,7 +616,7 @@ The PAGE file should contain an attribute imageFilename in Page tag for matching
         if not type_:
             custom = lineTag.get("custom")
             if custom:
-                match = re.search('structure\s?{.*?type:\s?(\w+);', custom)
+                match = re.search(r'structure\s?{.*?type:\s?(\w+);', custom)
                 if match:
                     type_ = match.groups()[0]
 
