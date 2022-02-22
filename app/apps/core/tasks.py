@@ -151,10 +151,10 @@ def make_segmentation_training_data(part):
                        'baseline': line.baseline}
                       for line in part.lines.only('baseline', 'typology')
                       if line.baseline],
-        'regions':  {typo: list(reg.box for reg in regs)
-                     for typo, regs in groupby(
-                        part.blocks.only('box', 'typology').order_by('typology'),
-                        key=lambda reg: reg.typology and reg.typology.name or 'default')}
+        'regions': {typo: list(reg.box for reg in regs)
+                    for typo, regs in groupby(
+            part.blocks.only('box', 'typology').order_by('typology'),
+            key=lambda reg: reg.typology and reg.typology.name or 'default')}
     }
     return data
 
@@ -574,8 +574,8 @@ def before_publish_state(sender=None, body=None, **kwargs):
 
     try:
         # protects against signal race condition
-        if (data[sender]['task_id'] == sender.request.id and
-            not check_signal_order(data[sender]['status'], signal_name)):
+        if (data[sender]['task_id'] == sender.request.id
+                and not check_signal_order(data[sender]['status'], signal_name)):
             return
     except (KeyError, AttributeError):
         pass
@@ -609,8 +609,8 @@ def done_state(sender=None, body=None, **kwargs):
 
     try:
         # protects against signal race condition
-        if (data[sender.name]['task_id'] == sender.request.id and
-            not check_signal_order(data[sender.name]['status'], signal_name)):
+        if (data[sender.name]['task_id'] == sender.request.id
+                and not check_signal_order(data[sender.name]['status'], signal_name)):
             return
     except KeyError:
         pass

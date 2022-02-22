@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('core', '0001_initial'),
     ]
-    
+
     operations = [
         migrations.RunPython(initial_data, backward),
     ]

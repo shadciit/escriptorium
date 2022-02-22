@@ -190,7 +190,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
                                  box=[[0, 0], [100, 100]])
         l = Line.objects.create(document_part=self.part1, block=b, external_id="line_0",
                                 baseline=((5, 5), (5, 10)),
-                                mask=((0, 0), (0, 10), (10, 0), (10,10)))
+                                mask=((0, 0), (0, 10), (10, 0), (10, 10)))
         lt = LineTranscription.objects.create(transcription=trans, line=l)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
@@ -223,7 +223,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
                                  box=[[0, 0], [100, 100]])
         l = Line.objects.create(document_part=self.part1, block=b, external_id="line_0",
                                 baseline=((5, 5), (5, 10)),
-                                mask=((0, 0), (0, 10), (10, 0), (10,10)))
+                                mask=((0, 0), (0, 10), (10, 0), (10, 10)))
         lt = LineTranscription.objects.create(transcription=trans, line=l, content="test history")
 
         # historic line without external_id
@@ -288,7 +288,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
                                      box=[[0, 0], [100, 100]])
         l = Line.objects.create(document_part=self.part3, block=block, external_id="r2l1",
                                 baseline=((5, 5), (5, 10)),
-                                mask=((0, 0), (0, 10), (10, 0), (10,10)))
+                                mask=((0, 0), (0, 10), (10, 0), (10, 10)))
         lt = LineTranscription.objects.create(transcription=trans, line=l)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
@@ -314,7 +314,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
                                    block=block,
                                    external_id="r2l1",
                                    baseline=((5, 5), (5, 10)),
-                                   mask=((0, 0), (0, 10), (10, 0), (10,10)))
+                                   mask=((0, 0), (0, 10), (10, 0), (10, 10)))
         lt = LineTranscription.objects.create(transcription=trans, line=line)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
@@ -455,7 +455,7 @@ class DocumentExportTestCase(CoreFactoryTestCase):
             for j in range(1, 4):
                 l = Line.objects.create(document_part=part,
                                         baseline=((5, 5), (5, 10)),
-                                        mask=((0, 0), (0, 10), (10, 0), (10,10)))
+                                        mask=((0, 0), (0, 10), (10, 0), (10, 10)))
                 LineTranscription.objects.create(
                     line=l,
                     transcription=self.trans,
@@ -500,7 +500,7 @@ class DocumentExportTestCase(CoreFactoryTestCase):
                 l = Line.objects.create(document_part=part,
                                         block=block,
                                         baseline=((5, 5), (5, 10)),
-                                        mask=((0, 0), (0, 10), (10, 0), (10,10)))
+                                        mask=((0, 0), (0, 10), (10, 0), (10, 10)))
                 LineTranscription.objects.create(
                     line=l,
                     transcription=self.trans,

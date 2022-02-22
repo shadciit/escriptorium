@@ -32,8 +32,8 @@ def document_import(task, import_pk=None, resume=True, task_id=None, user_pk=Non
             assert user.has_free_disk_storage(), f"User {user.id} doesn't have any disk storage left"
 
     imp = DocumentImport.objects.get(
-        Q(workflow_state=DocumentImport.WORKFLOW_STATE_CREATED) |
-        Q(workflow_state=DocumentImport.WORKFLOW_STATE_ERROR),
+        Q(workflow_state=DocumentImport.WORKFLOW_STATE_CREATED)
+        | Q(workflow_state=DocumentImport.WORKFLOW_STATE_ERROR),
         pk=import_pk)
 
     imp.report = TaskReport.objects.get(task_id=task.request.id)

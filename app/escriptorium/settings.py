@@ -160,8 +160,8 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 LANGUAGES = [
-  ('en', _('English')),
-  ('de', _('French')),
+    ('en', _('English')),
+    ('de', _('French')),
 ]
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'mail')
@@ -227,7 +227,7 @@ CHANNEL_LAYERS = {
     },
 }
 # fixes https://github.com/django/channels/issues/1240:
-DATA_UPLOAD_MAX_MEMORY_SIZE = 150*1024*1024  # value in bytes (so 150Mb)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 150 * 1024 * 1024  # value in bytes (so 150Mb)
 
 
 # Static files (CSS, JavaScript, Images)

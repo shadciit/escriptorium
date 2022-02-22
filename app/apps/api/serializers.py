@@ -566,7 +566,7 @@ class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
 
         if not data.get('model') and not data.get('model_name'):
             raise serializers.ValidationError(
-                    _("Either use model_name to create a new model, or add a model pk to retrain an existing one."))
+                _("Either use model_name to create a new model, or add a model pk to retrain an existing one."))
 
         model = data.get('model')
         if not data.get('model_name') and model.owner != self.user and data.get('override'):

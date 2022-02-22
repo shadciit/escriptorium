@@ -2,6 +2,7 @@
 
 from django.db import migrations
 
+
 def make_scripts(apps, schema_editor):
     Script = apps.get_model("core", "Script")
     batch = []

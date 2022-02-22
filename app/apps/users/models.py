@@ -65,9 +65,9 @@ class User(AbstractUser):
 
     def disk_storage_limit(self):
         if self.quota_disk_storage != None:
-            return self.quota_disk_storage*MEGABYTES_TO_BYTES
+            return self.quota_disk_storage * MEGABYTES_TO_BYTES
         if settings.QUOTA_DISK_STORAGE != None:
-            return settings.QUOTA_DISK_STORAGE*MEGABYTES_TO_BYTES
+            return settings.QUOTA_DISK_STORAGE * MEGABYTES_TO_BYTES
         return None
 
     def has_free_disk_storage(self):
