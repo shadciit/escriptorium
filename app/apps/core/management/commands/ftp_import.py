@@ -49,7 +49,7 @@ class Command(BaseCommand):
             part = None
             with open(options['csv'], 'r') as fh:
                 for line in fh.readlines()[1:]:
-                    #order,page,realCol,GTcol,GTline,x1,y1,x2,y2,x3,y3,x4,y4,siftflowpoints,fn,linedistance,folioreference,sourcereference,manual_correction,comment = line.split('\t')
+                    # order,page,realCol,GTcol,GTline,x1,y1,x2,y2,x3,y3,x4,y4,siftflowpoints,fn,linedistance,folioreference,sourcereference,manual_correction,comment = line.split('\t')
                     order, page, regionNumber, x1Region, y1Region, x2Region, y2Region, lineNumber, x1line, y1line, x2line, y2line, fn, AT, GT2 = line.split('\t')
                     if fn != file_:
                         # part = self.grab(ftp, fn.replace('.jpg', '.tif'))

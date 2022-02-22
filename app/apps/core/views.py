@@ -447,7 +447,7 @@ class EditPart(LoginRequiredMixin, DetailView):
         return context
 
     def dispatch(self, *args, **kwargs):
-        if not 'part_pk' in self.kwargs:
+        if 'part_pk' not in self.kwargs:
             try:
                 first = self.get_queryset()[0]
                 return HttpResponseRedirect(reverse('document-part-edit',
