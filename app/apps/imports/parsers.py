@@ -442,7 +442,7 @@ The ALTO file should contain a Description/sourceImageInformation/fileName tag f
         ]
 
     def get_lines(self, blockTag):
-        return [(l.get("ID"), l) for l in blockTag.findall("TextLine", self.root.nsmap)]
+        return [(line.get("ID"), line) for line in blockTag.findall("TextLine", self.root.nsmap)]
 
     def update_block(self, block, blockTag):
         polygon = blockTag.find("Shape/Polygon", self.root.nsmap)
@@ -575,7 +575,7 @@ The PAGE file should contain an attribute imageFilename in Page tag for matching
         ]
 
     def get_lines(self, blockTag):
-        return [(l.get("id"), l) for l in blockTag.findall("TextLine", self.root.nsmap)]
+        return [(line.get("id"), line) for line in blockTag.findall("TextLine", self.root.nsmap)]
 
     def update_block(self, block, blockTag):
         coords = blockTag.find("Coords", self.root.nsmap).get("points")

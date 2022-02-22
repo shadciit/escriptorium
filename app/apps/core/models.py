@@ -949,10 +949,10 @@ class DocumentPart(ExportModelOperationsMixin('DocumentPart'), OrderedModel):
     def make_masks(self, only=None):
         im = Image.open(self.image).convert('L')
         lines = list(self.lines.all())  # needs to store the qs result
-        to_calc = [l for l in lines if (only and l.pk in only) or (only is None)]
+        to_calc = [line for line in lines if (only and line.pk in only) or (only is None)]
 
         for line in to_calc:
-            context = [l.baseline for l in lines if l.pk != line.pk]
+            context = [line.baseline for line in lines if line.pk != line.pk]
             if line.block:
                 poly = line.block.box
                 poly.append(line.block.box[0])  # close it

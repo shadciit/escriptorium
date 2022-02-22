@@ -533,7 +533,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     @action(detail=False, methods=['post'])
     def move(self, request, document_pk=None, part_pk=None, pk=None):
         data = request.data.get('lines')
-        qs = Line.objects.filter(pk__in=[l['pk'] for l in data])
+        qs = Line.objects.filter(pk__in=[line['pk'] for line in data])
         serializer = LineOrderSerializer(qs, data=data, many=True)
         if serializer.is_valid():
             resp = serializer.save()

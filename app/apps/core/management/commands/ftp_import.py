@@ -59,10 +59,10 @@ class Command(BaseCommand):
                         block = Block.objects.get_or_create(document_part=part, box=(x1Region, y1Region, x2Region, y2Region))
                     file_ = fn
 
-                    l = Line.objects.create(document_part=part, block=block, box=(x1line, y1line, x2line, y2line))
-                    LineTranscription.objects.create(line=l, transcription=trans, content=AT)
+                    line = Line.objects.create(document_part=part, block=block, box=(x1line, y1line, x2line, y2line))
+                    LineTranscription.objects.create(line=line, transcription=trans, content=AT)
                     if GT2:
-                        LineTranscription.objects.create(line=l, transcription=trans_gt, content=GT2)
+                        LineTranscription.objects.create(line=line, transcription=trans_gt, content=GT2)
         else:
             files = []
 

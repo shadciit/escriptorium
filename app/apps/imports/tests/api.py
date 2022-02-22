@@ -188,10 +188,10 @@ class XmlImportTestCase(CoreFactoryTestCase):
         trans = Transcription.objects.create(name=AltoParser.DEFAULT_NAME, document=self.document)
         b = Block.objects.create(document_part=self.part1, external_id="textblock_0",
                                  box=[[0, 0], [100, 100]])
-        l = Line.objects.create(document_part=self.part1, block=b, external_id="line_0",
-                                baseline=((5, 5), (5, 10)),
-                                mask=((0, 0), (0, 10), (10, 0), (10, 10)))
-        lt = LineTranscription.objects.create(transcription=trans, line=l)
+        line = Line.objects.create(document_part=self.part1, block=b, external_id="line_0",
+                                   baseline=((5, 5), (5, 10)),
+                                   mask=((0, 0), (0, 10), (10, 0), (10, 10)))
+        lt = LineTranscription.objects.create(transcription=trans, line=line)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
         filename = 'test_single.alto'
@@ -221,10 +221,10 @@ class XmlImportTestCase(CoreFactoryTestCase):
         trans = Transcription.objects.create(name=AltoParser.DEFAULT_NAME, document=self.document)
         b = Block.objects.create(document_part=self.part1, external_id="textblock_0",
                                  box=[[0, 0], [100, 100]])
-        l = Line.objects.create(document_part=self.part1, block=b, external_id="line_0",
-                                baseline=((5, 5), (5, 10)),
-                                mask=((0, 0), (0, 10), (10, 0), (10, 10)))
-        lt = LineTranscription.objects.create(transcription=trans, line=l, content="test history")
+        line = Line.objects.create(document_part=self.part1, block=b, external_id="line_0",
+                                   baseline=((5, 5), (5, 10)),
+                                   mask=((0, 0), (0, 10), (10, 0), (10, 10)))
+        lt = LineTranscription.objects.create(transcription=trans, line=line, content="test history")
 
         # historic line without external_id
         b2 = Block.objects.create(document_part=self.part1, box=[[0, 0], [100, 100]])
@@ -286,10 +286,10 @@ class XmlImportTestCase(CoreFactoryTestCase):
         trans = Transcription.objects.create(name="test import", document=self.document)
         block = Block.objects.create(document_part=self.part3, external_id="r2",
                                      box=[[0, 0], [100, 100]])
-        l = Line.objects.create(document_part=self.part3, block=block, external_id="r2l1",
-                                baseline=((5, 5), (5, 10)),
-                                mask=((0, 0), (0, 10), (10, 0), (10, 10)))
-        lt = LineTranscription.objects.create(transcription=trans, line=l)
+        line = Line.objects.create(document_part=self.part3, block=block, external_id="r2l1",
+                                   baseline=((5, 5), (5, 10)),
+                                   mask=((0, 0), (0, 10), (10, 0), (10, 10)))
+        lt = LineTranscription.objects.create(transcription=trans, line=line)
 
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
         filename = 'pagexml_test.xml'
@@ -453,11 +453,11 @@ class DocumentExportTestCase(CoreFactoryTestCase):
                                           document=self.trans.document)
             self.parts.append(part)
             for j in range(1, 4):
-                l = Line.objects.create(document_part=part,
-                                        baseline=((5, 5), (5, 10)),
-                                        mask=((0, 0), (0, 10), (10, 0), (10, 10)))
+                line = Line.objects.create(document_part=part,
+                                           baseline=((5, 5), (5, 10)),
+                                           mask=((0, 0), (0, 10), (10, 0), (10, 10)))
                 LineTranscription.objects.create(
-                    line=l,
+                    line=line,
                     transcription=self.trans,
                     content='line %d:%d' % (i, j))
 
@@ -497,12 +497,12 @@ class DocumentExportTestCase(CoreFactoryTestCase):
                                           document=self.trans.document)
             block = Block.objects.create(document_part=part, box=(0, 0, 1, 1))
             for j in range(1, 4):
-                l = Line.objects.create(document_part=part,
-                                        block=block,
-                                        baseline=((5, 5), (5, 10)),
-                                        mask=((0, 0), (0, 10), (10, 0), (10, 10)))
+                line = Line.objects.create(document_part=part,
+                                           block=block,
+                                           baseline=((5, 5), (5, 10)),
+                                           mask=((0, 0), (0, 10), (10, 0), (10, 10)))
                 LineTranscription.objects.create(
-                    line=l,
+                    line=line,
                     transcription=self.trans,
                     content='line %d:%d' % (i, j))
         self.client.force_login(self.user)
