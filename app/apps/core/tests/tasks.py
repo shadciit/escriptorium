@@ -2,7 +2,7 @@ import unittest
 
 from django.urls import reverse
 
-from core.models import *
+from core.models import Line
 from core.tests.factory import CoreFactoryTestCase
 
 # DO NOT REMOVE THIS IMPORT, it will break a lot of tests

@@ -8,7 +8,6 @@ import uuid
 import zipfile
 import pyvips
 from lxml import etree
-from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.files.base import ContentFile
