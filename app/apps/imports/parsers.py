@@ -746,7 +746,6 @@ class IIIFManifestParser(ParserDocument):
 
             try:
                 resource = canvas["images"][0]["resource"]
-                url = resource["@id"]
                 uri_template = "{image}/{region}/{size}/{rotation}/{quality}.{format}"
                 url = uri_template.format(
                     image=resource["service"]["@id"],
