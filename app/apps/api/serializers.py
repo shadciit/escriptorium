@@ -386,7 +386,6 @@ class OcrModelSerializer(serializers.ModelSerializer):
         if not settings.DISABLE_QUOTAS and not self.context['request'].user.has_free_disk_storage():
             raise serializers.ValidationError(_("You don't have any disk storage left."))
 
-        Document.objects.get(pk=self.context["view"].kwargs["document_pk"])
         data['owner'] = self.context["view"].request.user
         data['file_size'] = data['file'].size
         obj = super().create(data)

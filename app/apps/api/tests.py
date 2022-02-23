@@ -851,3 +851,19 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
             self.assertEqual(lines[0].content, "")
             self.assertEqual(lines[1].content, "")
             self.assertEqual(resp.status_code, 204)
+
+
+class OcrModelViewSetTestCase(CoreFactoryTestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = self.factory.make_user()
+
+    def test_create(self):
+        self.client.force_login(self.user)
+        uri = reverse('api:ocrmodel-list')
+        model = SimpleUploadedFile("test_model.mlmodel",
+                                   b"file_content")
+        resp = self.client.post(uri, {'name': 'test_model',
+                                      'job': 'Segment',
+                                      'file': model})
+        self.assertEqual(resp.status_code, 201)
