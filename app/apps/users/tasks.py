@@ -6,6 +6,9 @@ from django.apps import apps
 from django.conf import settings
 from django.core.mail import send_mail
 
+# DO NOT REMOVE THIS IMPORT, it will break import/export celery tasks
+from reporting.tasks import create_task_reporting # noqa F401
+
 
 logger = logging.getLogger(__name__)
 
