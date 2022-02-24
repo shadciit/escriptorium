@@ -3,7 +3,6 @@ repos:
     rev: 3.9.2
     hooks:
       - id: flake8
-        exclude: '^app/apps/core/management/commands/ftp_import.py$'
   - repo: meta
     hooks:
       - id: check-useless-excludes
