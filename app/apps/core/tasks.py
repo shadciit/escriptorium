@@ -21,7 +21,7 @@ from kraken.lib import train as kraken_train
 
 from users.consumers import send_event
 
-# DO NOT REMOVE THIS IMPORT, it will break import/export celery tasks
+# DO NOT REMOVE THIS IMPORT, it will break celery tasks located in this file
 from reporting.tasks import create_task_reporting # noqa F401
 
 

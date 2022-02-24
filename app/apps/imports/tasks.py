@@ -12,7 +12,7 @@ from users.consumers import send_event
 from escriptorium.utils import send_email
 from imports.export import ENABLED_EXPORTERS
 
-# DO NOT REMOVE THIS IMPORT, it will break import/export celery tasks
+# DO NOT REMOVE THIS IMPORT, it will break celery tasks located in this file
 from reporting.tasks import create_task_reporting # noqa F401
 
 

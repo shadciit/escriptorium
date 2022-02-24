@@ -6,7 +6,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.mail import send_mail
 
-# DO NOT REMOVE THIS IMPORT, it will break import/export celery tasks
+# DO NOT REMOVE THIS IMPORT, it will break celery tasks located in this file
 from reporting.tasks import create_task_reporting # noqa F401
 
 
