@@ -1,3 +1,5 @@
+import logging
+
 from core.models import Project
 from elasticsearch import Elasticsearch
 from elasticsearch.client import IndicesClient
@@ -5,6 +7,8 @@ from elasticsearch.helpers import bulk as es_bulk
 
 from django.core.management.base import BaseCommand
 from django.conf import settings
+
+logger = logging.getLogger('es_indexing')
 
 
 class Command(BaseCommand):
@@ -17,67 +21,91 @@ class Command(BaseCommand):
             type=int,
             help="Specify a few project PKs to index. If unset, all projects will be indexed by default.",
         )
+        parser.add_argument(
+            "--document-pks",
+            nargs="+",
+            type=int,
+            help="Specify a few document PKs to index. If unset, all documents will be indexed by default.",
+        )
+        parser.add_argument(
+            "--part-pks",
+            nargs="+",
+            type=int,
+            help="Specify a few part PKs to index. If unset, all parts will be indexed by default.",
+        )
 
     def handle(self, *args, **options):
-        if not settings.ELASTICSEARCH_URL:
-            print("Please define ELASTICSEARCH_URL Django setting to use this command.")
+        if settings.DISABLE_ELASTICSEARCH:
+            logger.error("Please set the DISABLE_ELASTICSEARCH Django setting to 'False' to use this command.")
             return
 
         self.es_client = Elasticsearch(hosts=[settings.ELASTICSEARCH_URL])
         if not self.es_client.ping():
-            print(
+            logger.error(
                 f"Unable to connect to Elasticsearch host defined as {settings.ELASTICSEARCH_URL}."
             )
             return
 
-        if options.get("project_pks") is not None:
-            projects = Project.objects.filter(pk__in=options["project_pks"])
-        else:
-            projects = Project.objects.all()
-
-        for project in projects:
-            print("\n" + "-" * 50)
-            print(f"Indexing project {project.name} (PK={project.pk})...")
-            self.index_project(project)
-
-    def create_project_index(self, name):
+        # Creating the common index if it doesn't exist
         indices = IndicesClient(self.es_client)
-        if not indices.exists(name):
-            indices.create(name)
-            print(f"Created a new index named {name}")
+        if not indices.exists(settings.ELASTICSEARCH_COMMON_INDEX):
+            indices.create(settings.ELASTICSEARCH_COMMON_INDEX)
+            logger.info(f"Created a new index named {settings.ELASTICSEARCH_COMMON_INDEX}")
 
-    def index_project(self, project):
-        index_name = f"escriptorium-data-project-{project.pk}"
-        self.create_project_index(index_name)
+        extras = {}
+        # Index all projects by default
+        projects = Project.objects.all()
 
-        to_insert = []
-        for document in project.documents.all():
-            to_insert += self.process_document(index_name, document)
+        # Only index selected projects if the project-pks flag is given
+        if options.get("project_pks") is not None:
+            projects = projects.filter(pk__in=options["project_pks"])
 
-        to_insert = [entry for entry in to_insert if entry["transcription_text"]]
+        # Only index selected documents if the document-pks flag is given
+        if options.get("document_pks") is not None:
+            extras["filter_documents"] = options["document_pks"]
+            projects = projects.filter(documents__in=options["document_pks"])
 
-        nb_inserted, _ = es_bulk(self.es_client, to_insert, stats_only=True)
-        print(f"Inserted {nb_inserted} new entries in index {index_name}")
-        print("-" * 50)
+        # Only index selected parts if the part-pks flag is given
+        if options.get("part_pks") is not None:
+            extras["filter_parts"] = options["part_pks"]
+            projects = projects.filter(documents__parts__in=options["part_pks"])
 
-    def process_document(self, index, document):
-        return [
+        logger.info("\n" + "-" * 50 + "\n")
+        for project in projects.distinct():
+            self.index_project(project, **extras)
+
+    def index_project(self, project, filter_documents=None, filter_parts=None):
+        logger.info(f"Indexing project {project.name} (PK={project.pk})...")
+
+        documents = project.documents.filter(pk__in=filter_documents) if filter_documents else project.documents.all()
+        for document in documents:
+            logger.info(f" - Processing the document {document.name} (PK={document.pk})...")
+
+            total_inserted = 0
+            parts = document.parts.filter(pk__in=filter_parts) if filter_parts else document.parts.all()
+            for part in parts:
+                total_inserted += self.ingest_document_part(project, document, part)
+
+            logger.info(f"   Inserted {total_inserted} new entries in index {settings.ELASTICSEARCH_COMMON_INDEX}\n")
+
+        logger.info(f"Project {project.name} (PK={project.pk}) was successfully indexed")
+        logger.info("\n" + "-" * 50 + "\n")
+
+    def ingest_document_part(self, project, document, part):
+        to_insert = [
             {
-                "_index": index,
-                "_id": f"{part.id}/{transcription.id}",
+                "_index": settings.ELASTICSEARCH_COMMON_INDEX,
+                "_id": f"{line_transcription.id}",
+                "project_id": project.id,
                 "document_id": document.id,
                 "document_part_id": part.id,
-                "transcription_id": transcription.id,
-                "transcription_text": " ".join(
-                    [
-                        line.transcriptions.get(transcription=transcription).content
-                        for line in part.lines.all()
-                        if line.transcriptions.filter(
-                            transcription=transcription
-                        ).exists()
-                    ]
-                ),
+                "transcription_id": line_transcription.transcription.id,
+                "content": line_transcription.content,
             }
-            for part in document.parts.all()
-            for transcription in document.transcriptions.all()
+            for line in part.lines.all()
+            for line_transcription in line.transcriptions.all()
         ]
+        to_insert = [entry for entry in to_insert if entry["content"]]
+
+        nb_inserted, _ = es_bulk(self.es_client, to_insert, stats_only=True)
+        return nb_inserted
