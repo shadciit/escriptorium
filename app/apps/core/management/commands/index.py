@@ -12,7 +12,7 @@ logger = logging.getLogger('es_indexing')
 
 
 class Command(BaseCommand):
-    help = "Index projects by creating DocumentPart wide transcriptions for each Document in each Project."
+    help = "Index projects by creating one ElasticSearch document for each LineTranscription."
 
     def add_arguments(self, parser):
         parser.add_argument(
