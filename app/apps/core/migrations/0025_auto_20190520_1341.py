@@ -2,12 +2,13 @@
 
 import uuid
 
-import core.models
 import django.contrib.postgres.fields.jsonb
 import django.core.validators
 import django.db.models.deletion
 import django.utils.timezone
 from django.db import migrations, models
+
+import core.models
 
 
 class Migration(migrations.Migration):

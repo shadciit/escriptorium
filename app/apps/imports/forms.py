@@ -3,11 +3,12 @@ import json
 
 import requests
 from bootstrap.forms import BootstrapFormMixin
-from core.models import DocumentPart, Transcription
 from django import forms
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils.translation import gettext as _
+
+from core.models import DocumentPart, Transcription
 from imports.export import ENABLED_EXPORTERS
 from imports.models import DocumentImport
 from imports.parsers import ParseError, make_parser

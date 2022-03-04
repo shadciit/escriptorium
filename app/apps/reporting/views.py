@@ -7,6 +7,7 @@ from django.db.models import Count, DurationField, ExpressionWrapper, F, Q, Sum
 from django.utils.functional import cached_property
 from django.views.generic import DetailView, ListView
 from django.views.generic.base import TemplateView
+
 from reporting.models import TaskReport
 from users.models import User
 

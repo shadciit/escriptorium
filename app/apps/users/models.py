@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models import Sum
 from django.urls import reverse
 from django.utils.translation import gettext as _
+
 from escriptorium.utils import send_email
 from users.consumers import send_notification
 

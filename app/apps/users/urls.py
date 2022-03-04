@@ -1,10 +1,21 @@
 from django.contrib.auth.decorators import permission_required
 from django.urls import include, path
-from users.views import (AcceptGroupInvitation, AcceptInvitation,
-                         ContactUsView, GroupDetail, LeaveGroup, ProfileApiKey,
-                         ProfileFiles, ProfileGroupListCreate, ProfileInfos,
-                         ProfileInvitations, RemoveFromGroup, SendInvitation,
-                         TransferGroupOwnership)
+
+from users.views import (
+    AcceptGroupInvitation,
+    AcceptInvitation,
+    ContactUsView,
+    GroupDetail,
+    LeaveGroup,
+    ProfileApiKey,
+    ProfileFiles,
+    ProfileGroupListCreate,
+    ProfileInfos,
+    ProfileInvitations,
+    RemoveFromGroup,
+    SendInvitation,
+    TransferGroupOwnership,
+)
 
 urlpatterns = [
     path('', include('django.contrib.auth.urls')),

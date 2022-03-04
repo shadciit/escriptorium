@@ -1,6 +1,7 @@
-from core.tests.factory import CoreFactory
 from django.test import TestCase
 from django.urls import reverse
+
+from core.tests.factory import CoreFactory
 from users.models import Group, User
 
 

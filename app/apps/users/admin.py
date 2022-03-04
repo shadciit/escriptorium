@@ -3,8 +3,15 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.utils.translation import ngettext
-from users.models import (ContactUs, GroupOwner, Invitation, QuotaEvent,
-                          ResearchField, User)
+
+from users.models import (
+    ContactUs,
+    GroupOwner,
+    Invitation,
+    QuotaEvent,
+    ResearchField,
+    User,
+)
 
 
 class MyUserChangeForm(UserChangeForm):

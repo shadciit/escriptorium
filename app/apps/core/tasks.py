@@ -7,8 +7,7 @@ from itertools import groupby
 
 import numpy as np
 from celery import shared_task
-from celery.signals import (before_task_publish, task_failure, task_prerun,
-                            task_success)
+from celery.signals import before_task_publish, task_failure, task_prerun, task_success
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -18,6 +17,7 @@ from django.utils.translation import gettext as _
 from django_redis import get_redis_connection
 from easy_thumbnails.files import get_thumbnailer
 from kraken.lib import train as kraken_train
+
 # DO NOT REMOVE THIS IMPORT, it will break celery tasks located in this file
 from reporting.tasks import create_task_reporting  # noqa F401
 from users.consumers import send_event

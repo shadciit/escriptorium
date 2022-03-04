@@ -1,19 +1,27 @@
 import os.path
 from unittest import mock
 
-from core.models import (Block, BlockType, Line, LineTranscription, LineType,
-                         Transcription)
-from core.tests.factory import CoreFactoryTestCase
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.urls import reverse
+
+from core.models import (
+    Block,
+    BlockType,
+    Line,
+    LineTranscription,
+    LineType,
+    Transcription,
+)
+from core.tests.factory import CoreFactoryTestCase
 from imports.models import DocumentImport
 from imports.parsers import AltoParser, IIIFManifestParser
+
 # DO NOT REMOVE THIS IMPORT, it will break a lot of tests
 # It is used to trigger Celery signals when running tests
-from reporting.tasks import (end_task_reporting,  # noqa F401
-                             start_task_reporting)
+from reporting.tasks import end_task_reporting  # noqa F401
+from reporting.tasks import start_task_reporting
 
 
 class XmlImportTestCase(CoreFactoryTestCase):

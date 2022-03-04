@@ -2,6 +2,7 @@ import os.path
 
 import celery.app.trace
 from celery import signals
+
 from reporting.tasks import create_task_reporting
 
 CELERY_TASK_ALWAYS_EAGER = True

@@ -1,8 +1,9 @@
-from core.models import Document
-from core.tests.factory import CoreFactory
 from django.contrib.auth.models import Group
 from django.test import TestCase
 from django.urls import reverse
+
+from core.models import Document
+from core.tests.factory import CoreFactory
 
 
 class DocumentTestCase(TestCase):

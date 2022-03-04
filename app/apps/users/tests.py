@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
+
 from users.models import GroupOwner, Invitation, ResearchField
 from users.models import User as CustomUser
 

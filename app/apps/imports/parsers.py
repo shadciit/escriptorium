@@ -8,9 +8,6 @@ import zipfile
 
 import pyvips
 import requests
-from core.models import (Block, DocumentMetadata, DocumentPart, Line,
-                         LineTranscription, Metadata, Transcription)
-from core.tasks import generate_part_thumbnails
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.validators import get_available_image_extensions
@@ -19,6 +16,17 @@ from django.forms import ValidationError
 from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
 from lxml import etree
+
+from core.models import (
+    Block,
+    DocumentMetadata,
+    DocumentPart,
+    Line,
+    LineTranscription,
+    Metadata,
+    Transcription,
+)
+from core.tasks import generate_part_thumbnails
 from versioning.models import NoChangeException
 
 logger = logging.getLogger(__name__)

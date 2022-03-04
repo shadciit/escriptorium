@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils.translation import gettext as _
+
 from escriptorium.utils import send_email
 from users.models import MEGABYTES_TO_BYTES, QuotaEvent, User
 

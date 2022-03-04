@@ -1,26 +1,56 @@
 import json
 import logging
 
-from core.forms import (BinarizeForm, DocumentForm, DocumentShareForm,
-                        MetadataFormSet, MigrateDocumentForm, ModelRightsForm,
-                        ModelUploadForm, ProjectForm, ProjectShareForm,
-                        RecTrainForm, SegmentForm, SegTrainForm,
-                        TranscribeForm, UploadImageForm)
-from core.models import (AlreadyProcessingException, Document, DocumentPart,
-                         Metadata, OcrModel, OcrModelRight, Project)
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count, Q
-from django.http import (Http404, HttpResponse, HttpResponseBadRequest,
-                         HttpResponseRedirect)
+from django.http import (
+    Http404,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+)
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.translation import gettext as _
-from django.views.generic import (CreateView, DeleteView, DetailView, ListView,
-                                  TemplateView, UpdateView, View)
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    TemplateView,
+    UpdateView,
+    View,
+)
+
+from core.forms import (
+    BinarizeForm,
+    DocumentForm,
+    DocumentShareForm,
+    MetadataFormSet,
+    MigrateDocumentForm,
+    ModelRightsForm,
+    ModelUploadForm,
+    ProjectForm,
+    ProjectShareForm,
+    RecTrainForm,
+    SegmentForm,
+    SegTrainForm,
+    TranscribeForm,
+    UploadImageForm,
+)
+from core.models import (
+    AlreadyProcessingException,
+    Document,
+    DocumentPart,
+    Metadata,
+    OcrModel,
+    OcrModelRight,
+    Project,
+)
 from imports.forms import ExportForm, ImportForm
 from reporting.models import TaskReport
 from users.models import User

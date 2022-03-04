@@ -1,14 +1,31 @@
-from core.views import (CreateDocument, CreateProject,  # DocumentDetail,
-                        DeleteDocumentUserShare, DeleteProjectUserShare,
-                        DocumentImages, DocumentModels,
-                        DocumentPartsProcessAjax, DocumentsList,
-                        DocumentsTasksList, EditPart, Home, MigrateDocument,
-                        ModelCancelTraining, ModelDelete, ModelRightDelete,
-                        ModelRights, ModelUpload, ProjectList, PublishDocument,
-                        ShareDocument, ShareProject, UpdateDocument,
-                        UserModels)
 from django.urls import path
 from django.views.generic import TemplateView
+
+from core.views import (  # DocumentDetail,
+    CreateDocument,
+    CreateProject,
+    DeleteDocumentUserShare,
+    DeleteProjectUserShare,
+    DocumentImages,
+    DocumentModels,
+    DocumentPartsProcessAjax,
+    DocumentsList,
+    DocumentsTasksList,
+    EditPart,
+    Home,
+    MigrateDocument,
+    ModelCancelTraining,
+    ModelDelete,
+    ModelRightDelete,
+    ModelRights,
+    ModelUpload,
+    ProjectList,
+    PublishDocument,
+    ShareDocument,
+    ShareProject,
+    UpdateDocument,
+    UserModels,
+)
 
 urlpatterns = [
     path('', Home.as_view(), name='home'),

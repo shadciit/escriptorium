@@ -1,8 +1,9 @@
 import os.path
 
-from core.models import Document
 from django.core.validators import FileExtensionValidator
 from django.db import models
+
+from core.models import Document
 from escriptorium.celery import app
 from imports.parsers import XML_EXTENSIONS, make_parser
 from reporting.models import TaskReport

@@ -14,11 +14,6 @@ from datetime import datetime
 import numpy as np
 from celery import chain
 from celery.task.control import inspect, revoke
-from core.tasks import (binarize, convert, generate_part_thumbnails,
-                        lossless_compression, segment, segtrain, train,
-                        transcribe)
-from core.utils import ColorField
-from core.validators import JSONSchemaValidator
 from django.conf import settings
 from django.contrib.auth.models import Group
 from django.contrib.postgres.fields import JSONField
@@ -47,6 +42,19 @@ from shapely import affinity
 from shapely.geometry import LineString, Polygon
 from sklearn import preprocessing
 from sklearn.cluster import DBSCAN
+
+from core.tasks import (
+    binarize,
+    convert,
+    generate_part_thumbnails,
+    lossless_compression,
+    segment,
+    segtrain,
+    train,
+    transcribe,
+)
+from core.utils import ColorField
+from core.validators import JSONSchemaValidator
 from users.consumers import send_event
 from users.models import User
 from versioning.models import Versioned

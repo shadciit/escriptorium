@@ -12,12 +12,19 @@ from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
-from django.views.generic import (CreateView, DetailView, TemplateView,
-                                  UpdateView)
+from django.views.generic import CreateView, DetailView, TemplateView, UpdateView
 from rest_framework.authtoken.models import Token
-from users.forms import (ContactUsForm, GroupForm, GroupInvitationForm,
-                         InvitationAcceptForm, InvitationForm, ProfileForm,
-                         RemoveUserFromGroup, TransferGroupOwnershipForm)
+
+from users.forms import (
+    ContactUsForm,
+    GroupForm,
+    GroupInvitationForm,
+    InvitationAcceptForm,
+    InvitationForm,
+    ProfileForm,
+    RemoveUserFromGroup,
+    TransferGroupOwnershipForm,
+)
 from users.models import ContactUs, Invitation, User
 
 
