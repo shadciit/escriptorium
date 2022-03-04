@@ -4,18 +4,12 @@ import shutil
 from unittest.mock import patch
 from zipfile import ZipFile
 
-from django.test import override_settings
-
 from core.models import Block, BlockType, Line, LineTranscription
 from core.tests.factory import CoreFactoryTestCase
+from django.test import override_settings
 from escriptorium.test_settings import MEDIA_ROOT
-from imports.export import (
-    AltoExporter,
-    OpenITIMARkdownExporter,
-    PageXMLExporter,
-    TEIXMLExporter,
-    TextExporter,
-)
+from imports.export import (AltoExporter, OpenITIMARkdownExporter,
+                            PageXMLExporter, TEIXMLExporter, TextExporter)
 from reporting.models import TaskReport
 
 SAMPLES_DIR = os.path.join(

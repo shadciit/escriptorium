@@ -1,25 +1,16 @@
-from PIL import Image, ImageDraw
-from io import BytesIO
-import uuid
 import os.path
+import uuid
+from io import BytesIO
 
+from core.models import (Block, Document, DocumentPart, Line,
+                         LineTranscription, OcrModel, Project, Transcription)
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-
 from django_redis import get_redis_connection
 from kraken.lib import vgsl
-
-from core.models import (Block,
-                         Document,
-                         DocumentPart,
-                         Transcription,
-                         Line,
-                         LineTranscription,
-                         OcrModel,
-                         Project)
+from PIL import Image, ImageDraw
 from users.models import User
-
 
 redis_ = get_redis_connection()
 
