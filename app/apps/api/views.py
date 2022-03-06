@@ -506,6 +506,13 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         else:  # create, list
             return LineSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = DetailedLineSerializer(instance)
+        json = serializer.data
+        self.perform_destroy(instance)
+        return Response(status=200, data=json)
+
     @action(detail=False, methods=['post'])
     def bulk_create(self, request, document_pk=None, part_pk=None):
         lines = request.data.get("lines")
@@ -527,8 +534,9 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     def bulk_delete(self, request, document_pk=None, part_pk=None):
         deleted_lines = request.data.get("lines")
         qs = Line.objects.filter(pk__in=deleted_lines)
+        serializer = DetailedLineSerializer(qs, data=deleted_lines)
         qs.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_200_OK, data=serializer.data)
 
     @action(detail=False, methods=['post'])
     def move(self, request, document_pk=None, part_pk=None, pk=None):
