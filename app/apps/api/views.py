@@ -537,7 +537,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         serializer = DetailedLineSerializer(qs, many=True)
         json = serializer.data
         qs.delete()
-        return Response(status=status.HTTP_200_OK, data=json)
+        return Response({'status': 'ok', 'lines': json}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'])
     def move(self, request, document_pk=None, part_pk=None, pk=None):

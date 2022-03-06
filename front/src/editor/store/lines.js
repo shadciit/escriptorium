@@ -1,4 +1,4 @@
-import { assign } from 'lodash'
+import { assign, kebabCase } from 'lodash'
 import * as api from '../api'
 
 export const initialState = () => ({
@@ -206,20 +206,32 @@ export const actions = {
     },
 
     async bulkDelete({state, dispatch, commit, rootState}, pks) {
-        await api.bulkDeleteLines(rootState.document.id, rootState.parts.pk, {lines: pks})
+        const resp = await api.bulkDeleteLines(rootState.document.id, rootState.parts.pk, {lines: pks})
+        const deletedLines = resp.data.lines;
 
-        let deletedLines = []
+        // Update the line objects of the deleted lines - add the transcriptions for a potential undelete
+        for(const deletedLine of deletedLines) {
+            const line = state.all.find(l=>l.pk==deletedLine.pk);
+            if (!line) {
+                console.warn(`Line pk=${deletedLine.pk} deleted, but not found in state`);
+                break;
+            }
+            line.transcriptionsForUnelete = deletedLine.transcriptions;
+            console.debug('Preparing for undelete: ', line);
+        }
+
+        let deletedPKs = []
         for (let i=0; i<pks.length; i++) {
             let index = state.all.findIndex(l=>l.pk==pks[i])
             if (index != -1) {
-                deletedLines.push(pks[i])
+                deletedPKs.push(pks[i])
                 commit('remove', index)
             }
         }
 
         await dispatch('recalculateOrdering')
 
-        return deletedLines
+        return deletedPKs
     },
 
     async move({commit, rootState}, movedLines) {
