@@ -4,6 +4,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -514,11 +515,41 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         return Response(status=200, data=json)
 
     @action(detail=False, methods=['post'])
+    @transaction.atomic
     def bulk_create(self, request, document_pk=None, part_pk=None):
         lines = request.data.get("lines")
+
+        # We create the lines in two parts - first the lines, then their transcriptions.
+        # We can't used the DetailedLineSerializer, since the Transcription serializer requires a line property,
+        # which is unknown at this time - the line has not been created yet.
+        # We may want to move this code into the DetailedLineSerializer's create method at some point.
         serializer = LineSerializer(data=lines, many=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # Now we go over the lines retrieved from the request, take their transcriptions, and add the right line PK to each one.
+        # serializer.data is ordered, in the same order as lines
+        if len(lines) != len(serializer.data):
+            raise ValueError(f"LineSerializer created {len(serializer.data)} lines, while {len(lines)} were expected")
+
+        transcriptions = []
+        line_pks = []
+        for i in range(len(lines)):
+            pk = serializer.data[i]['pk']
+            line_transcriptions = lines[i].get('transcriptions', [])
+            for lt in line_transcriptions:
+                lt['line'] = pk
+            transcriptions += line_transcriptions
+            line_pks.append(pk)
+
+        serializer = LineTranscriptionSerializer(data=transcriptions, many=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # Finally, for a response, we want to create all the newly created lines along with their transcriptions.
+        # Simplest way to do this - just use the PKs to load the lines again
+        qs = Line.objects.filter(pk__in=line_pks)
+        serializer = DetailedLineSerializer(qs, many=True)
         return Response({'status': 'ok', 'lines': serializer.data})
 
     @action(detail=False, methods=['put'])

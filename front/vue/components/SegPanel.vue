@@ -488,9 +488,7 @@ export default Vue.extend({
               if (l.transcriptionsForUndelete) {
                 mapped.transcriptions = l.transcriptionsForUndelete?.map(t => {
                   return {
-                    pk: t.pk,
                     content: t.content,
-                    line: t.line,
                     transcription: t.transcription,
                   }
                 });
