@@ -209,29 +209,18 @@ export const actions = {
         const resp = await api.bulkDeleteLines(rootState.document.id, rootState.parts.pk, {lines: pks})
         const deletedLines = resp.data.lines;
 
-        // Update the line objects of the deleted lines - add the transcriptions for a potential undelete
-        for(const deletedLine of deletedLines) {
-            const line = state.all.find(l=>l.pk==deletedLine.pk);
-            if (!line) {
-                console.warn(`Line pk=${deletedLine.pk} deleted, but not found in state`);
-                break;
-            }
-            line.transcriptionsForUnelete = deletedLine.transcriptions;
-            console.debug('Preparing for undelete: ', line);
-        }
-
-        let deletedPKs = []
+        let deletedPKs = [];
         for (let i=0; i<pks.length; i++) {
             let index = state.all.findIndex(l=>l.pk==pks[i])
             if (index != -1) {
-                deletedPKs.push(pks[i])
-                commit('remove', index)
+                deletedPKs.push(pks[i]);
+                commit('remove', index);
             }
         }
 
-        await dispatch('recalculateOrdering')
+        await dispatch('recalculateOrdering');
 
-        return deletedPKs
+        return { deletedPKs, deletedLines };
     },
 
     async move({commit, rootState}, movedLines) {
