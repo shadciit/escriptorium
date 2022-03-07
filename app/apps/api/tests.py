@@ -850,7 +850,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
             lines = LineTranscription.objects.all()
             self.assertEqual(lines[0].content, "")
             self.assertEqual(lines[1].content, "")
-            self.assertEqual(resp.status_code, 204)
+            self.assertEqual(resp.status_code, 200)
 
 
 class OcrModelViewSetTestCase(CoreFactoryTestCase):
