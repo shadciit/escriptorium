@@ -707,7 +707,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
             resp = self.client.post(uri, {'lines': [self.line.pk]},
                                     content_type='application/json')
         self.assertEqual(Line.objects.count(), 2)
-        self.assertEqual(resp.status_code, 204)
+        self.assertEqual(resp.status_code, 200)
 
     def test_bulk_update(self):
         self.client.force_login(self.user)
@@ -850,7 +850,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
             lines = LineTranscription.objects.all()
             self.assertEqual(lines[0].content, "")
             self.assertEqual(lines[1].content, "")
-            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.status_code, 204)
 
 
 class OcrModelViewSetTestCase(CoreFactoryTestCase):
