@@ -26,7 +26,6 @@ Then:
 sudo -i -u postgres /usr/bin/createuser --superuser $USER
 createdb escriptorium 
 # psql escriptorium < backup-file.sql # if migrating from somewhere else
-pip3 install virtualenv
 ```
 
 # Download and Configuration
@@ -35,7 +34,8 @@ pip3 install virtualenv
 git clone https://gitlab.com/scripta/escriptorium.git # will by default get you the "develop" branch
 (
   cd escriptorium
-  virtualenv env -p python3.8 # for now, only Python 3.8 is known to work reliably
+  python3.8 -m pip install virtualenv
+  virtualenv env -p python3.8 # the version currently used for eScriptorium development
   source env/bin/activate
   python3.8 -m pip install --upgrade pip
   python3.8 -m pip install -r app/requirements.txt
