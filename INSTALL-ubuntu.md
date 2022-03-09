@@ -12,13 +12,13 @@ Ubuntu 18.04:
 ```bash
 sudo add-apt-repository ppa:deadsnakes/ppa # needed to get python > 3.7
 sudo apt update
-sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.8 python-dev python3-dev python3-venv python3-pip
+sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.8 python-dev python3-dev python3-virtualenv
 ```
 
 Ubuntu 20.04:
 ```
 sudo apt update
-sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.8 python3.8-dev python3.8-venv python3-pip npm
+sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.8 python3.8-dev python3-virtualenv npm
 ```
 
 Then:
@@ -34,10 +34,9 @@ createdb escriptorium
 git clone https://gitlab.com/scripta/escriptorium.git # will by default get you the "develop" branch
 (
   cd escriptorium
-  python3.8 -m pip install virtualenv
-  virtualenv env -p python3.8 # the version currently used for eScriptorium development
+  virtualenv env -p python3.8
   source env/bin/activate
-  python3.8 -m pip install --upgrade pip
+  curl -sS https://bootstrap.pypa.io/get-pip.py | python3.8
   python3.8 -m pip install -r app/requirements.txt
   cp app/escriptorium/local_settings.py{.example,}  
   (
