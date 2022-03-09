@@ -10,14 +10,15 @@ The installation will probably not work with less than 4 GB of RAM. For running 
 
 Ubuntu 18.04:
 ```bash
-sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.7 python-dev python3-dev python3-venv python3-pip
+sudo add-apt-repository ppa:deadsnakes/ppa # needed to get python > 3.7
+sudo apt update
+sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.8 python-dev python3-dev python3-venv python3-pip
 ```
 
 Ubuntu 20.04:
 ```
-sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
-sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.7 python3.7-dev python3.7-venv python3-pip npm
+sudo apt install postgresql postgresql-contrib redis-server netcat-traditional jpegoptim pngcrush build-essential python3.8 python3.8-dev python3.8-venv python3-pip npm
 ```
 
 Then:
@@ -34,10 +35,10 @@ pip3 install virtualenv
 git clone https://gitlab.com/scripta/escriptorium.git # will by default get you the "develop" branch
 (
   cd escriptorium
-  virtualenv env -p python3.7 # for now, only Python 3.7 is known to work reliably
+  virtualenv env -p python3.8 # for now, only Python 3.8 is known to work reliably
   source env/bin/activate
-  python3.7 -m pip install --upgrade pip
-  python3.7 -m pip install -r app/requirements.txt
+  python3.8 -m pip install --upgrade pip
+  python3.8 -m pip install -r app/requirements.txt
   cp app/escriptorium/local_settings.py{.example,}  
   (
     cd front
@@ -57,7 +58,7 @@ Now edit `escriptorium/app/escriptorium/local_settings.py` and at least out-comm
 ```bash
 (
   cd escriptorium/app
-  python3.7 manage.py check
+  python3.8 manage.py check
 )
 ```
 
@@ -66,8 +67,8 @@ Now edit `escriptorium/app/escriptorium/local_settings.py` and at least out-comm
 ```bash
 (
   cd escriptorium/app
-  python3.7 manage.py migrate
-  python3.7 manage.py createsuperuser # follow the prompts along
+  python3.8 manage.py migrate
+  python3.8 manage.py createsuperuser # follow the prompts along
 )
 ```
 
@@ -77,6 +78,6 @@ Now edit `escriptorium/app/escriptorium/local_settings.py` and at least out-comm
 (
   cd escriptorium/app
   celery -A escriptorium worker -l INFO &
-  python3.7 manage.py runserver 
+  python3.8 manage.py runserver 
 )
 ```
