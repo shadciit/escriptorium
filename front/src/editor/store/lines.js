@@ -139,7 +139,7 @@ export const actions = {
         let createdLines = []
         for (let i=0; i<data.lines.length; i++) {
             let l = data.lines[i]
-            let newLine = l;
+            let newLine = l
 
             newLine.currentTrans = {
                 line: newLine.pk,
@@ -149,11 +149,11 @@ export const actions = {
                 version_author: '',
                 version_source: '',
                 version_updated_at: null
-            };
+            }
             if (l.transcriptions) {
                 const tr = l.transcriptions.find(t => t.transcription === transcription);
                 if (tr) {
-                    newLine.currentTrans = tr;
+                    newLine.currentTrans = tr
                 }
             }
             createdLines.push(newLine)
