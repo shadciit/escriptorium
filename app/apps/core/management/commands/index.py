@@ -16,7 +16,6 @@ logger = logging.getLogger("es_indexing")
 
 class Command(BaseCommand):
     help = "Index projects by creating one ElasticSearch document for each LineTranscription."
-    errors = {}
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -37,12 +36,6 @@ class Command(BaseCommand):
             type=int,
             help="Specify a few part PKs to index. If unset, all parts will be indexed by default.",
         )
-        parser.add_argument(
-            "--errors-summary",
-            action="store_true",
-            help="If set, log a report of all the errors that occurred during the indexing.",
-        )
-        parser.set_defaults(errors_summary=False)
 
     def handle(self, *args, **options):
         if settings.DISABLE_ELASTICSEARCH:
@@ -87,34 +80,9 @@ class Command(BaseCommand):
         logger.info("\n" + "-" * 50 + "\n")
         for project in projects.distinct():
             try:
-                self.errors[project.id] = {"root": None, "parts": []}
                 self.index_project(project, **extras)
             except Exception as e:
-                self.errors[project.id]["root"] = e
-
-        # Errors summary
-        all_errors = {
-            p_id: errs
-            for p_id, errs in self.errors.items()
-            if errs["root"] or errs["parts"]
-        }
-        if not options["errors_summary"] or not all_errors:
-            return
-
-        logger.info(
-            "Logging all errors that occurred during ElasticSearch indexing for each project..."
-        )
-        for project_id, errors in all_errors.items():
-            logger.info(f"\n------ Errors summary for project {project_id} ------")
-            if errors["parts"]:
-                for part in errors["parts"]:
-                    logger.error(
-                        f"Failed to index part {part['id']} on project {project_id} because: {part['error']}"
-                    )
-            if errors["root"]:
-                logger.error(
-                    f"Failed to index project {project_id} because: {errors['root']}"
-                )
+                logger.error(f"Failed to index project {project.pk} because: {e}")
 
     def index_project(self, project, filter_documents=None, filter_parts=None):
         logger.info(f"Indexing project {project.name} (PK={project.pk})...")
@@ -144,7 +112,9 @@ class Command(BaseCommand):
                         project, document, part, allowed_users
                     )
                 except Exception as e:
-                    self.errors[project.id]["parts"].append({"id": part.id, "error": e})
+                    logger.error(
+                        f"Failed to index part {part.pk} on project {project.pk} because: {e}"
+                    )
 
             logger.info(
                 f"   Inserted {total_inserted} new entries in index {settings.ELASTICSEARCH_COMMON_INDEX}\n"
