@@ -12,7 +12,7 @@ from core.models import Project
 from users.models import User
 
 logger = logging.getLogger("es_indexing")
-
+logger.setLevel(logging.ERROR)
 
 class Command(BaseCommand):
     help = "Index projects by creating one ElasticSearch document for each LineTranscription."
@@ -36,16 +36,10 @@ class Command(BaseCommand):
             type=int,
             help="Specify a few part PKs to index. If unset, all parts will be indexed by default.",
         )
-        parser.add_argument(
-            "--verbose",
-            action="store_const",
-            const=logging.INFO,
-            default=logging.ERROR,
-            help="If set, log all INFO messages in addition to ERROR ones.",
-        )
 
     def handle(self, *args, **options):
-        logger.setLevel(options["verbose"])
+        if options["verbosity"] > 1:
+            logger.setLevel(logging.INFO)
 
         if settings.DISABLE_ELASTICSEARCH:
             logger.error(
