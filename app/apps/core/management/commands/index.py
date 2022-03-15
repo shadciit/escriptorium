@@ -36,8 +36,17 @@ class Command(BaseCommand):
             type=int,
             help="Specify a few part PKs to index. If unset, all parts will be indexed by default.",
         )
+        parser.add_argument(
+            "--verbose",
+            action="store_const",
+            const=logging.INFO,
+            default=logging.ERROR,
+            help="If set, log all INFO messages in addition to ERROR ones.",
+        )
 
     def handle(self, *args, **options):
+        logger.setLevel(options["verbose"])
+
         if settings.DISABLE_ELASTICSEARCH:
             logger.error(
                 "Please set the DISABLE_ELASTICSEARCH Django setting to 'False' to use this command."
