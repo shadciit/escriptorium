@@ -14,6 +14,7 @@ from users.models import User
 logger = logging.getLogger("es_indexing")
 logger.setLevel(logging.ERROR)
 
+
 class Command(BaseCommand):
     help = "Index projects by creating one ElasticSearch document for each LineTranscription."
 
