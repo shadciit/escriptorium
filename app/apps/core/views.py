@@ -1,6 +1,5 @@
 import json
 import logging
-from urllib.parse import unquote_plus
 
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -29,7 +28,7 @@ from django.views.generic import (
     UpdateView,
     View,
 )
-from elasticsearch import Elasticsearch, exceptions
+from elasticsearch import exceptions
 
 from core.forms import (
     BinarizeForm,
@@ -57,6 +56,7 @@ from core.models import (
     OcrModelRight,
     Project,
 )
+from core.search import search_in_projects
 from imports.forms import ExportForm, ImportForm
 from reporting.models import TaskReport
 from users.models import User
@@ -123,38 +123,8 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
         except ValueError:
             projects = user_projects
 
-        es_client = Elasticsearch(hosts=[settings.ELASTICSEARCH_URL])
-        body = {
-            'from': (page - 1) * self.paginate_by,
-            'size': self.paginate_by,
-            'sort': ['_score'],
-            'query': {
-                'bool': {
-                    'must': [
-                        {'term': {'have_access': self.request.user.id}},
-                        {'terms': {'project_id': projects}},
-                        {
-                            'match': {
-                                'content': {
-                                    'query': unquote_plus(search),
-                                    'fuzziness': 'AUTO'
-                                }
-                            }
-                        }
-                    ]
-                }
-            },
-            'highlight': {
-                'pre_tags': ['<strong class="text-success">'],
-                'post_tags': ['</strong>'],
-                'fields': {
-                    'content': {}
-                }
-            }
-        }
-
         try:
-            es_results = es_client.search(index=settings.ELASTICSEARCH_COMMON_INDEX, body=body)
+            es_results = search_in_projects(page, self.paginate_by, self.request.user.id, projects, search)
         except exceptions.ConnectionError as e:
             context['es_error'] = str(e)
             return context
