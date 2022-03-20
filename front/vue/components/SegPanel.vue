@@ -586,16 +586,21 @@ export default Vue.extend({
       }
       if (data.lines && data.lines.length) {
         try {
-          const { deletePKs, deletedLines } = await this.$store.dispatch('lines/bulkDelete', data.lines.map((l) => l.context.pk));
+          const { deletedPKs, deletedLines } = await this.$store.dispatch('lines/bulkDelete', data.lines.map((l) => l.context.pk));
 
           // Remove the lines from the segmenter
-          this.segmenter.lines
+          const segmenterLines = this.segmenter.lines.filter((l) => deletedPKs.indexOf(l.context.pk) >= 0);
+          for(const line of segmenterLines) {
+            line.remove();
+          }
+          
+          /*this.segmenter.lines
             .filter((l) => {
               return deletedLines.indexOf(l.context.pk) >= 0;
             })
             .forEach((l) => {
               l.remove();
-            });
+            }); */
 
             // Update the original data.lines - adding the transcriptions, because we will want to pass them on to bulkCreate.
             // The same data object is placed in the undo stack, so changing the lines in place is enough

@@ -515,7 +515,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         instance = self.get_object()
         serializer = DetailedLineSerializer(instance)
         json = serializer.data
-        self.perform_destroy(instance)
+        super().destroy(request, *args, **kwargs)
         return Response(status=200, data=json)
 
     @action(detail=False, methods=['post'])
