@@ -3,8 +3,8 @@ import logging
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db.models import Prefetch
 from django.db import transaction
+from django.db.models import Prefetch
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
