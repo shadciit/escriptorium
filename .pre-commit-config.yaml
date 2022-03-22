@@ -24,6 +24,8 @@ repos:
       - id: name-tests-test
         args: ['--django']
         exclude: '^app\/apps\/core\/tests\/factory\.py$'
+      - id: check-json
+      - id: requirements-txt-fixer
   - repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
     hooks:
