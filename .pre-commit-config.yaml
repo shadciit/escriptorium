@@ -18,6 +18,12 @@ repos:
       - id: debug-statements
       - id: trailing-whitespace
         exclude: '^app\/apps\/imports\/tests\/samples\/.*$'
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: mixed-line-ending
+      - id: name-tests-test
+        args: ['--django']
+        exclude: '^app\/apps\/core\/tests\/factory\.py$'
   - repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
     hooks:
