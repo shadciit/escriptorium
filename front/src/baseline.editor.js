@@ -2182,7 +2182,11 @@ export class Segmenter {
             return;
         }
 
-        this.selection.lines.sort(function(first, second) {
+        this.trigger('baseline-editor:merge', {
+            lines: this.selection.lines
+        });
+
+        /*this.selection.lines.sort(function(first, second) {
             // let vector = first.baselinePath.segments[1].point.subtract(first.baselinePath.firstSegment.point);
             // let rightToLeft = Math.cos(vector.angle/180*Math.PI) < 0;  // right to left
             // // if (vertical) return first.baselinePath.position.y - second.baselinePath.position.y; // td
@@ -2210,7 +2214,7 @@ export class Segmenter {
         if (this.selection.lines.length) {
             this.selection.lines[0].refresh();
             this.selection.lines[0].updateDataFromCanvas();
-        }
+        } */
     }
 
     addToUpdateQueue(items) {  // {lines:[], regions:[]}

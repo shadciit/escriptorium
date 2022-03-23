@@ -1,5 +1,6 @@
 <template>
     <div class="col panel">
+        <loading :active.sync="isWorking" />
         <div class="tools">
             <i title="Segmentation Panel" class="panel-icon fas fa-align-left"></i>
             <div class="btn-group">
@@ -167,6 +168,7 @@ import SegRegion from "./SegRegion.vue";
 import SegLine from "./SegLine.vue";
 import Help from "./Help.vue";
 import { Segmenter } from "../../src/baseline.editor.js";
+import Loading from 'vue-loading-overlay';
 
 export default Vue.extend({
   mixins: [BasePanel],
@@ -177,12 +179,14 @@ export default Vue.extend({
       imageLoaded: false,
       colorMode: "color", //  color - binary - grayscale
       undoManager: new UndoManager(),
+      isWorking: false,
     };
   },
   components: {
     segline: SegLine,
     segregion: SegRegion,
     help: Help,
+    loading: Loading,
   },
   mounted() {
     // wait for the element to be rendered
@@ -248,6 +252,16 @@ export default Vue.extend({
             );
           }.bind(this)
         );
+        this.segmenter.events.addEventListener(
+          "baseline-editor:merge",
+          async (ev) => {
+            console.debug('baseline-editor:merge caught');
+            let data = ev.details;
+            this.isWorking = true;
+            await new Promise(r => setTimeout(r, 60000));
+            this.isWorking = false;
+          }
+        )
         this.segmenter.events.addEventListener(
           "baseline-editor:update",
           function (ev) {
