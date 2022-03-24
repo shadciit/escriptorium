@@ -2171,50 +2171,13 @@ export class Segmenter {
     }
 
     mergeSelection() {
-        /* strategy is:
-           1) order the lines by their position,
-           line direction doesn't matter since .join() can merge from start or end points
-           2) join the lines 2 by 2 setting tolerance to the shortest distance between
-           the starting and ending points of both lines.
-           3) Delete the left over
-         */
         if (this.selection.lines.filter(sel => sel.baselinePath === null).length > 0) {
             return;
         }
 
         this.trigger('baseline-editor:merge', {
-            lines: this.selection.lines
+            lines: this.selection.lines.map(l => l.get())
         });
-
-        /*this.selection.lines.sort(function(first, second) {
-            // let vector = first.baselinePath.segments[1].point.subtract(first.baselinePath.firstSegment.point);
-            // let rightToLeft = Math.cos(vector.angle/180*Math.PI) < 0;  // right to left
-            // // if (vertical) return first.baselinePath.position.y - second.baselinePath.position.y; // td
-            // if (rightToLeft) return second.baselinePath.position.x - first.baselinePath.position.x;
-            // else
-            return first.baselinePath.position.x - second.baselinePath.position.x;
-        });
-
-        this.trigger('baseline-editor:delete', {
-            lines: this.selection.lines.slice(1)
-        });
-
-        while (this.selection.lines.length > 1) {
-            let l1 = this.selection.lines[0], l2 = this.selection.lines[1];
-            if (l1.baselinePath !== null && l2.baselinePath != null) {
-                l1.baselinePath.addSegments(l2.baselinePath.segments);
-            }
-            if (l1.maskPath != null && l2.maskPath != null) {
-                let closeSeg = l1.maskPath.getNearestLocation(l2.maskPath.interiorPoint);
-                l1.maskPath.insertSegments(closeSeg.index+1, l2.maskPath.segments.slice(0, -1));
-            }
-
-            this.selection.lines[1].delete();
-        }
-        if (this.selection.lines.length) {
-            this.selection.lines[0].refresh();
-            this.selection.lines[0].updateDataFromCanvas();
-        } */
     }
 
     addToUpdateQueue(items) {  // {lines:[], regions:[]}
