@@ -230,7 +230,7 @@ export const actions = {
         return { deletedPKs, deletedLines };
     },
 
-    async merge({state, dispatch, commit, rootState}, pks, transcription) {
+    async merge({state, dispatch, commit, rootState}, {pks, transcription}) {
         const resp = await api.mergeLines(rootState.document.id, rootState.parts.pk, { lines: pks })
         const deletedLines = resp.data.lines.deleted;
         const createdLine = resp.data.lines.created;
@@ -244,11 +244,25 @@ export const actions = {
             }
         }
 
-        // TODO: Handle created line
+        createdLine.currentTrans = {
+            line: createdLine.pk,
+            transcription: transcription,
+            content: '',
+            versions: [],
+            version_author: '',
+            version_source: '',
+            version_updated_at: null
+        }
+        if (createdLine.transcriptions) {
+            const tr = createdLine.transcriptions.find(t => t.transcription === transcription);
+            if (tr) {
+                createdLine.currentTrans = tr
+            }
+        }
+        commit('append', createdLine)
 
         await dispatch('recalculateOrdering');
 
-        console.debug('lines/merge action returning createdLine', createdLine, 'deletedPKs', deletedPKs, 'deletedLines', deletedLines)
         return { createdLine, deletedPKs, deletedLines };
     },
 

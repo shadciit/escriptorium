@@ -317,9 +317,17 @@ export default Vue.extend({
             const data = ev.detail;
             console.debug("baseline-editor:merge caught", data);
             this.isWorking = true;
-            await this.merge(data);
-
-            // TODO: Add undo/redo operations (we may need to return something from this.merge
+            await this.merge(data); // Updates data and adds createdLine
+            this.pushHistory(
+              () => {
+                this.bulkCreate(data, true);
+                this.bulkdDelete({ lines: [data.createdLine] });
+              },
+              () => {
+                this.bulkDelete(data);
+                this.bulkCreate({ lines: [data.createdLine]}, true);
+              }
+            )
 
             this.isWorking = false;
           }
@@ -709,16 +717,23 @@ export default Vue.extend({
       }
     },
     async merge(data) {
-      debugger;
       const { createdLine, deletedPKs, deletedLines } =
         await this.$store.dispatch(
-          "lines/merge",
-          data.lines.map((l) => l.context.pk)
+          "lines/merge",{
+            pks: data.lines.map((l) => l.context.pk),
+            transcription: this.$store.state.transcriptions.selectedTranscription,
+          }
         );
-      debugger;
-      this.processDeleteResponse(data, deletedPKs, deletedLines);
+      let region = this.segmenter.regions.find(
+          (r) => r.context.pk == createdLine.region
+        );
+      const segmenterLine = this.segmenter.loadLine(createdLine, region);
+      // update the segmenter pk
+      segmenterLine.context.pk = createdLine.pk;
+      data.createdLine = segmenterLine.get();
+      this.$store.commit("lines/load", createdLine.pk);
 
-      // TODO: Handle created line
+      this.processDeleteResponse(data, deletedPKs, deletedLines);
     },
 
     extractPrevious(data) {
