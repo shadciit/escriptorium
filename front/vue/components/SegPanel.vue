@@ -320,8 +320,8 @@ export default Vue.extend({
             await this.merge(data); // Updates data and adds createdLine
             this.pushHistory(
               () => {
+                this.bulkDelete({ lines: [data.createdLine] });
                 this.bulkCreate(data, true);
-                this.bulkdDelete({ lines: [data.createdLine] });
               },
               () => {
                 this.bulkDelete(data);
@@ -734,6 +734,7 @@ export default Vue.extend({
       this.$store.commit("lines/load", createdLine.pk);
 
       this.processDeleteResponse(data, deletedPKs, deletedLines);
+      console.debug('data after merge: ', data);
     },
 
     extractPrevious(data) {
