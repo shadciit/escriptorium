@@ -575,6 +575,22 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         return Response({'status': 'ok', 'lines': json}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'])
+    @transaction.atomic
+    def merge(self, request, document_pk=None, part_pk=None):
+        original_lines = request.data.get("lines")
+        qs = Line.objects.filter(pk__in=original_lines)
+        original_serializer = DetailedLineSerializer(qs, many=True)
+        deleted_json = original_serializer.data
+
+        # merged_line = merge_lines(qs)
+        #merged_serializer = DetailedLineSerializer(instance=merged_line)
+        created_json = {} # merged_serializer.data
+
+        response_json = dict(created=created_json, deleted=deleted_json)
+        return Response(dict(status='ok', lines=response_json), status=status.HTTP_200_OK)
+        
+
+    @action(detail=False, methods=['post'])
     def move(self, request, document_pk=None, part_pk=None, pk=None):
         data = request.data.get('lines')
         qs = Line.objects.filter(pk__in=[line['pk'] for line in data])
