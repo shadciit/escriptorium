@@ -42,6 +42,9 @@ from api.serializers import (
     TranscriptionSerializer,
     UserOnboardingSerializer,
 )
+
+from api.merger import merge_lines
+
 from core.models import (
     AlreadyProcessingException,
     Block,
@@ -578,13 +581,15 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     @transaction.atomic
     def merge(self, request, document_pk=None, part_pk=None):
         original_lines = request.data.get("lines")
-        qs = Line.objects.filter(pk__in=original_lines)
-        original_serializer = DetailedLineSerializer(qs, many=True)
+        lines = list(Line.objects.filter(pk__in=original_lines))
+        original_serializer = DetailedLineSerializer(lines, many=True)
         deleted_json = original_serializer.data
 
-        # merged_line = merge_lines(qs)
-        #merged_serializer = DetailedLineSerializer(instance=merged_line)
-        created_json = {} # merged_serializer.data
+        merged_line = merge_lines(lines)
+        # merged_serializer = DetailedLineSerializer(instance=merged_line)
+        # created_json = merged_serializer.data
+        created_json = {}
+
 
         response_json = dict(created=created_json, deleted=deleted_json)
         return Response(dict(status='ok', lines=response_json), status=status.HTTP_200_OK)
