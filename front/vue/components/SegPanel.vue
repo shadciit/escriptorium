@@ -471,8 +471,8 @@ export default Vue.extend({
         this.segmenter.refresh();
       }
     },
-    "$store.state.document.blockShortcuts": function (n, o) {
-      // make sure the segmenter doesnt trigger keyboard shortcuts either
+    '$store.state.document.blockShortcuts': function(n, o) {
+      // make sure the segmenter does not trigger keyboard shortcuts either
       this.segmenter.disableShortcuts = n;
     },
   },
