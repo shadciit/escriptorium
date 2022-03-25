@@ -2,10 +2,10 @@ from collections import Counter
 from math import sqrt
 import sys
 from telnetlib import SE
-from typing import List, Sequence, Tuple
+from typing import Any, List, Sequence, Tuple
 from api.serializers import DetailedLineSerializer
 
-from core.models import Line
+from core.models import Line, LineTranscription
 from munkres import Munkres, Matrix, AnyNum
 
 def _distance(a: Line, b: Line) -> float:
@@ -53,10 +53,10 @@ def _find_order(lines: List[Line]):
 
     return order
 
-def _merge_baseline(lines: List[Line], order: List[int]) -> List[Tuple[int, int]]:
+def _merge_baseline(ordered_lines: List[Line]) -> List[Tuple[int, int]]:
     baseline = []
-    for idx in order:
-        baseline += lines[idx].baseline
+    for line in ordered_lines:
+        baseline += line.baseline
     return baseline
 
 def _find_typology(lines):
@@ -68,6 +68,32 @@ def _find_typology(lines):
         return common[0][0]
         
     return lines[0].typology  # If there is no majority, return the typology of the first line
+
+def _merge_transcriptions(ordered_lines: List[Line]) -> List[dict[str, Any]]:
+    def get_line_transcription(line, transcription):
+        try:
+            return line.transcriptions.get(transcription=transcription)
+        except LineTranscription.DoesNotExist:
+            return None
+
+    doc = ordered_lines[0].document_part.document
+    transcriptions = doc.transcriptions.all()
+
+    # Combine all transcriptions. This isn't done in an efficient manner, but shouldn't post a problem
+    # since merging is done on a small number of lines, and there are only so much transcriptions.
+    # If this proves to cause a performance issue, we'll use more efficient SQL queries.
+
+    result = []
+    for transcription in transcriptions:
+        line_transcriptions = [get_line_transcription(line, transcription) for line in ordered_lines] # type:ignore PyLance doesn't find the transcriptions related property
+        actual = [t.content for t in line_transcriptions if t is not None]
+        joined_content = doc.main_script.blank_char.join(actual)
+
+        json = dict(transcription=transcription.pk, content=joined_content, )
+        result.append(json)
+
+    return result
+
 
 def merge_lines(lines: List[Line]):
     order = _find_order(lines)
@@ -84,8 +110,9 @@ def merge_lines(lines: List[Line]):
     for key in unnecessary:
         del(merged_json[key])
 
-    merged_json['baseline'] = _merge_baseline(lines, order)
-    merged_json['typology'] = _find_typology(lines)
+    ordered_lines = [lines[order[i]] for i in range(len(lines))]
+    merged_json['baseline'] = _merge_baseline(ordered_lines)
+    merged_json['typology'] = _find_typology(ordered_lines)
+    merged_json['transcriptions'] = _merge_transcriptions(ordered_lines)
 
-    # TODO: merge transcriptions
     return merged_json
