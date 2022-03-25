@@ -559,7 +559,7 @@ export default Vue.extend({
             data.regions[i].context.pk = newRegion.pk;
             this.$store.commit("regions/load", newRegion.pk);
           } catch (err) {
-            console.log("couldnt create region", err);
+            console.log("couldn't create region", err);
           }
         }
       }
@@ -604,7 +604,7 @@ export default Vue.extend({
             this.$store.commit("lines/load", line.pk);
           }
         } catch (err) {
-          console.log("couldnt create lines", err);
+          console.log("couldn't create lines", err);
         }
       }
     },
@@ -623,7 +623,7 @@ export default Vue.extend({
             );
             segmenterRegion.update(updatedRegion.box);
           } catch (err) {
-            console.log("couldnt update region", err);
+            console.log("couldn't update region", err);
           }
         }
       }
@@ -652,7 +652,7 @@ export default Vue.extend({
             segmenterLine.update(line.baseline, line.mask, region, line.order);
           }
         } catch (err) {
-          console.log("couldnt update line", err);
+          console.log("couldn't update line", err);
         }
       }
     },
@@ -671,7 +671,7 @@ export default Vue.extend({
             if (region) region.remove();
           } catch (err) {
             console.log(
-              "couldnt delete region #",
+              "couldn't delete region #",
               data.regions[i].context.pk,
               err
             );
@@ -686,7 +686,7 @@ export default Vue.extend({
           );
           this.processDeleteResponse(data, deletedPKs, deletedLines);
         } catch (err) {
-          console.error("couldnt bulk delete lines", err);
+          console.error("couldn't bulk delete lines", err);
         }
       }
     },

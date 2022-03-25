@@ -29,7 +29,7 @@ def _build_dist_matrix(lines: List[Line]) -> List[List[float]]:
 
     dist_matrix: List[List[float]] = []
     for i in range(len(lines)):
-        line_dist = [_distance(lines[i], lines[j]) if i!=j else sys.maxsize for j in range(len(lines))]
+        line_dist = [_distance(lines[i], lines[j]) if i != j else sys.maxsize for j in range(len(lines))]
         line_dist += [sys.maxsize, 1]
         dist_matrix.append(line_dist)
     dist_matrix.append([1.0] * len(lines) + [sys.maxsize, sys.maxsize])
@@ -70,7 +70,7 @@ def _find_typology(lines):
 
     if len(common) == 1 or common[1][1] < common[0][1]:
         return common[0][0]
-        
+
     return lines[0].typology  # If there is no majority, return the typology of the first line
 
 
