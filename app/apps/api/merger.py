@@ -1,12 +1,13 @@
+import sys
 from collections import Counter
 from math import sqrt
-import sys
-from telnetlib import SE
-from typing import Any, List, Sequence, Tuple
-from api.serializers import DetailedLineSerializer
+from typing import Any, List, Tuple
 
+from munkres import Munkres
+
+from api.serializers import DetailedLineSerializer
 from core.models import Line, LineTranscription
-from munkres import Munkres, Matrix, AnyNum
+
 
 def _distance(a: Line, b: Line) -> float:
     pt1 = a.baseline[-1]
@@ -20,7 +21,7 @@ def _build_dist_matrix(lines: List[Line]) -> List[List[float]]:
     # The distance matrix contains the distance between every two lines
     # mat[i][j] is the distance from the end of lines[i] to the beginning of lines[j]
     #
-    # We add two extra dummy lines, at len(lines) and len(lines) + 1. 
+    # We add two extra dummy lines, at len(lines) and len(lines) + 1.
     # The first dummy line at len(lines) signifies the start of the sequence. Its distance to any other
     # line is 1, and the distance from any line to it is maxsize.
     # The second dummy line, at len(lines) + 1 signifies the end of the sequence. Its distance to any other line
@@ -36,6 +37,7 @@ def _build_dist_matrix(lines: List[Line]) -> List[List[float]]:
 
     return dist_matrix
 
+
 def _find_order(lines: List[Line]):
     mat = _build_dist_matrix(lines)
     m = Munkres()
@@ -46,18 +48,20 @@ def _find_order(lines: List[Line]):
     next_index = [index[1] for index in indices]
     order: List[int] = []
 
-    cur = len(lines) # The node at len(lines) is before the first line
-    while next_index[cur] != len(lines) + 1: # The node at len(lines) + 1 is after the last line 
+    cur = len(lines)  # The node at len(lines) is before the first line
+    while next_index[cur] != len(lines) + 1:  # The node at len(lines) + 1 is after the last line
         order.append(next_index[cur])
         cur = next_index[cur]
 
     return order
+
 
 def _merge_baseline(ordered_lines: List[Line]) -> List[Tuple[int, int]]:
     baseline = []
     for line in ordered_lines:
         baseline += line.baseline
     return baseline
+
 
 def _find_typology(lines):
     types = [line.typology for line in lines]
@@ -68,6 +72,7 @@ def _find_typology(lines):
         return common[0][0]
         
     return lines[0].typology  # If there is no majority, return the typology of the first line
+
 
 def _merge_transcriptions(ordered_lines: List[Line]) -> List[dict[str, Any]]:
     def get_line_transcription(line, transcription):
@@ -85,7 +90,7 @@ def _merge_transcriptions(ordered_lines: List[Line]) -> List[dict[str, Any]]:
 
     result = []
     for transcription in transcriptions:
-        line_transcriptions = [get_line_transcription(line, transcription) for line in ordered_lines] # type:ignore PyLance doesn't find the transcriptions related property
+        line_transcriptions = [get_line_transcription(line, transcription) for line in ordered_lines]  # type:ignore PyLance doesn't find the transcriptions related property
         actual = [t.content for t in line_transcriptions if t is not None]
         joined_content = doc.main_script.blank_char.join(actual)
 
