@@ -1,10 +1,13 @@
 import sys
 from collections import Counter
 from math import sqrt
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
+
+from scipy.optimize import linear_sum_assignment
+
 from api.serializers import DetailedLineSerializer
 from core.models import Line, LineTranscription
-from scipy.optimize import linear_sum_assignment
+
 
 def _distance(a: Line, b: Line) -> float:
     pt1 = a.baseline[-1]
@@ -70,7 +73,7 @@ def _find_typology(lines):
     return lines[0].typology  # If there is no majority, return the typology of the first line
 
 
-def _merge_transcriptions(ordered_lines: List[Line]) -> List[dict[str, Any]]:
+def _merge_transcriptions(ordered_lines: List[Line]) -> List[Dict[str, Any]]:
     def get_line_transcription(line, transcription):
         try:
             return line.transcriptions.get(transcription=transcription)
