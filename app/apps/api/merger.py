@@ -2,12 +2,9 @@ import sys
 from collections import Counter
 from math import sqrt
 from typing import Any, List, Tuple
-
-from munkres import Munkres
-
 from api.serializers import DetailedLineSerializer
 from core.models import Line, LineTranscription
-
+from scipy.optimize import linear_sum_assignment
 
 def _distance(a: Line, b: Line) -> float:
     pt1 = a.baseline[-1]
@@ -40,12 +37,11 @@ def _build_dist_matrix(lines: List[Line]) -> List[List[float]]:
 
 def _find_order(lines: List[Line]):
     mat = _build_dist_matrix(lines)
-    m = Munkres()
-    indices = m.compute(mat)  # type:ignore - For some reason List[List[float]] is detected as a Matrix, even though it really is
-    # indices contain the sequence in a way that index[x][1] is the line after line x, and index[x][0] is just x.
-    # We start with index[len(lines)][1] which contains the first line
-    # The line for which index[l][1] == len(lines) + 1 is the last line
-    next_index = [index[1] for index in indices]
+    indices = linear_sum_assignment(mat)
+    # indices contain the sequence in a way that index[1][x] is the line after line x, and index[0][x] is just x.
+    # We start with index[1][len(lines)] which contains the first line
+    # The line for which index[1][l] == len(lines) + 1 is the last line
+    next_index = indices[1]
     order: List[int] = []
 
     cur = len(lines)  # The node at len(lines) is before the first line

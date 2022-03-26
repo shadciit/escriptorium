@@ -19,7 +19,6 @@ drf-nested-routers==0.91
 bleach==3.1.5
 beautifulsoup4==4.7.1
 requests==2.21.0
-munkres==1.1.4
 numpy>=1.17
 albumentations
 django-simple-captcha==0.5.12
