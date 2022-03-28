@@ -12,7 +12,7 @@ WORKDIR /usr/src/app
 # and cleanup afterwards to reduce image size
 RUN apt-get update -q && \
     apt-get -y -qq install --no-install-recommends netcat-traditional jpegoptim \
-    pngcrush libvips libffi-dev git build-essential && \
+    pngcrush graphviz libvips libffi-dev git build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

@@ -17,6 +17,10 @@ from rest_framework.response import Response
 from rest_framework.serializers import PrimaryKeyRelatedField
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
+from kraken.align import forced_align
+from kraken.lib.models import load_any
+
+
 from api.serializers import (
     BlockSerializer,
     BlockTypeSerializer,
@@ -459,6 +463,31 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
         else:
             return Response({'error': "Post corners as x1, y1 (top left) and x2, y2 (bottom right)."},
                             status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def forced_align(self, request, document_pk=None, pk=None):
+        document = Document.objects.for_user(request.user)
+        document_part = DocumentPart.objects.get(document=document, pk=pk)
+        transcription = document.transcriptions.get(pk=request.data['transcription'])
+        try:
+            model = load_any(OcrModel.objects.get(pk=request.data['model']))
+            data = {
+                'image': document_part.image.path,
+                'lines:': [{
+                    'boundary': tr.line.mask,
+                    'baseline': tr.line.baseline,
+                    'text': tr.content
+                } for tr in LineTranscription.objects.filter(
+                    document_part=document_part,
+                    transcription=transcription
+                ).select_related('line')]
+            }
+            graphs = forced_align(data, model)
+            print(graphs)
+        except Exception as e:
+            return Response({'status': 'error', 'msg': e.msg})
+
+        return Response({'status': 'done'}, status=200)
 
 
 class DocumentTranscriptionViewSet(ModelViewSet):
