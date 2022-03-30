@@ -3,6 +3,7 @@ import sys
 from collections import Counter
 from math import sqrt
 from typing import Any, Dict, List, Tuple
+
 from django.db.models import prefetch_related_objects
 from scipy.optimize import linear_sum_assignment
 
