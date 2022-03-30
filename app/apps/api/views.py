@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import PrimaryKeyRelatedField
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from api.merger import merge_lines
+from core.merger import merge_lines
 from api.serializers import (
     BlockSerializer,
     BlockTypeSerializer,
