@@ -262,6 +262,9 @@ export const actions = {
         commit('append', createdLine)
 
         await dispatch('recalculateOrdering');
+        if (getters.hasMasks) {
+            await dispatch('recalculateMasks', createdLines.map(l=>l.pk))
+        }
 
         return { createdLine, deletedPKs, deletedLines };
     },
