@@ -5,13 +5,13 @@ from math import sqrt
 from typing import Any, Dict, List, Tuple
 
 from django.db.models import prefetch_related_objects
-from scipy.optimize import linear_sum_assignment
 
 from api.serializers import DetailedLineSerializer
-from core.models import Line, LineTranscription
+from core.models import Line
 
 __all__ = ['merge_lines', 'MAX_MERGE_SIZE']
-MAX_MERGE_SIZE = 8 # Maximum numbers of segments we can merge
+MAX_MERGE_SIZE = 8  # Maximum numbers of segments we can merge
+
 
 def distance(a: Line, b: Line) -> float:
     pt1 = a.baseline[-1]
@@ -34,13 +34,13 @@ def build_dist_matrix(lines: List[Line]) -> List[List[float]]:
 
 def find_order(lines: List[Line]) -> Tuple[int, ...]:
     # Brute force our way through all the permutations. MAX_MERGE_SIZE makes sure this will not explode.
-    if len(lines) > MAX_MERGE_SIZE: # Test again, in case someone calls this function from the outside
+    if len(lines) > MAX_MERGE_SIZE:  # Test again, in case someone calls this function from the outside
         raise ValueError(f"Can't find order of more than {MAX_MERGE_SIZE} lines")
 
     def perm_score(perm):
         score = 0.0
-        for i in range(len(perm)-1):
-            score += mat[perm[i]][perm[i+1]]
+        for i in range(len(perm) - 1):
+            score += mat[perm[i]][perm[i + 1]]
         return score
 
     mat = build_dist_matrix(lines)
@@ -54,6 +54,7 @@ def find_order(lines: List[Line]) -> Tuple[int, ...]:
             best_score, best_perm = score, perm
 
     return best_perm
+
 
 def merge_baseline(ordered_lines: List[Line]) -> List[Tuple[int, int]]:
     baseline = []
@@ -77,12 +78,12 @@ def merge_transcriptions(ordered_lines: List[Line]) -> List[Dict[str, Any]]:
     def get_line_transcription(line, transcription):
         # Filter in Python, not SQL, as to not generate another SQL request.
         # The number of transcriptions per line is relatively low, this will not need to be optimized.
-        lt = [lt for lt in line.transcriptions.all() if lt.transcription==transcription]
+        lt = [lt for lt in line.transcriptions.all() if lt.transcription == transcription]
         if len(lt) == 0:
             return None
         if len(lt) == 1:
             return lt[0]
-        raise ValueError(f"Found more than one transcription {transcription} for line {line.pk}") # This should never happen
+        raise ValueError(f"Found more than one transcription {transcription} for line {line.pk}")  # This should never happen
 
     doc = ordered_lines[0].document_part.document
     transcriptions = doc.transcriptions.all()
