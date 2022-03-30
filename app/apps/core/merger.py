@@ -1,14 +1,16 @@
+import itertools
 import sys
 from collections import Counter
 from math import sqrt
 from typing import Any, Dict, List, Tuple
-
+from django.db.models import prefetch_related_objects
 from scipy.optimize import linear_sum_assignment
 
 from api.serializers import DetailedLineSerializer
 from core.models import Line, LineTranscription
 
-__all__ = ['merge_lines']
+__all__ = ['merge_lines', 'MAX_MERGE_SIZE']
+MAX_MERGE_SIZE = 8 # Maximum numbers of segments we can merge
 
 def distance(a: Line, b: Line) -> float:
     pt1 = a.baseline[-1]
@@ -21,40 +23,36 @@ def distance(a: Line, b: Line) -> float:
 def build_dist_matrix(lines: List[Line]) -> List[List[float]]:
     # The distance matrix contains the distance between every two lines
     # mat[i][j] is the distance from the end of lines[i] to the beginning of lines[j]
-    #
-    # We add two extra dummy lines, at len(lines) and len(lines) + 1.
-    # The first dummy line at len(lines) signifies the start of the sequence. Its distance to any other
-    # line is 1, and the distance from any line to it is maxsize.
-    # The second dummy line, at len(lines) + 1 signifies the end of the sequence. Its distance to any other line
-    # is maxsize, and from any line to it is 1.
 
     dist_matrix: List[List[float]] = []
     for i in range(len(lines)):
         line_dist = [distance(lines[i], lines[j]) if i != j else sys.maxsize for j in range(len(lines))]
-        line_dist += [sys.maxsize, 1]
         dist_matrix.append(line_dist)
-    dist_matrix.append([1.0] * len(lines) + [sys.maxsize, sys.maxsize])
-    dist_matrix.append([sys.maxsize] * (len(lines) + 2))
-
     return dist_matrix
 
 
-def find_order(lines: List[Line]):
+def find_order(lines: List[Line]) -> Tuple[int, ...]:
+    # Brute force our way through all the permutations. MAX_MERGE_SIZE makes sure this will not explode.
+    if len(lines) > MAX_MERGE_SIZE: # Test again, in case someone calls this function from the outside
+        raise ValueError(f"Can't find order of more than {MAX_MERGE_SIZE} lines")
+
+    def perm_score(perm):
+        score = 0.0
+        for i in range(len(perm)-1):
+            score += mat[perm[i]][perm[i+1]]
+        return score
+
     mat = build_dist_matrix(lines)
-    indices = linear_sum_assignment(mat)
-    # indices contain the sequence in a way that index[1][x] is the line after line x, and index[0][x] is just x.
-    # We start with index[1][len(lines)] which contains the first line
-    # The line for which index[1][l] == len(lines) + 1 is the last line
-    next_index = indices[1]
-    order: List[int] = []
 
-    cur = len(lines)  # The node at len(lines) is before the first line
-    while next_index[cur] != len(lines) + 1:  # The node at len(lines) + 1 is after the last line
-        order.append(next_index[cur])
-        cur = next_index[cur]
+    best_score = sys.maxsize
+    best_perm: Tuple[int, ...] = (0, )
 
-    return order
+    for perm in itertools.permutations(list(range(len(lines)))):
+        score = perm_score(perm)
+        if score < best_score:
+            best_score, best_perm = score, perm
 
+    return best_perm
 
 def merge_baseline(ordered_lines: List[Line]) -> List[Tuple[int, int]]:
     baseline = []
@@ -76,13 +74,18 @@ def find_typology(lines):
 
 def merge_transcriptions(ordered_lines: List[Line]) -> List[Dict[str, Any]]:
     def get_line_transcription(line, transcription):
-        try:
-            return line.transcriptions.get(transcription=transcription)
-        except LineTranscription.DoesNotExist:
+        # Filter in Python, not SQL, as to not generate another SQL request.
+        # The number of transcriptions per line is relatively low, this will not need to be optimized.
+        lt = [lt for lt in line.transcriptions.all() if lt.transcription==transcription]
+        if len(lt) == 0:
             return None
+        if len(lt) == 1:
+            return lt[0]
+        raise ValueError(f"Found more than one transcription {transcription} for line {line.pk}") # This should never happen
 
     doc = ordered_lines[0].document_part.document
     transcriptions = doc.transcriptions.all()
+    prefetch_related_objects(ordered_lines, 'transcriptions')
 
     # Combine all transcriptions. This isn't done in an efficient manner, but shouldn't post a problem
     # since merging is done on a small number of lines, and there are only so much transcriptions.
@@ -101,6 +104,9 @@ def merge_transcriptions(ordered_lines: List[Line]) -> List[Dict[str, Any]]:
 
 
 def merge_lines(lines: List[Line]):
+    if len(lines) > MAX_MERGE_SIZE:
+        raise ValueError(f"Can't merge {len(lines)} lines, can only merge up to {MAX_MERGE_SIZE} lines")
+
     order = find_order(lines)
 
     # We don't really create the line, just the JSON that will allow the serializers to create the line.

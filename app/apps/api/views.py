@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import PrimaryKeyRelatedField
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from core.merger import merge_lines
+from core.merger import MAX_MERGE_SIZE, merge_lines
 from api.serializers import (
     BlockSerializer,
     BlockTypeSerializer,
@@ -585,6 +585,9 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     @transaction.atomic
     def merge(self, request, document_pk=None, part_pk=None):
         original_lines = request.data.get("lines")
+        if len(original_lines) > MAX_MERGE_SIZE:
+            return Response(dict(status='error', error=f"Can't merge more than {MAX_MERGE_SIZE} lines"), status=status.HTTP_400_BAD_REQUEST)
+            
         lines = list(Line.objects.filter(pk__in=original_lines))
         original_serializer = DetailedLineSerializer(lines, many=True)
         deleted_json = original_serializer.data
