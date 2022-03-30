@@ -325,7 +325,7 @@ class Document(ExportModelOperationsMixin('Document'), models.Model):
                                                 verbose_name=_("Share with teams"),
                                                 related_name='shared_documents')
 
-    tags = models.ManyToManyField(DocumentTag, blank=True)
+    tags = models.ManyToManyField(DocumentTag, blank=True, related_name='tags_document')
 
     objects = DocumentManager()
 
@@ -1217,8 +1217,10 @@ class Line(OrderedModel):  # Versioned,
     def get_box(self):
         if self.mask:
             return [*map(min, *self.mask), *map(max, *self.mask)]
-        else:
+        elif self.baseline:
             return [*map(min, *self.baseline), *map(max, *self.baseline)]
+        else:
+            return None
 
     def set_box(self, box):
         self.mask = [(box[0], box[1]),
