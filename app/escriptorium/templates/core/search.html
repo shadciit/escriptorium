@@ -49,7 +49,7 @@
       <tr>
         <th>{% trans "Content" %}</th>
         <th>{% trans "Image preview" %}</th>
-        {% if debugging_mode %}
+        {% if debug %}
         <th>{% trans "Score" %}</th>
         {% endif %}
         <th>{% trans "View in Editor" %}</th>
@@ -64,7 +64,7 @@
             <image x="0" y="0" width="{{ img_w }}" height="{{ img_h }}" xlink:href="{{ img_url }}">
           </svg>
         </td>
-        {% if debugging_mode %}
+        {% if debug %}
         <td title="{% trans 'Search score' %}">{{ score }}</td>
         {% endif %}
         <td title="{% trans 'Go to document part editing page' %}">
@@ -75,7 +75,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="{% if debugging_mode %}4{% else %}3{% endif %}">{% trans "No results matched your search." %}</td>
+        <td colspan="{% if debug %}4{% else %}3{% endif %}">{% trans "No results matched your search." %}</td>
       </tr>
       {% endfor %}
     </tbody>

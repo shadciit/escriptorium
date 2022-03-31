@@ -101,7 +101,6 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
         if settings.DISABLE_ELASTICSEARCH:
             return
 
-        context['debugging_mode'] = settings.DEBUG
         context['display_right_warning'] = False
 
         try:
