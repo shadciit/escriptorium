@@ -123,8 +123,10 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
         except ValueError:
             projects = user_projects
 
+        fuzziness = self.request.GET.get('fuzziness', False)
+
         try:
-            es_results = search_in_projects(page, self.paginate_by, self.request.user.id, projects, search)
+            es_results = search_in_projects(page, self.paginate_by, self.request.user.id, projects, search, fuzziness)
         except exceptions.ConnectionError as e:
             context['es_error'] = str(e)
             return context
@@ -167,6 +169,7 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
         kwargs = super().get_form_kwargs()
         kwargs['search'] = self.request.GET.get('query')
         kwargs['project'] = self.request.GET.get('project')
+        kwargs['fuzziness'] = self.request.GET.get('fuzziness')
         kwargs['user'] = self.request.user
         return kwargs
 

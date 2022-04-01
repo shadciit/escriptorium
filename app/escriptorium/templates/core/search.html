@@ -16,6 +16,7 @@
   <h2>{% trans "Search text in projects" %}</h2>
   <form method="get">
     <div class="form-row">
+      <div class="col-auto mt-4 pt-1">{% render_field form.fuzziness group=True %}</div>
       <div class="col-auto">{% render_field form.project group=True %}</div>
       <div class="col mt-4">{% render_field form.query group=True %}</div>
       <div class="col-auto mt-4">

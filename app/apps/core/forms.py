@@ -43,18 +43,21 @@ class SearchForm(BootstrapFormMixin, forms.Form):
         empty_label=_("All projects"),
         required=False
     )
+    fuzziness = forms.BooleanField(required=False, label=_("Activate fuzzy mode"))
 
     def __init__(self, *args, **kwargs):
         search = kwargs.pop('search')
         user = kwargs.pop('user')
         project = kwargs.pop('project')
+        fuzziness = kwargs.pop('fuzziness')
         super().__init__(*args, **kwargs)
         self.fields['query'].initial = search
         self.fields['project'].queryset = Project.objects.for_user_read(user)
         self.fields['project'].initial = project
+        self.fields['fuzziness'].initial = fuzziness
 
     class Meta:
-        fields = ['query', 'project']
+        fields = ['query', 'project', 'fuzziness']
 
 
 class ProjectForm(BootstrapFormMixin, forms.ModelForm):

@@ -4,7 +4,7 @@ from django.conf import settings
 from elasticsearch import Elasticsearch
 
 
-def search_in_projects(current_page, page_size, user_id, projects, terms):
+def search_in_projects(current_page, page_size, user_id, projects, terms, fuzziness=False):
     es_client = Elasticsearch(hosts=[settings.ELASTICSEARCH_URL])
 
     body = {
@@ -20,7 +20,7 @@ def search_in_projects(current_page, page_size, user_id, projects, terms):
                         "match": {
                             "content": {
                                 "query": unquote_plus(terms),
-                                "fuzziness": "AUTO",
+                                "fuzziness": "AUTO" if fuzziness else "0",
                             }
                         }
                     },
