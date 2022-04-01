@@ -58,7 +58,7 @@
       <tr>
         <td title="{% trans 'Line transcription enhanced content' %}">{{ content|safe }}</td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
-          <svg viewBox="{{ viewbox }}" {% if larger %}width="100%" class="wide-search-crop"{% else %}height="100%" class="tall-search-crop"{% endif %}>
+          <svg viewBox="{{ viewbox }}" {% if larger %}class="wide-search-crop"{% else %}class="tall-search-crop"{% endif %}>
             <image x="0" y="0" width="{{ img_w }}" height="{{ img_h }}" xlink:href="{{ img_url }}">
           </svg>
         </td>
