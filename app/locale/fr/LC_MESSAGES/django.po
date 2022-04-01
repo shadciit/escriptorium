@@ -1,22 +1,30 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# French translations for eScriptorium.
+# Copyright (C) 2022
+# This file is distributed under the same license as the eScriptorium package.
+# Stefan Weil <sw@weilnetz.de, 2022
 #
-#, fuzzy
+# This file was created like this:
+# django-admin makemessages -l fr
+#
+# To update all translations, run
+# django-admin makemessages --all --add-location file
+#
+# To compile it, run
+# django-admin compilemessages
+#
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: eScriptorium 0.9.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-03-20 17:29+0100\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"POT-Creation-Date: 2022-04-01 16:13+0000\n"
+"PO-Revision-Date: 2022-04-01 16:17+0100\n"
+"Last-Translator: Stefan Weil <sw@weilnetz.de>\n"
+"Language-Team: French <fr@li.org>\n"
 "Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: apps/api/serializers.py apps/core/forms.py apps/imports/forms.py
 #: escriptorium/templates/core/document_images.html
@@ -77,6 +85,14 @@ msgstr ""
 
 #: apps/api/views.py apps/core/models.py
 msgid "Canceled."
+msgstr ""
+
+#: apps/core/forms.py
+msgid "Text to search in all of your projects"
+msgstr ""
+
+#: apps/core/forms.py
+msgid "All projects"
 msgstr ""
 
 #: apps/core/forms.py
@@ -473,6 +489,13 @@ msgstr ""
 
 #: apps/imports/parsers.py
 #, python-brace-format
+msgid ""
+"Line without baseline in {filen} line #{linen}, very likely that it will not "
+"be usable!"
+msgstr ""
+
+#: apps/imports/parsers.py
+#, python-brace-format
 msgid "Invalid coordinates for {tag} in {filen} line {line}"
 msgstr ""
 
@@ -722,10 +745,6 @@ msgid "Leaderboard"
 msgstr ""
 
 #: escriptorium/templates/base.html
-msgid "Administration"
-msgstr ""
-
-#: escriptorium/templates/base.html
 msgid "Invite"
 msgstr ""
 
@@ -928,6 +947,7 @@ msgid "Share this Project"
 msgstr ""
 
 #: escriptorium/templates/core/document_list.html
+#: escriptorium/templates/reporting/project_reports.html
 msgid "Filters"
 msgstr ""
 
@@ -991,8 +1011,8 @@ msgid ""
 msgstr ""
 
 #: escriptorium/templates/core/home.html
-msgid "Automatic Transcription"
-msgstr "Transcription automatique"
+msgid "Automatic<br>Transcription"
+msgstr "Transcription<br>automatique"
 
 #: escriptorium/templates/core/home.html
 msgid ""
@@ -1003,8 +1023,8 @@ msgstr ""
 "documents imprimés ou manuscrits."
 
 #: escriptorium/templates/core/home.html
-msgid "Manual transcription"
-msgstr "Transcription manuelle"
+msgid "Manual<br>transcription"
+msgstr "Transcription<br>manuelle"
 
 #: escriptorium/templates/core/home.html
 msgid ""
@@ -1015,8 +1035,8 @@ msgstr ""
 "utilisateur ergonomique qui utilise une technologie de navigation moderne."
 
 #: escriptorium/templates/core/home.html
-msgid "Train Models"
-msgstr "Entraînement de modèles"
+msgid "Train<br>Models"
+msgstr "Entraînement<br>de modèles"
 
 #: escriptorium/templates/core/home.html
 msgid ""
@@ -1026,8 +1046,8 @@ msgstr ""
 "existants afin d'améliorer la reconnaissance automatique."
 
 #: escriptorium/templates/core/home.html
-msgid "Import/Export"
-msgstr "Importation / exportation"
+msgid "Import/<br>Export"
+msgstr "Importation /<br>exportation"
 
 #: escriptorium/templates/core/home.html
 msgid ""
@@ -1231,6 +1251,10 @@ msgstr ""
 msgid "Documents"
 msgstr ""
 
+#: escriptorium/templates/core/project_nav.html
+msgid "Reports"
+msgstr ""
+
 #: escriptorium/templates/core/search.html
 msgid "Search in projects"
 msgstr ""
@@ -1241,7 +1265,7 @@ msgstr ""
 
 #: escriptorium/templates/core/search.html
 msgid ""
-"Couldn't connect to ElasticSearch, please contact your instance "
+"Couldn't connect to Elasticsearch, please contact your instance "
 "administrator."
 msgstr ""
 
@@ -1698,6 +1722,136 @@ msgstr ""
 msgid "Reset my password"
 msgstr ""
 
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Project reports"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Data metrics"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Total number of document parts"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "A document part corresponds to one image loaded within a document."
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Total number of regions"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid ""
+"A region is a polygon drawn on a document part, grouping one, several or no "
+"line(s)."
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Total number of lines"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid ""
+"A line is a segment of text identified on a document part, usually "
+"associated with a polygon (mask) and a transcription."
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Total number of words"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid ""
+"A word is any series of one or more characters, excepted punctuation signs "
+"and white spaces."
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Total number of characters"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid ""
+"A character is any symbol used in the transcription, including punctuation, "
+"excepted white spaces."
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Vocabulary"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Reload vocabulary"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid ""
+"The vocabulary is the list of all the characters currently used in the "
+"transcription of the document along with their frequency."
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Annotation"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Current use of document tags"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Current use of part tags"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Current use of regions type"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Current use of lines type"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Project activity"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Created on"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+msgid "Last update on"
+msgstr ""
+
+#: escriptorium/templates/reporting/project_reports.html
+#, python-format
+msgid "Project shared with 1 user"
+msgid_plural "Project shared with %(n)s users"
+msgstr[0] ""
+msgstr[1] ""
+
+#: escriptorium/templates/reporting/project_reports.html
+#, python-format
+msgid "Project shared with 1 group"
+msgid_plural "Project shared with %(n)s groups"
+msgstr[0] ""
+msgstr[1] ""
+
+#: escriptorium/templates/reporting/project_reports.html
+#, python-format
+msgid "Documents shared with 1 user"
+msgid_plural "Documents shared with %(n)s users"
+msgstr[0] ""
+msgstr[1] ""
+
+#: escriptorium/templates/reporting/project_reports.html
+#, python-format
+msgid "Documents shared with 1 group"
+msgid_plural "Documents shared with %(n)s groups"
+msgstr[0] ""
+msgstr[1] ""
+
 #: escriptorium/templates/reporting/quotas_leaderboard.html
 msgid "Total"
 msgstr ""
@@ -1892,11 +2046,11 @@ msgid "Signup"
 msgstr ""
 
 #: escriptorium/templates/users/invitation_form.html
-msgid "Recipient's informations"
+msgid "Recipient's information"
 msgstr ""
 
 #: escriptorium/templates/users/profile.html
-msgid "Informations"
+msgid "Information"
 msgstr ""
 
 #: escriptorium/templates/users/profile.html
@@ -1917,10 +2071,6 @@ msgstr ""
 
 #: escriptorium/templates/users/profile.html
 msgid "Reset onboarding"
-msgstr ""
-
-#: escriptorium/templates/users/profile.html
-msgid "Switch language"
 msgstr ""
 
 #: escriptorium/templates/users/profile_api_key.html
@@ -1980,18 +2130,6 @@ msgstr ""
 msgid "You didn't send any invitations yet."
 msgstr ""
 
-#: homepage/additional_footer.html homepage_example/additional_footer.html
+#: homepage_example/additional_footer.html
 msgid "Powered by"
 msgstr ""
-
-#: homepage/additional_footer.html
-msgid "Imprint"
-msgstr "Mentions légales"
-
-#: homepage/additional_footer.html
-msgid "Privacy Policy"
-msgstr "Déclaration de confidentialité"
-
-#: homepage/additional_heading.html
-msgid "eScriptorium for OCR-BW"
-msgstr "eScriptorium pour OCR-BW"
