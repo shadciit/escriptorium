@@ -16,15 +16,15 @@ msgid ""
 msgstr ""
 "Project-Id-Version: eScriptorium 0.9.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-04-02 04:30+0000\n"
-"PO-Revision-Date: 2021-11-12 19:17+0100\n"
+"POT-Creation-Date: 2022-04-01 16:13+0000\n"
+"PO-Revision-Date: 2022-04-02 06:09+0000\n"
 "Last-Translator: Stefan Weil <sw@weilnetz.de>\n"
 "Language-Team: German <de@li.org>\n"
-"Language: \n"
+"Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
 
 #: apps/api/serializers.py apps/core/forms.py apps/imports/forms.py
 #: escriptorium/templates/core/document_images.html
@@ -136,7 +136,7 @@ msgstr "Hochgeladenes Bild sollte schwarz-weiß sein."
 #, python-brace-format
 msgid "Uploaded image should be the same size as original image {size}."
 msgstr ""
-"Hochgeladenes Bild sollte dieselbe Größe wie das Original-Bild haben {size}"
+"Hochgeladenes Bild sollte dieselbe Größe wie das Original-Bild haben {size}."
 
 #: apps/core/forms.py
 msgid "Model"
@@ -148,7 +148,7 @@ msgid ""
 "first!"
 msgstr ""
 "Wenn diese Option aktiviert ist, werden vorhandene Segmentierungen <b>und "
-"damit verbundene Transkriptionen<b/> zuerst gelöscht!"
+"damit verbundene Transkriptionen</b> zuerst gelöscht!"
 
 #: apps/core/models.py
 msgid "Top to bottom"
@@ -275,7 +275,7 @@ msgstr "Konnte die Trainings-Aufgabe nicht finden."
 
 #: apps/core/tasks.py
 msgid "Something went wrong during the binarization!"
-msgstr "Bei der Binarisierung ist etwas ist schiefgelaufen."
+msgstr "Bei der Binarisierung ist etwas schiefgelaufen!"
 
 #: apps/core/tasks.py
 msgid "Binarization done!"
@@ -360,7 +360,7 @@ msgstr "Recht erfolgreich gelöscht!"
 
 #: apps/core/views.py
 msgid "Document was successfully migrated to the selected project!"
-msgstr "Dokument wurde erfolgreich zum ausgewählten Projekt migriert"
+msgstr "Dokument wurde erfolgreich zum ausgewählten Projekt migriert!"
 
 #: apps/imports/forms.py
 #, python-brace-format
@@ -685,7 +685,7 @@ msgstr "Sie sind jetzt Mitglied im Team {team_name}!"
 #: apps/users/views.py
 #, python-brace-format
 msgid "User {user} successfully removed from the team {team_name}."
-msgstr "Benutzer {user} erfolgreich aus Team {team_name} entfernt!"
+msgstr "Benutzer {user} erfolgreich aus Team {team_name} entfernt."
 
 #: apps/users/views.py
 #, python-brace-format
@@ -940,7 +940,7 @@ msgstr "Training abbrechen"
 
 #: escriptorium/templates/core/document_images.html
 msgid "Binarize selected images."
-msgstr "Binarisieren ausgewählter Bilder"
+msgstr "Binarisieren ausgewählter Bilder."
 
 #: escriptorium/templates/core/document_images.html
 msgid "Binarize"
@@ -948,11 +948,11 @@ msgstr "Binarisieren"
 
 #: escriptorium/templates/core/document_images.html
 msgid "Segment selected images."
-msgstr "Segmentieren ausgewählte Bilder"
+msgstr "Segmentieren ausgewählte Bilder."
 
 #: escriptorium/templates/core/document_images.html
 msgid "Start transcribing selected images."
-msgstr "Beginne die Transkription der ausgewählten Bilder"
+msgstr "Beginne die Transkription der ausgewählten Bilder."
 
 #: escriptorium/templates/core/document_images.html
 #: escriptorium/templates/core/wizards/transcribe.html
@@ -1020,8 +1020,8 @@ msgstr "Letzte Änderung am"
 #, python-format
 msgid "1 image."
 msgid_plural "%(n)s images."
-msgstr[0] "1 Bild"
-msgstr[1] "%(n)s Bilder"
+msgstr[0] "1 Bild."
+msgstr[1] "%(n)s Bilder."
 
 #: escriptorium/templates/core/document_list.html
 msgid "Edit last updated Element"
@@ -1336,7 +1336,7 @@ msgid ""
 "back to searching entered text in all of your projects."
 msgstr ""
 "Sie haben versucht, Text in einem Projekt, zu dem Sie keinen Zugang haben, "
-"zu suchen. Statt dessen wird in allen Ihren Projekten gesucht"
+"zu suchen. Statt dessen wird in allen Ihren Projekten gesucht."
 
 #: escriptorium/templates/core/search.html
 msgid "Results"
@@ -1402,7 +1402,7 @@ msgstr "Teilen"
 
 #: escriptorium/templates/core/wizards/_base.html
 msgid "image(s) selected."
-msgstr "ausgewählte(s) Bild(er)"
+msgstr "ausgewählte(s) Bild(er)."
 
 #: escriptorium/templates/core/wizards/binarize.html
 msgid ""
@@ -1442,7 +1442,7 @@ msgstr ""
 
 #: escriptorium/templates/core/wizards/import.html
 msgid "Resume previous import."
-msgstr "Vorherigen Import fortsetzen"
+msgstr "Vorherigen Import fortsetzen."
 
 #: escriptorium/templates/core/wizards/import.html
 #, python-format
@@ -1471,7 +1471,7 @@ msgstr "Importieren Sie die Bilder aus IIIF."
 
 #: escriptorium/templates/core/wizards/import_pdf.html
 msgid "Import images from a PDF document."
-msgstr "Importieren Sie die Bilder aus einem PDF Dokument"
+msgstr "Importieren Sie die Bilder aus einem PDF Dokument."
 
 #: escriptorium/templates/core/wizards/import_pdf.html
 msgid "A single pdf with one image per page."
@@ -1917,7 +1917,7 @@ msgstr ""
 
 #: escriptorium/templates/registration/password_reset_form.html
 msgid "Email address:"
-msgstr "E-Mail-Adresse"
+msgstr "E-Mail-Adresse:"
 
 #: escriptorium/templates/registration/password_reset_form.html
 msgid "Reset my password"
@@ -1949,7 +1949,7 @@ msgid ""
 "line(s)."
 msgstr ""
 "Ein Bereich ist ein auf einem Dokumentteil gezeichnetes Polygon, das eine, "
-"mehrere oder keine Zeile(n) umfasst"
+"mehrere oder keine Zeile(n) umfasst."
 
 #: escriptorium/templates/reporting/project_reports.html
 msgid "Total number of lines"
@@ -2209,7 +2209,7 @@ msgstr "Klicken Sie dafür einfach auf den folgenden Link:"
 
 #: escriptorium/templates/users/email/invitation_html.html
 msgid "Sincerely, the eScriptorium team."
-msgstr "Mit freundlichen Grüßen, das eScriptorium-Team"
+msgstr "Mit freundlichen Grüßen, das eScriptorium-Team."
 
 #: escriptorium/templates/users/group_detail_invite.html
 msgid "Back to profile"
