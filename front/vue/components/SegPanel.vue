@@ -315,7 +315,6 @@ export default Vue.extend({
           "baseline-editor:merge",
           async (ev) => {
             const data = ev.detail;
-            console.debug("baseline-editor:merge caught", data);
             this.isWorking = true;
             await this.merge(data); // Updates data and adds createdLine
             this.pushHistory(
@@ -734,7 +733,6 @@ export default Vue.extend({
       this.$store.commit("lines/load", createdLine.pk);
 
       this.processDeleteResponse(data, deletedPKs, deletedLines);
-      console.debug('data after merge: ', data);
     },
 
     extractPrevious(data) {

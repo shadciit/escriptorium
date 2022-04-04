@@ -263,7 +263,7 @@ export const actions = {
 
         await dispatch('recalculateOrdering');
         if (getters.hasMasks) {
-            await dispatch('recalculateMasks', createdLines.map(l=>l.pk))
+            await dispatch('recalculateMasks', createdLine.pk)
         }
 
         return { createdLine, deletedPKs, deletedLines };
