@@ -28,7 +28,7 @@
 
   {% if es_error %}
   <div class="alert alert-danger" role="alert">
-    {% trans "Couldn't connect to ElasticSearch, please contact your instance administrator." %}
+    {% trans "Couldn't connect to Elasticsearch, please contact your instance administrator." %}
     <p class="mt-2 mb-0"><strong>{% trans "Reason:" %}</strong> {{ es_error }}</p>
   </div>
   {% elif 'query' not in request.GET %}
@@ -49,20 +49,24 @@
       <tr>
         <th>{% trans "Content" %}</th>
         <th>{% trans "Image preview" %}</th>
+        {% if debug %}
         <th>{% trans "Score" %}</th>
+        {% endif %}
         <th>{% trans "View in Editor" %}</th>
       </tr>
     </thead>
     <tbody>
-      {% for content, part_pk, document_pk, score, img_url, img_w, img_h, viewbox in page_obj %}
+      {% for content, part_pk, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
       <tr>
         <td title="{% trans 'Line transcription enhanced content' %}">{{ content|safe }}</td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
-          <svg width="100%" height="100%" viewBox="{{ viewbox }}" style="width: 50vw;">
+          <svg viewBox="{{ viewbox }}" {% if larger %}class="wide-search-crop"{% else %}class="tall-search-crop"{% endif %}>
             <image x="0" y="0" width="{{ img_w }}" height="{{ img_h }}" xlink:href="{{ img_url }}">
           </svg>
         </td>
+        {% if debug %}
         <td title="{% trans 'Search score' %}">{{ score }}</td>
+        {% endif %}
         <td title="{% trans 'Go to document part editing page' %}">
           <a class="btn btn-primary" target="_blank" href="{% url 'document-part-edit' pk=document_pk part_pk=part_pk %}">
             <i class="fas fa-external-link-square-alt"></i>
@@ -71,7 +75,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="4">{% trans "No results matched your search." %}</td>
+        <td colspan="{% if debug %}4{% else %}3{% endif %}">{% trans "No results matched your search." %}</td>
       </tr>
       {% endfor %}
     </tbody>
