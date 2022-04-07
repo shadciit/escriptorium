@@ -36,28 +36,25 @@ logger = logging.getLogger(__name__)
 
 
 class SearchForm(BootstrapFormMixin, forms.Form):
-    query = forms.CharField(label=_("Text to search in all of your projects"), required=True)
+    query = forms.CharField(label=_("Text to search in all of your projects, surround it with quotation marks to deactivate fuzziness"), required=True)
     project = forms.ModelChoiceField(
         queryset=Project.objects.all(),
         label="",
         empty_label=_("All projects"),
         required=False
     )
-    fuzziness = forms.BooleanField(required=False, label=_("Activate fuzzy mode"))
 
     def __init__(self, *args, **kwargs):
         search = kwargs.pop('search')
         user = kwargs.pop('user')
         project = kwargs.pop('project')
-        fuzziness = kwargs.pop('fuzziness')
         super().__init__(*args, **kwargs)
         self.fields['query'].initial = search
         self.fields['project'].queryset = Project.objects.for_user_read(user)
         self.fields['project'].initial = project
-        self.fields['fuzziness'].initial = fuzziness
 
     class Meta:
-        fields = ['query', 'project', 'fuzziness']
+        fields = ['query', 'project']
 
 
 class ProjectForm(BootstrapFormMixin, forms.ModelForm):
