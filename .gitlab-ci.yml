@@ -41,6 +41,7 @@ tests:
     - schedules
 
   script:
+    - python app/manage.py check
     - python app/manage.py test -v 2 users api versioning imports core
 
 build:
