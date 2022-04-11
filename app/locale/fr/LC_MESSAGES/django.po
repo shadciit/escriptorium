@@ -14,68 +14,73 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: eScriptorium 0.9.0\n"
+"Project-Id-Version: eScriptorium 0.11.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-04-02 04:30+0000\n"
-"PO-Revision-Date: 2022-04-01 16:17+0100\n"
+"POT-Creation-Date: 2022-04-11 15:09+0000\n"
+"PO-Revision-Date: 2022-04-07 20:09+0000\n"
 "Last-Translator: Stefan Weil <sw@weilnetz.de>\n"
-"Language-Team: French <fr@li.org>\n"
-"Language: \n"
+"Language-Team: French <https://hosted.weblate.org/projects/escriptorium/web-"
+"application/fr/>\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"X-Generator: Weblate 4.12-dev\n"
 
 #: apps/api/serializers.py apps/core/forms.py apps/imports/forms.py
 #: escriptorium/templates/core/document_images.html
 msgid "You don't have any disk storage left."
-msgstr ""
+msgstr "Vous n'avez plus d'espace disque."
 
 #: apps/api/serializers.py apps/core/forms.py apps/imports/forms.py
 msgid "You don't have any CPU minutes left."
-msgstr ""
+msgstr "Il ne vous reste plus de minutes de CPU."
 
 #: apps/api/serializers.py apps/core/forms.py
 msgid "You don't have any GPU minutes left."
-msgstr ""
+msgstr "Il ne vous reste plus de minutes de GPU."
 
 #: apps/api/serializers.py apps/core/forms.py
 msgid "Lines and regions"
-msgstr ""
+msgstr "Lignes et régions"
 
 #: apps/api/serializers.py apps/core/forms.py
 msgid "Lines Baselines and Masks"
-msgstr ""
+msgstr "Lignes, lignes de base et masques"
 
 #: apps/api/serializers.py apps/core/forms.py
 msgid "Only lines Masks"
-msgstr ""
+msgstr "Seulement les lignes masques"
 
 #: apps/api/serializers.py apps/core/forms.py
 msgid "Regions"
-msgstr ""
+msgstr "Régions"
 
 #: apps/api/serializers.py apps/core/forms.py apps/core/models.py
 msgid "Horizontal l2r"
-msgstr ""
+msgstr "Horizontal de gauche à droite"
 
 #: apps/api/serializers.py apps/core/forms.py apps/core/models.py
 msgid "Horizontal r2l"
-msgstr ""
+msgstr "Horizontal de droite à gauche"
 
 #: apps/api/serializers.py apps/core/forms.py apps/core/models.py
 msgid "Vertical l2r"
-msgstr ""
+msgstr "Vertical de gauche à droite"
 
 #: apps/api/serializers.py apps/core/forms.py apps/core/models.py
 msgid "Vertical r2l"
-msgstr ""
+msgstr "Vertical de droite à gauche"
 
 #: apps/api/serializers.py
 msgid ""
 "Either use model_name to create a new model, add a model pk to retrain an "
 "existing one, or both to create a new model from an existing one."
 msgstr ""
+"Utilisez model_name pour créer un nouveau modèle, ajoutez un modèle pk pour "
+"réentraîner un modèle existant, ou les deux pour créer un nouveau modèle à "
+"partir d’un modèle existant."
 
 #: apps/api/serializers.py
 msgid ""
@@ -85,102 +90,111 @@ msgstr ""
 
 #: apps/api/views.py apps/core/models.py
 msgid "Canceled."
-msgstr ""
+msgstr "Supprimé."
 
 #: apps/core/forms.py
 msgid "Text to search in all of your projects"
-msgstr ""
+msgstr "Du texte à rechercher dans tous vos projets"
 
 #: apps/core/forms.py
 msgid "All projects"
-msgstr ""
+msgstr "Tous projets"
 
 #: apps/core/forms.py
 msgid "The provided model could not be loaded."
-msgstr ""
+msgstr "Le modèle téléchargé n'a pas pu être ouvert."
 
 #: apps/core/forms.py
 msgid ""
 "Invalid model (Couldn't determine whether it's a segmentation or recognition "
 "model)."
 msgstr ""
+"Modèle incompatible. Le modèle n'est ni de type segmentation ni de type "
+"reconnaissance."
 
 #: apps/core/forms.py
 msgid "eScriptorium is not compatible with bounding box models."
 msgstr ""
+"eScriptorium n'est pas compatible avec les modèles de reconnaissance de type "
+"boîte englobante."
 
 #: apps/core/forms.py
 msgid ""
 "Increase it for low contrast documents, if the letters are not visible "
 "enough."
 msgstr ""
+"Augmentez-la pour les documents à faible contraste, si les lettres ne sont "
+"pas assez visibles."
 
 #: apps/core/forms.py
 msgid "Uploaded image with more than one selected image."
-msgstr ""
+msgstr "Image téléchargée avec plus d'une image sélectionnée."
 
 #: apps/core/forms.py
 msgid "Uploaded image should be black and white."
-msgstr ""
+msgstr "L'image téléchargée doit être en noir et blanc."
 
 #: apps/core/forms.py
 #, python-brace-format
 msgid "Uploaded image should be the same size as original image {size}."
 msgstr ""
+"L'image téléchargée doit avoir la même taille ({size}) que l'image originale."
 
 #: apps/core/forms.py
 msgid "Model"
-msgstr ""
+msgstr "Modèle"
 
 #: apps/core/forms.py
 msgid ""
 "If checked, deletes existing segmentation <b>and bound transcriptions</b> "
 "first!"
 msgstr ""
+"Si cette option est sélectionnée, les segmentations <b>et transcriptions "
+"existantes</b> seront d'abord supprimées !"
 
 #: apps/core/models.py
 msgid "Top to bottom"
-msgstr ""
+msgstr "Haut en bas"
 
 #: apps/core/models.py
 msgid "Share with users"
-msgstr ""
+msgstr "Partager avec d'autres usagers"
 
 #: apps/core/models.py
 msgid "Share with teams"
-msgstr ""
+msgstr "Partager avec d'autres équipes"
 
 #: apps/core/models.py
 msgid "Draft"
-msgstr ""
+msgstr "Brouillon"
 
 #: apps/core/models.py
 msgid "Published"
-msgstr ""
+msgstr "Publié"
 
 #: apps/core/models.py
 msgid "Archived"
-msgstr ""
+msgstr "Archivé"
 
 #: apps/core/models.py
 msgid "Left to right"
-msgstr ""
+msgstr "De gauche à droite"
 
 #: apps/core/models.py
 msgid "Right to left"
-msgstr ""
+msgstr "De droite à gauche"
 
 #: apps/core/models.py
 msgid "Baseline"
-msgstr ""
+msgstr "Ligne de base"
 
 #: apps/core/models.py
 msgid "Topline"
-msgstr ""
+msgstr "Topline"
 
 #: apps/core/models.py
 msgid "Centered"
-msgstr ""
+msgstr "Ligne centrale"
 
 #: apps/core/models.py
 msgid ""
@@ -188,38 +202,41 @@ msgid ""
 "opposition with the text direction which describes the order of the words in "
 "a line and is set by the script."
 msgstr ""
+"Le sens de lecture décrit l'ordre des éléments dans le document, en "
+"opposition avec le sens du texte qui décrit l'ordre des mots dans une ligne "
+"et qui est fixé par le script."
 
 #: apps/core/models.py
 msgid "The position of the line relative to the polygon."
-msgstr ""
+msgstr "La position de la ligne par rapport au polygone."
 
 #: apps/core/models.py
 msgid "Binarized image needs to be the same size as original image."
-msgstr ""
+msgstr "L'image binarisée doit avoir la même taille que l'image originale."
 
 #: apps/core/models.py apps/users/models.py
 msgid "Created"
-msgstr ""
+msgstr "Crée"
 
 #: apps/core/models.py
 msgid "Converting"
-msgstr ""
+msgstr "Convertir"
 
 #: apps/core/models.py
 msgid "Converted"
-msgstr ""
+msgstr "Converti"
 
 #: apps/core/models.py
 msgid "Segmenting"
-msgstr ""
+msgstr "Segmenter"
 
 #: apps/core/models.py
 msgid "Segmented"
-msgstr ""
+msgstr "Segmenté"
 
 #: apps/core/models.py
 msgid "Transcribing"
-msgstr ""
+msgstr "Transcription"
 
 #: apps/core/models.py
 msgid "Element"
@@ -228,7 +245,7 @@ msgstr ""
 #: apps/core/models.py
 #, python-format
 msgid "%(value)s is not a polygon - a 2 dimensional array."
-msgstr ""
+msgstr "%(value)s n'est pas un polygone - un tableau à 2 dimensions."
 
 #: apps/core/models.py
 #, python-format
@@ -745,6 +762,10 @@ msgid "Leaderboard"
 msgstr ""
 
 #: escriptorium/templates/base.html
+msgid "Site administration"
+msgstr ""
+
+#: escriptorium/templates/base.html
 msgid "Invite"
 msgstr ""
 
@@ -1218,6 +1239,10 @@ msgstr ""
 
 #: escriptorium/templates/core/models_list/table.html
 msgid "Share model"
+msgstr ""
+
+#: escriptorium/templates/core/models_list/table.html
+msgid "Unbind model from the document"
 msgstr ""
 
 #: escriptorium/templates/core/models_list/table.html
@@ -2089,6 +2114,10 @@ msgstr ""
 
 #: escriptorium/templates/users/profile_api_key.html
 msgid "Copy to clipboard."
+msgstr ""
+
+#: escriptorium/templates/users/profile_api_key.html
+msgid "Regenerate Token."
 msgstr ""
 
 #: escriptorium/templates/users/profile_api_key.html
