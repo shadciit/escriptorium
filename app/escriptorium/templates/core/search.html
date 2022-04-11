@@ -34,9 +34,27 @@
   {% elif 'query' not in request.GET %}
   <!-- No need to display anything, user must search terms -->
   {% else %}
-    {% if display_right_warning %}
+    {% if display_project_not_found_error %}
+    <div class="alert alert-danger" role="alert">
+      {% trans "You requested to search text in a project that doesn't exist. Falling back to searching entered text in all of your projects." %}
+    </div>
+    {% elif display_project_right_warning %}
     <div class="alert alert-warning" role="alert">
       {% trans "You requested to search text in a project you don't have access to. Falling back to searching entered text in all of your projects." %}
+    </div>
+    {% endif %}
+    {% if display_document_not_found_error %}
+    <div class="alert alert-danger" role="alert">
+      {% trans "You requested to search text in a document that doesn't exist. Falling back to searching entered text in all of the filtered projects." %}
+    </div>
+    {% elif display_document_right_warning %}
+    <div class="alert alert-warning" role="alert">
+      {% trans "You requested to search text in a document you don't have access to. Falling back to searching entered text in all of the filtered projects." %}
+    </div>
+    {% elif document_name %}
+    <div class="alert alert-primary" role="alert">
+      {% blocktrans with name=document_name %}Currently searching entered text in the document named <strong>{{ name }}</strong>.{% endblocktrans %}
+      <a href="{% url 'search' %}?query={{ request.GET.query }}&project={{ request.GET.project }}">Click here to remove this filter.</a>
     </div>
     {% endif %}
 

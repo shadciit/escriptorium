@@ -103,7 +103,10 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
         if settings.DISABLE_ELASTICSEARCH:
             return context
 
-        context['display_right_warning'] = False
+        context['display_project_not_found_error'] = False
+        context['display_document_not_found_error'] = False
+        context['display_project_right_warning'] = False
+        context['display_document_right_warning'] = False
 
         # Search
         search = self.request.GET.get('query', '')
@@ -117,19 +120,39 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
             page = 1
 
         user_projects = list(Project.objects.for_user_read(self.request.user).values_list('id', flat=True))
+        project = self.request.GET.get('project', '')
         try:
-            project = int(self.request.GET.get('project', ''))
+            project_pk = int(project)
+            Project.objects.get(pk=project_pk)
 
-            if project in user_projects:
-                projects = [project]
+            if project_pk in user_projects:
+                projects = [project_pk]
             else:
                 projects = user_projects
-                context['display_right_warning'] = True
-        except ValueError:
+                context['display_project_right_warning'] = True
+        except (ValueError, Project.DoesNotExist):
             projects = user_projects
+            if project != '':
+                context['display_project_not_found_error'] = True
+
+        document = self.request.GET.get('document', '')
+        try:
+            document_pk = int(document)
+            document_obj = Document.objects.get(pk=document_pk)
+            context['document_name'] = document_obj.name
+
+            if document_obj.project_id in user_projects:
+                documents = [document_pk]
+            else:
+                documents = None
+                context['display_document_right_warning'] = True
+        except (ValueError, Document.DoesNotExist):
+            documents = None
+            if document != '':
+                context['display_document_not_found_error'] = True
 
         try:
-            es_results = search_in_projects(page, self.paginate_by, self.request.user.id, projects, search)
+            es_results = search_in_projects(page, self.paginate_by, self.request.user.id, projects, search, documents=documents)
         except exceptions.ConnectionError as e:
             context['es_error'] = str(e)
             return context

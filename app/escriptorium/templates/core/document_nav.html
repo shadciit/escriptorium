@@ -5,7 +5,7 @@
 {% block body %}
 <div id="part-edit">
     <nav>
-        <div class="nav nav-tabs mb-3" id="nav-tab" role="tablist">
+      <div class="nav nav-tabs mb-3" id="nav-tab" role="tablist">
         {% block nav %}
 
         {% if object %}
@@ -24,17 +24,32 @@
 
         <a href="{% if document  %}{% url 'document-part-edit' pk=document.pk %}{% else %}#{% endif %}" class="nav-item nav-link {% block nav-edit-active %}{% endblock %}{% if not object or not document.parts.count %}disabled{% endif %}" id="nav-edit-tab" role="tab" aria-controls="nav-doc" aria-selected="true">{% trans "Edit" %}</a>
 
-      {% with models_count=document.ocr_models.count %}
-      <a href="{% if document and models_count %}{% url 'document-models' document_pk=document.pk %}{% else %}#{% endif %}" class="nav-item nav-link {% if not document or not models_count %}disabled{% endif %}" id="nav-models-tab" role="tab" aria-controls="nav-doc" aria-selected="true">{% trans "Models" %}</a>
-      {% endwith %}
+        {% with models_count=document.ocr_models.count %}
+        <a href="{% if document and models_count %}{% url 'document-models' document_pk=document.pk %}{% else %}#{% endif %}" class="nav-item nav-link {% if not document or not models_count %}disabled{% endif %}" id="nav-models-tab" role="tab" aria-controls="nav-doc" aria-selected="true">{% trans "Models" %}</a>
+        {% endwith %}
 
-      {% endblock nav %}
+        {% endblock nav %}
 
-      {% block extra_nav %}
-      <div class="nav-div nav-item ml-5">{{document.name}}</div>
-      {% endblock %}
-    </div>
-  </nav>
+        {% block extra_nav %}
+        <div class="nav-div nav-item ml-5">{{document.name}}</div>
+        {% endblock %}
+
+        {% if not DISABLE_ELASTICSEARCH and request.resolver_match.view_name == "document-images" %}
+        <form method="get" class="ml-auto" action="{% url 'search' %}">
+          <input name="project" type="text" value="{{document.project.pk}}" hidden>
+          <input name="document" type="text" value="{{document.pk}}" hidden>
+          <div class="input-group">
+            <input name="query" type="text" class="form-control" placeholder="Search in document">
+            <div class="input-group-append">
+              <button class="btn btn-primary mb-2" type="submit">
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </nav>
 
   {% block tab_content %}{% endblock %}
 </div>

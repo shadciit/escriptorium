@@ -5,7 +5,7 @@ from django.conf import settings
 from elasticsearch import Elasticsearch
 
 
-def search_in_projects(current_page, page_size, user_id, projects, terms):
+def search_in_projects(current_page, page_size, user_id, projects, terms, documents=None):
     es_client = Elasticsearch(hosts=[settings.ELASTICSEARCH_URL])
 
     exact_matches = re.findall('"[^"]*[^"]"', re.escape(terms))
@@ -48,5 +48,8 @@ def search_in_projects(current_page, page_size, user_id, projects, terms):
             "fields": {"content": {}},
         },
     }
+
+    if documents:
+        body["query"]["bool"]["must"].append({"terms": {"document_id": documents}})
 
     return es_client.search(index=settings.ELASTICSEARCH_COMMON_INDEX, body=body)
