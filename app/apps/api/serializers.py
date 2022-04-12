@@ -154,11 +154,11 @@ class AnnotationComponentSerializer(serializers.ModelSerializer):
 class AnnotationTaxonomySerializer(serializers.ModelSerializer):
     typology = AnnotationTypeSerializer(required=False)
     components = AnnotationComponentSerializer(many=True, required=False)
-    marker_type = DisplayChoiceField(AnnotationTaxonomy.MARKER_TYPE_CHOICES, required=False)
+    marker_type = DisplayChoiceField(AnnotationTaxonomy.MARKER_TYPE_CHOICES, required=True)
 
     class Meta:
         model = AnnotationTaxonomy
-        fields = ('pk', 'document', 'name', 'abbreviation',
+        fields = ('pk', 'name', 'abbreviation',
                   'marker_type', 'marker_detail', 'has_comments',
                   'typology', 'components')
 
@@ -175,6 +175,7 @@ class AnnotationTaxonomySerializer(serializers.ModelSerializer):
             typo, created = AnnotationType.objects.get_or_create(name=typo_data['name'])
         else:
             typo = None
+        data['document_id'] = self.context['view'].kwargs['document_pk']
         taxo = AnnotationTaxonomy.objects.create(
             typology=typo, **data)
         for compo in components_data:
