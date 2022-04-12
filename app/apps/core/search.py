@@ -33,10 +33,9 @@ def search_in_projects(current_page, page_size, user_id, projects, terms):
                     }}
                     for term in terms_fuzzy if term.strip() != ""
                 ] + [
-                    {"match": {
+                    {"match_phrase": {
                         "content": {
-                            "query": unquote_plus(term),
-                            "fuzziness": 0
+                            "query": unquote_plus(term)
                         }
                     }}
                     for term in terms_exact if term.strip() != ""
