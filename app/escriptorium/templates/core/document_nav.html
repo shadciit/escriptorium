@@ -33,21 +33,6 @@
         {% block extra_nav %}
         <div class="nav-div nav-item ml-5">{{document.name}}</div>
         {% endblock %}
-
-        {% if not DISABLE_ELASTICSEARCH and request.resolver_match.view_name == "document-images" %}
-        <form method="get" class="ml-auto" action="{% url 'search' %}">
-          <input name="project" type="text" value="{{document.project.pk}}" hidden>
-          <input name="document" type="text" value="{{document.pk}}" hidden>
-          <div class="input-group">
-            <input name="query" type="text" class="form-control" placeholder="Search in document">
-            <div class="input-group-append">
-              <button class="btn btn-primary mb-2" type="submit">
-                <i class="fas fa-search"></i>
-              </button>
-            </div>
-          </div>
-        </form>
-        {% endif %}
       </div>
     </nav>
 
@@ -55,3 +40,12 @@
 </div>
 {% block modals %}{% endblock %}
 {% endblock %}
+
+{% if not DISABLE_ELASTICSEARCH %}
+  {% block searchbar_hidden_inputs %}
+  <input name="project" type="text" value="{{document.project.pk}}" hidden>
+  <input name="document" type="text" value="{{document.pk}}" hidden>
+  {% endblock %}
+
+  {% block searchbar_placeholder %}{% trans "Search in document" %}{% endblock %}
+{% endif %}
