@@ -154,7 +154,7 @@ export default Vue.extend({
                 let body = this.getAPIAnnotationBody(annotation);
                 body.coordinates = this.getCoordinatesFromW3C(annotation);
                 const newAnno = await this.$store.dispatch('imageAnnotations/create', body);
-                annotation.pk = newAnno.pk;
+                annotation.id = newAnno.pk;
             }.bind(this));
 
             this.anno.on('updateAnnotation', function(annotation) {
@@ -170,7 +170,7 @@ export default Vue.extend({
             }.bind(this));
 
             this.anno.on('deleteAnnotation', function(annotation) {
-                this.$store.dispatch('imageAnnotations/delete', annotation.pk);
+                this.$store.dispatch('imageAnnotations/delete', annotation.id);
             }.bind(this));
         },
 

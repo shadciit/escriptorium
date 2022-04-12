@@ -215,15 +215,13 @@ export default Vue.extend({
                 formatter: textAnnoFormatter.bind(this)
             });
 
-            // move the container element up so that it doesn't get hidden
-
             this.anno.on('createAnnotation', async function(annotation) {
                 annotation.taxonomy = this.currentTaxonomy;
                 let offsets = annotation.target.selector.find(e => e.type == 'TextPositionSelector');
                 let body = this.getAPITextAnnotationBody(annotation, offsets);
                 body.transcription = this.$store.state.transcriptions.selectedTranscription;
                 const newAnno = await this.$store.dispatch('textAnnotations/create', body);
-                annotation.pk = newAnno.pk;
+                annotation.id = newAnno.pk;
             }.bind(this));
 
             this.anno.on('updateAnnotation', function(annotation) {
@@ -234,12 +232,13 @@ export default Vue.extend({
             }.bind(this));
 
             this.anno.on('selectAnnotation', function(annotation) {
+
                 this.enableTaxonomy(annotation.taxonomy);
                 this.setTextAnnoTaxonomy(annotation.taxonomy);
             }.bind(this));
 
             this.anno.on('deleteAnnotation', function(annotation) {
-                this.$store.dispatch('textAnnotations/delete', annotation.pk);
+                this.$store.dispatch('textAnnotations/delete', annotation.id);
             }.bind(this));
         },
 
@@ -257,7 +256,7 @@ export default Vue.extend({
             }
         },
 
-        changed() {
+        changed(ev) {
             this.$refs.saveNotif.classList.remove('hide');
             this.debouncedSave();
         },
