@@ -146,6 +146,10 @@ class AnnotationComponentSerializer(serializers.ModelSerializer):
         model = AnnotationComponent
         fields = ('pk', 'name', 'allowed_values')
 
+    def create(self, data):
+        data['document_id'] = self.context['view'].kwargs['document_pk']
+        return super().create(data)
+
 
 class AnnotationTaxonomySerializer(serializers.ModelSerializer):
     typology = AnnotationTypeSerializer(required=False)
