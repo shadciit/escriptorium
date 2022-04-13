@@ -1,12 +1,6 @@
-{% if not group %}
-<div class="form-group">
-    {% if field.field.widget.need_label %}
-    <label class="my-1 mr-1" for="{{ field.name }}">{{ field.label }}</label>
-    {% endif %}
-{% endif %}
-
+{% if not group %}<div class="form-group">{% endif %}
+    {% if field.field.widget.need_label and field.field.widget.label %}<label class="my-1 mr-1" for="{{ field.name }}">{{ field.label }}</label>{% endif %}
     {{ field }}
-
 {% if not group %}
     {% if field.help_text %}
     <small id="{{field.name}}Help" class="form-text text-muted">

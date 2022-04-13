@@ -1,5 +1,4 @@
 from django.urls import include, path
-from rest_framework.authtoken import views
 from rest_framework_nested import routers
 
 from api.views import (
@@ -18,6 +17,7 @@ from api.views import (
     OcrModelViewSet,
     PartViewSet,
     ProjectViewSet,
+    RegenerableAuthToken,
     ScriptViewSet,
     TagViewSet,
     TextAnnotationViewSet,
@@ -58,5 +58,5 @@ urlpatterns = [
     path('', include(parts_router.urls)),
     path('', include(projects_router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('token-auth/', views.obtain_auth_token)
+    path('token-auth/', RegenerableAuthToken.as_view())
 ]

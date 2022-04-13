@@ -54,6 +54,7 @@ from core.models import (
     DocumentPart,
     Metadata,
     OcrModel,
+    OcrModelDocument,
     OcrModelRight,
     Project,
 )
@@ -100,17 +101,20 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
 
         # No extra calculation if search feature is deactivated on the instance
         if settings.DISABLE_ELASTICSEARCH:
-            return
+            return context
 
         context['display_right_warning'] = False
+
+        # Search
+        search = self.request.GET.get('query', '')
+
+        if not search:
+            return context
 
         try:
             page = int(self.request.GET.get('page', '1'))
         except ValueError:
             page = 1
-
-        # Search
-        search = self.request.GET.get('query', '')
 
         user_projects = list(Project.objects.for_user_read(self.request.user).values_list('id', flat=True))
         try:
@@ -199,7 +203,10 @@ class ProjectList(LoginRequiredMixin, PerPageMixin, ListView):
     def get_queryset(self):
         return (Project.objects
                 .for_user_read(self.request.user)
-                .annotate(documents_count=Count('documents'))
+                .annotate(documents_count=Count(
+                    'documents',
+                    filter=~Q(documents__workflow_state=Document.WORKFLOW_STATE_ARCHIVED),
+                    distinct=True))
                 .select_related('owner'))
 
 
@@ -662,6 +669,22 @@ class ModelUpload(LoginRequiredMixin, SuccessMessageMixin, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs.update({'user': self.request.user})
         return kwargs
+
+
+class ModelUnbind(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
+    model = OcrModelDocument
+
+    def get_object(self):
+        return OcrModelDocument.objects.get(
+            document__owner=self.request.user,
+            document__pk=self.kwargs['docPk'],
+            ocr_model__pk=self.kwargs['pk'])
+
+    def get_success_url(self):
+        if 'next' in self.request.GET:
+            return self.request.GET.get('next')
+        else:
+            return reverse('user-models')
 
 
 class ModelDelete(LoginRequiredMixin, SuccessMessageMixin, DeleteView):

@@ -4,13 +4,15 @@ import logging
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.translation import gettext as _
 from django_redis import get_redis_connection
 from rest_framework import status
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -400,7 +402,7 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
             order = int(request.GET.get('order'))
         except ValueError:
             return Response({'error': 'invalid order.'})
-        if not order:
+        except TypeError:
             return Response({'error': 'pass order as an url parameter.'})
         try:
             part = self.get_queryset().get(order=order)
@@ -784,7 +786,9 @@ class OcrModelViewSet(ModelViewSet):
 
     def get_queryset(self):
         return (super().get_queryset()
-                .filter(owner=self.request.user))
+                .filter(Q(owner=self.request.user)
+                        | Q(ocr_model_rights__user=self.request.user)
+                        | Q(ocr_model_rights__group__user=self.request.user)))
 
     @action(detail=True, methods=['post'])
     def cancel_training(self, request, pk=None):
@@ -795,3 +799,17 @@ class OcrModelViewSet(ModelViewSet):
             logger.exception(e)
             return Response({'status': 'failed'}, status=400)
         return Response({'status': 'canceled'})
+
+
+class RegenerableAuthToken(ObtainAuthToken):
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data,
+                                           context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+        if not created and request.data.get('regenerate'):
+            token.delete()
+            token, created = Token.objects.get_or_create(user=user)
+
+        return Response({'token': token.key})
