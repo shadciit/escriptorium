@@ -68,7 +68,7 @@ export default Vue.extend({
         updatedLines : [],
         createdLines : [],
         movedLines:[],
-        isVKEnabled: false,
+        isVKEnabled: false
     };},
     components: {
         'diploline': DiploLine,
@@ -139,7 +139,6 @@ export default Vue.extend({
 
         getAPITextAnnotationBody(annotation, offsets) {
             var body = this.getAPIAnnotationBody(annotation);
-
             let total = 0;
             for(let i=0; i<this.$children.length; i++) {
                 let currentLine = this.$children[i];
@@ -200,9 +199,9 @@ export default Vue.extend({
         },
 
         initAnnotations() {
-            var textAnnoFormatter = function(annotation) {
-               let anno = annotation.underlying;
-               let className = "anno-" + (anno.taxonomy != undefined && anno.taxonomy.pk || this.currentTaxonomy.pk);
+            const textAnnoFormatter = function(annotation) {
+               const anno = annotation.underlying;
+               const className = "anno-" + (anno.taxonomy != undefined && anno.taxonomy.pk || this.currentTaxonomy.pk);
                return className;
             };
 
@@ -214,6 +213,33 @@ export default Vue.extend({
                 disableEditor: false,
                 formatter: textAnnoFormatter.bind(this)
             });
+            // deal with annotation disappearing (user deleted the whole text)
+            const annotatonHighlighRemove = function(mutationsList, observer) {
+                for (let mutation of mutationsList) {
+                    if (mutation.removedNodes) {
+                        for (let node of mutation.removedNodes) {
+                            if (node.classList && node.classList.contains('r6o-annotation')) {
+                                this.$store.dispatch('textAnnotations/delete', node.dataset.id);
+                            }
+                        }
+                    }
+                }
+            }.bind(this);
+            const observer = new MutationObserver(annotatonHighlighRemove);
+            observer.observe(this.$refs.diplomaticLines, {childList: true, subtree: true});
+
+            const isEditorOpen = function(mutationsList, observer) {
+                // let's hope for no race condition with the contenteditable focusin/out...
+                for (let mutation of mutationsList) {
+                    if (mutation.addedNodes.length) {
+                        this.$store.commit('document/setBlockShortcuts', true);
+                    } else if (mutation.removedNodes.length) {
+                        this.$store.commit('document/setBlockShortcuts', false);
+                    }
+                }
+            }.bind(this);
+            const editorObserver = new MutationObserver(isEditorOpen);
+            editorObserver.observe(this.anno._appContainerEl, {childList: true});
 
             this.anno.on('createAnnotation', async function(annotation) {
                 annotation.taxonomy = this.currentTaxonomy;
@@ -232,7 +258,6 @@ export default Vue.extend({
             }.bind(this));
 
             this.anno.on('selectAnnotation', function(annotation) {
-
                 this.enableTaxonomy(annotation.taxonomy);
                 this.setTextAnnoTaxonomy(annotation.taxonomy);
             }.bind(this));
@@ -253,6 +278,37 @@ export default Vue.extend({
                 this.sortable.option('disabled', true);
                 this.$refs.sortMode.classList.remove('btn-success');
                 this.$refs.sortMode.classList.add('btn-info');
+            }
+        },
+
+        recalculateAnnotationSelectors() {
+            for (let anno of this.anno.getAnnotations()) {
+                let annoEl = document.querySelector('.r6o-annotation[data-id="'+anno.id+'"]');
+
+                if (annoEl === null) {
+                    this.$store.dispatch('textAnnotations/delete', anno.id);
+                }
+                let range = document.createRange();
+                range.selectNodeContents(annoEl);
+                let rangeBefore = document.createRange();
+                rangeBefore.setStart(this.$refs.contentContainer, 0);
+                rangeBefore.setEnd(range.startContainer, range.startOffset);
+                let quote = range.toString();
+                let oldStart = anno.target.selector.start;
+                let oldEnd = anno.target.selector.end;
+                let start = rangeBefore.toString().length;
+                let end = start + quote.length;
+                anno.target.selector = {
+                    type: 'TextPositionSelector',
+                    start: start,
+                    end: end
+                };
+
+                let body = this.getAPITextAnnotationBody(anno, anno.target.selector);
+                body.id = anno.id;
+                if (oldStart != start || oldEnd != end) {
+                    this.$store.dispatch('textAnnotations/update', body);
+                }
             }
         },
 
@@ -357,6 +413,7 @@ export default Vue.extend({
             this.addToList();
             this.bulkUpdate();
             this.bulkCreate();
+            this.recalculateAnnotationSelectors();
         },
 
         focusNextLine(sel, line) {

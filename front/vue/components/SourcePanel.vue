@@ -142,6 +142,19 @@ export default Vue.extend({
             });
             let annos = await this.$store.dispatch('imageAnnotations/fetch');
 
+            const isEditorOpen = function(mutationsList, observer) {
+
+                for (let mutation of mutationsList) {
+                    if (mutation.addedNodes.length) {
+                        this.$store.commit('document/setBlockShortcuts', true);
+                    } else if (mutation.removedNodes.length) {
+                        this.$store.commit('document/setBlockShortcuts', false);
+                    }
+                }
+            }.bind(this);
+            const editorObserver = new MutationObserver(isEditorOpen);
+            editorObserver.observe(this.anno._appContainerEl, {childList: true});
+
             annos.forEach(function(annotation) {
                 let data = annotation.as_w3c;
                 data.id = annotation.pk;
