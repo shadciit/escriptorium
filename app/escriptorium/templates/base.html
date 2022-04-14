@@ -51,7 +51,7 @@
         </ul>
 
         <ul class="navbar-nav ml-auto mr-auto pt-1">
-          {% if not DISABLE_ELASTICSEARCH and request.resolver_match.view_name != "search" %}
+          {% if user.is_authenticated and not DISABLE_ELASTICSEARCH and request.resolver_match.view_name != "search" %}
           <li class="nav-item">
             <form method="get" action="{% url 'search' %}">
               {% block searchbar_hidden_inputs %}{% endblock %}

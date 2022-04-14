@@ -47,5 +47,5 @@
   <input name="document" type="text" value="{{document.pk}}" hidden>
   {% endblock %}
 
-  {% block searchbar_placeholder %}{% trans "Search in document" %}{% endblock %}
+  {% block searchbar_placeholder %}{% blocktrans with name=document.name %}Search in {{ name }}{% endblocktrans %}{% endblock %}
 {% endif %}
