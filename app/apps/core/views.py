@@ -33,6 +33,7 @@ from elasticsearch import exceptions
 from core.forms import (
     BinarizeForm,
     DocumentForm,
+    DocumentOntologyForm,
     DocumentShareForm,
     MetadataFormSet,
     MigrateDocumentForm,
@@ -100,17 +101,20 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
 
         # No extra calculation if search feature is deactivated on the instance
         if settings.DISABLE_ELASTICSEARCH:
-            return
+            return context
 
         context['display_right_warning'] = False
+
+        # Search
+        search = self.request.GET.get('query', '')
+
+        if not search:
+            return context
 
         try:
             page = int(self.request.GET.get('page', '1'))
         except ValueError:
             page = 1
-
-        # Search
-        search = self.request.GET.get('query', '')
 
         user_projects = list(Project.objects.for_user_read(self.request.user).values_list('id', flat=True))
         try:
@@ -378,6 +382,16 @@ class UpdateDocument(LoginRequiredMixin, SuccessMessageMixin, DocumentMixin, Upd
             # at this point the document is saved
             metadata_form.save()
         return response
+
+
+class DocumentOntology(LoginRequiredMixin, SuccessMessageMixin, DocumentMixin, UpdateView):
+    model = Document
+    form_class = DocumentOntologyForm
+    template_name = "core/document_ontology.html"
+    success_message = _("Ontology saved successfully!")
+
+    def get_success_url(self):
+        return reverse('document-ontology', kwargs={'pk': self.object.pk})
 
 
 class DocumentImages(LoginRequiredMixin, DocumentMixin, DetailView):
