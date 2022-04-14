@@ -49,10 +49,6 @@
       <tr>
         <th>{% trans "Content" %}</th>
         <th>{% trans "Image preview" %}</th>
-        <th>{% trans "Line number" %}</th>
-        <th>{% trans "Transcription" %}</th>
-        <th>{% trans "Element" %}</th>
-        <th>{% trans "Document" %}</th>
         {% if debug %}
         <th>{% trans "Score" %}</th>
         {% endif %}
@@ -62,16 +58,19 @@
     <tbody>
       {% for content, line_number, transcription_name, element_name, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
       <tr>
-        <td title="{% trans 'Line transcription enhanced content' %}">{{ content|safe }}</td>
+        <td title="{% trans 'Line transcription enhanced content' %}">
+          {{ content|safe }}
+          <br/><small class="text-muted text-sm align-bottom">
+            {% blocktrans with linen=line_number element=element_name doc=document_name trans=transcription_name %}
+            Line #{{linen}} of {{element}} in {{doc}} ({{trans}}).
+            {% endblocktrans %}
+          </small>
+        </td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
           <svg viewBox="{{ viewbox }}" {% if larger %}class="wide-search-crop"{% else %}class="tall-search-crop"{% endif %}>
             <image x="0" y="0" width="{{ img_w }}" height="{{ img_h }}" xlink:href="{{ img_url }}">
           </svg>
         </td>
-        <td title="{% trans 'Line number' %}">{{ line_number }}</td>
-        <td title="{% trans 'Name of the transcription level' %}">{{ transcription_name }}</td>
-        <td title="{% trans 'Element name' %}">{{ element_name }}</td>
-        <td title="{% trans 'Document name' %}">{{ document_name }}</td>
         {% if debug %}
         <td title="{% trans 'Search score' %}">{{ score }}</td>
         {% endif %}
@@ -83,7 +82,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="{% if debug %}8{% else %}7{% endif %}">{% trans "No results matched your search." %}</td>
+        <td colspan="{% if debug %}4{% else %}3{% endif %}">{% trans "No results matched your search." %}</td>
       </tr>
       {% endfor %}
     </tbody>
