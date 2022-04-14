@@ -161,7 +161,7 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
             'content': hit.get('highlight', {}).get('content', [])[0],
             'line_number': hit_source['line_number'],
             'transcription_name': hit_source['transcription_name'],
-            'element_name': hit_source['element_name'],
+            'part_title': hit_source['part_title'],
             'part_pk': hit_source['document_part_id'],
             'document_name': hit_source['document_name'],
             'document_pk': hit_source['document_id'],

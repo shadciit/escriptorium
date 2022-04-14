@@ -151,7 +151,7 @@ class Command(BaseCommand):
                         "document_id": document.id,
                         "document_name": document.name,
                         "document_part_id": part.id,
-                        "element_name": f"Element {part.order + 1}",
+                        "part_title": part.title,
                         "image_url": part.image.url,
                         "image_width": part.image.width,
                         "image_height": part.image.height,

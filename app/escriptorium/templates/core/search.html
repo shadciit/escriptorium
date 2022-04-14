@@ -56,13 +56,14 @@
       </tr>
     </thead>
     <tbody>
-      {% for content, line_number, transcription_name, element_name, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
+      {% for content, line_number, transcription_name, part_title, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
       <tr>
         <td title="{% trans 'Line transcription enhanced content' %}">
           {{ content|safe }}
-          <br/><small class="text-muted text-sm align-bottom">
-            {% blocktrans with linen=line_number element=element_name doc=document_name trans=transcription_name %}
-            Line #{{linen}} of {{element}} in {{doc}} ({{trans}}).
+          <br/>
+          <small class="text-muted text-sm align-bottom">
+            {% blocktrans with line=line_number part=part_title doc=document_name trans=transcription_name %}
+            Line <strong>#{{ line }}</strong> of <strong>{{ part }}</strong> in document <strong>{{ doc }}</strong> ({{ trans }})
             {% endblocktrans %}
           </small>
         </td>
