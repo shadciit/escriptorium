@@ -28,7 +28,7 @@ from django.views.generic import (
     UpdateView,
     View,
 )
-from elasticsearch import exceptions
+from elasticsearch import exceptions as es_exceptions
 
 from core.forms import (
     BinarizeForm,
@@ -58,7 +58,6 @@ from core.models import (
     OcrModelRight,
     Project,
 )
-from core.search import search_in_projects
 from imports.forms import ExportForm, ImportForm
 from reporting.models import TaskReport
 from users.models import User
@@ -102,9 +101,6 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['search'] = self.request.GET.get('query')
-        kwargs['project'] = self.request.GET.get('project')
-        kwargs['document'] = self.request.GET.get('document')
         kwargs['user'] = self.request.user
         return kwargs
 
@@ -123,26 +119,9 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
         except ValueError:
             page = 1
 
-        user_projects = list(self.form.user_projects.values_list('id', flat=True))
-        project = self.form.cleaned_data['project']
-        projects = user_projects if project is None else [project.id]
-
-        document = self.form.cleaned_data['document']
-        documents = None
-        if document is not None:
-            documents = [document.id]
-            context["document_name"] = document.name
-
         try:
-            es_results = search_in_projects(
-                page,
-                self.paginate_by,
-                self.request.user.id,
-                projects,
-                self.form.cleaned_data['query'],
-                documents=documents
-            )
-        except exceptions.ConnectionError as e:
+            es_results = self.form.search(page, self.paginate_by)
+        except es_exceptions.ConnectionError as e:
             context['es_error'] = str(e)
             return context
 

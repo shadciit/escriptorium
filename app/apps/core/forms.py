@@ -33,6 +33,7 @@ from core.models import (
     Project,
     Transcription,
 )
+from core.search import search_content
 from users.models import User
 
 logger = logging.getLogger(__name__)
@@ -80,35 +81,38 @@ class SearchForm(BootstrapFormMixin, forms.Form):
         obj_name="document"
     )
 
-    def __init__(self, *args, **kwargs):
-        search = kwargs.pop('search')
-        user = kwargs.pop('user')
-        project = kwargs.pop('project')
-        document = kwargs.pop('document')
-        super().__init__(*args, **kwargs)
-
-        # Setting initial values from query parameters
-        self.fields['query'].initial = search
-        self.fields['project'].initial = project
-        self.fields['document'].initial = document
-
-        # Adjusting the querysets
-        self.user_projects = Project.objects.for_user_read(user)
-        self.fields['project'].queryset = self.user_projects
-
-        if not project:
-            return
-
-        try:
-            project = int(project)
-        except ValueError:
-            project = None
-
-        if project in list(self.user_projects.values_list('id', flat=True)):
-            self.fields['document'].queryset = Document.objects.filter(project=project)
-
     class Meta:
         fields = ['query', 'project', 'document']
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user')
+        super().__init__(*args, **kwargs)
+
+        self.fields['project'].queryset = Project.objects.for_user_read(self.user)
+        project = self.data.get('project')
+        doc_qs = Document.objects.for_user(self.user)
+        if project:
+            doc_qs = doc_qs.filter(project=project)
+        self.fields['document'].queryset = doc_qs
+
+    def search(self, page, paginate_by):
+        if self.cleaned_data['project']:
+            projects = [self.cleaned_data['project'].id]
+        else:
+            projects = None
+        if self.cleaned_data['document']:
+            documents = [self.cleaned_data['document'].id]
+        else:
+            documents = None
+
+        return search_content(
+            page,
+            paginate_by,
+            self.user.id,
+            self.cleaned_data['query'],
+            projects=projects,
+            documents=documents
+        )
 
 
 class ProjectForm(BootstrapFormMixin, forms.ModelForm):

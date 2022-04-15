@@ -47,9 +47,9 @@
   {% elif 'query' not in request.GET or not request.GET.query or form.errors %}
   <!-- No need to display anything, user must search terms or the form contains errors -->
   {% else %}
-    {% if document_name %}
+    {% if form.cleaned_data.document %}
     <div class="alert alert-primary" role="alert">
-      {% blocktrans with name=document_name %}Currently searching entered text in the document named <strong>{{ name }}</strong>.{% endblocktrans %}
+      {% blocktrans with name=form.cleaned_data.document.name %}Currently searching entered text in the document named <strong>{{ name }}</strong>.{% endblocktrans %}
       <a href="{% url 'search' %}?query={{ request.GET.query }}&project={{ request.GET.project }}">Click here to remove this filter.</a>
     </div>
     {% endif %}
