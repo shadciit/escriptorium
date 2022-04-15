@@ -8,7 +8,8 @@ export function bootLazyload() {
       entries.forEach(function(entry) {
         if (entry.isIntersecting) {
           var image = entry.target;
-          image.src = image.dataset.src;
+          if (image.dataset.src) image.setAttribute('src', image.dataset.src);
+          else if (image.dataset.xlinkHref) image.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', image.dataset.xlinkHref);
           image.classList.remove("lazy");
           imageObserver.unobserve(image);
         }

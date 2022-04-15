@@ -83,7 +83,7 @@
         </td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
           <svg viewBox="{{ viewbox }}" {% if larger %}class="wide-search-crop"{% else %}class="tall-search-crop"{% endif %}>
-            <image class="lazy" x="0" y="0" width="{{ img_w }}" height="{{ img_h }}" xlink:href="{{ img_url }}" data-src="{{ img_url }}">
+            <image class="lazy" x="0" y="0" width="{{ img_w }}" height="{{ img_h }}" data-xlink-href="{{ img_url }}">
           </svg>
         </td>
         {% if debug %}
