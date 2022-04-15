@@ -89,21 +89,20 @@ class SearchForm(BootstrapFormMixin, forms.Form):
         super().__init__(*args, **kwargs)
 
         self.fields['project'].queryset = Project.objects.for_user_read(self.user)
+
         project = self.data.get('project')
         doc_qs = Document.objects.for_user(self.user)
         if project:
-            doc_qs = doc_qs.filter(project=project)
+            try:
+                project = int(project)
+                doc_qs = doc_qs.filter(project=project)
+            except ValueError:
+                pass
         self.fields['document'].queryset = doc_qs
 
     def search(self, page, paginate_by):
-        if self.cleaned_data['project']:
-            projects = [self.cleaned_data['project'].id]
-        else:
-            projects = None
-        if self.cleaned_data['document']:
-            documents = [self.cleaned_data['document'].id]
-        else:
-            documents = None
+        projects = [self.cleaned_data['project'].id] if self.cleaned_data['project'] else None
+        documents = [self.cleaned_data['document'].id] if self.cleaned_data['document'] else None
 
         return search_content(
             page,
