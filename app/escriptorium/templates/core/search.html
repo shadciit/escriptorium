@@ -81,8 +81,8 @@
             {% endblocktrans %}
           </small>
         </td>
-        <td width="{{ img_w }}" title="{% trans 'Full image cropped according to the transcription bounding box' %}">
-          <svg class="lazy" viewBox="{{ viewbox }}" {% if larger %}class="wide-search-crop"{% else %}class="tall-search-crop"{% endif %}>
+        <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
+          <svg viewBox="{{ viewbox }}" class="lazy {% if larger %}wide-search-crop{% else %}tall-search-crop{% endif %}">
             <image x="0" y="0" width="{{ img_w }}" height="{{ img_h }}" data-src="{{ img_url }}">
           </svg>
         </td>
