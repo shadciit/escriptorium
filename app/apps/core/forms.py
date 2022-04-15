@@ -38,26 +38,77 @@ from users.models import User
 logger = logging.getLogger(__name__)
 
 
+class SearchModelChoiceField(forms.ModelChoiceField):
+
+    def __init__(self, *args, **kwargs):
+        obj_class = kwargs.pop('obj_class')
+        obj_name = kwargs.pop('obj_name')
+        super().__init__(*args, **kwargs)
+        self.obj_class = obj_class
+        self.obj_name = obj_name
+
+    def clean(self, value):
+        # Custom cleaning method to raise pretty and explanatory errors
+        if value:
+            try:
+                obj_pk = int(value)
+                obj = self.obj_class.objects.get(pk=obj_pk)
+                if obj not in self.queryset:
+                    raise forms.ValidationError(_(f"You requested to search text in a {self.obj_name} you don't have access to."))
+            except (ValueError, self.obj_class.DoesNotExist):
+                raise forms.ValidationError(_(f"You requested to search text in a {self.obj_name} that doesn't exist."))
+
+        return super().clean(value)
+
+
 class SearchForm(BootstrapFormMixin, forms.Form):
-    query = forms.CharField(label=_("Text to search in all of your projects, surround it with quotation marks to deactivate fuzziness"), required=True)
-    project = forms.ModelChoiceField(
-        queryset=Project.objects.all(),
+    query = forms.CharField(label=_("Text to search in all of your projects, surround one or more terms with quotation marks to deactivate fuzziness"), required=False)
+    project = SearchModelChoiceField(
+        queryset=Project.objects.none(),
         label="",
         empty_label=_("All projects"),
-        required=False
+        required=False,
+        obj_class=Project,
+        obj_name="project"
+    )
+    document = SearchModelChoiceField(
+        queryset=Document.objects.none(),
+        label="",
+        required=False,
+        widget=forms.HiddenInput,
+        obj_class=Document,
+        obj_name="document"
     )
 
     def __init__(self, *args, **kwargs):
         search = kwargs.pop('search')
         user = kwargs.pop('user')
         project = kwargs.pop('project')
+        document = kwargs.pop('document')
         super().__init__(*args, **kwargs)
+
+        # Setting initial values from query parameters
         self.fields['query'].initial = search
-        self.fields['project'].queryset = Project.objects.for_user_read(user)
         self.fields['project'].initial = project
+        self.fields['document'].initial = document
+
+        # Adjusting the querysets
+        self.user_projects = Project.objects.for_user_read(user)
+        self.fields['project'].queryset = self.user_projects
+
+        if not project:
+            return
+
+        try:
+            project = int(project)
+        except ValueError:
+            project = None
+
+        if project in list(self.user_projects.values_list('id', flat=True)):
+            self.fields['document'].queryset = Document.objects.filter(project=project)
 
     class Meta:
-        fields = ['query', 'project']
+        fields = ['query', 'project', 'document']
 
 
 class ProjectForm(BootstrapFormMixin, forms.ModelForm):

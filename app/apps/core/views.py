@@ -96,22 +96,26 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
     form_class = SearchForm
     paginate_by = 100
 
+    def get_form(self):
+        self.form = SearchForm(self.request.GET, **self.get_form_kwargs())
+        return self.form
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['search'] = self.request.GET.get('query')
+        kwargs['project'] = self.request.GET.get('project')
+        kwargs['document'] = self.request.GET.get('document')
+        kwargs['user'] = self.request.user
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super(Search, self).get_context_data(**kwargs)
 
-        # No extra calculation if search feature is deactivated on the instance
-        if settings.DISABLE_ELASTICSEARCH:
-            return context
-
-        context['display_project_not_found_error'] = False
-        context['display_document_not_found_error'] = False
-        context['display_project_right_warning'] = False
-        context['display_document_right_warning'] = False
-
-        # Search
-        search = self.request.GET.get('query', '')
-
-        if not search:
+        # No extra calculation if:
+        # - search feature is deactivated on the instance
+        # - the form is invalid
+        # - the search terms are empty
+        if settings.DISABLE_ELASTICSEARCH or not self.form.is_valid() or not self.form.cleaned_data.get('query'):
             return context
 
         try:
@@ -119,40 +123,25 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
         except ValueError:
             page = 1
 
-        user_projects = list(Project.objects.for_user_read(self.request.user).values_list('id', flat=True))
-        project = self.request.GET.get('project', '')
-        try:
-            project_pk = int(project)
-            Project.objects.get(pk=project_pk)
+        user_projects = list(self.form.user_projects.values_list('id', flat=True))
+        project = self.form.cleaned_data['project']
+        projects = user_projects if project is None else [project.id]
 
-            if project_pk in user_projects:
-                projects = [project_pk]
-            else:
-                projects = user_projects
-                context['display_project_right_warning'] = True
-        except (ValueError, Project.DoesNotExist):
-            projects = user_projects
-            if project != '':
-                context['display_project_not_found_error'] = True
-
-        document = self.request.GET.get('document', '')
-        try:
-            document_pk = int(document)
-            document_obj = Document.objects.get(pk=document_pk)
-            context['document_name'] = document_obj.name
-
-            if document_obj.project_id in user_projects:
-                documents = [document_pk]
-            else:
-                documents = None
-                context['display_document_right_warning'] = True
-        except (ValueError, Document.DoesNotExist):
-            documents = None
-            if document != '':
-                context['display_document_not_found_error'] = True
+        document = self.form.cleaned_data['document']
+        documents = None
+        if document is not None:
+            documents = [document.id]
+            context["document_name"] = document.name
 
         try:
-            es_results = search_in_projects(page, self.paginate_by, self.request.user.id, projects, search, documents=documents)
+            es_results = search_in_projects(
+                page,
+                self.paginate_by,
+                self.request.user.id,
+                projects,
+                self.form.cleaned_data['query'],
+                documents=documents
+            )
         except exceptions.ConnectionError as e:
             context['es_error'] = str(e)
             return context
@@ -195,13 +184,6 @@ class Search(LoginRequiredMixin, FormView, TemplateView):
             'viewbox': viewbox,
             'larger': (bounding_box[2] - bounding_box[0]) > (bounding_box[3] - bounding_box[1])
         }
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['search'] = self.request.GET.get('query')
-        kwargs['project'] = self.request.GET.get('project')
-        kwargs['user'] = self.request.user
-        return kwargs
 
     def get_success_url(self):
         return reverse('search')
