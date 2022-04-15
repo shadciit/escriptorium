@@ -66,19 +66,21 @@ logger = logging.getLogger(__name__)
 
 
 class PerPageMixin():
+    paginate_by = 50
     MAX_PAGINATE_BY = 50
+    PAGINATE_BY_CHOICES = [10, 20, 50]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['select_per_page'] = True
+        context['paginate_by_choices'] = self.PAGINATE_BY_CHOICES
         return context
 
     def get_paginate_by(self, queryset):
         try:
-            _paginate_by = int(self.request.GET.get("paginate_by", self.paginate_by))
+            return min(int(self.request.GET.get("paginate_by", self.paginate_by)), self.MAX_PAGINATE_BY)
         except ValueError:
-            _paginate_by = self.paginate_by
-        return _paginate_by if _paginate_by <= self.MAX_PAGINATE_BY else self.paginate_by
+            return self.paginate_by
 
 
 class Home(TemplateView):
@@ -109,7 +111,6 @@ class ESPaginator(Paginator):
 class Search(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
     template_name = 'core/search.html'
     form_class = SearchForm
-    paginate_by = 100
 
     def get_paginate_by(self):
         return super().get_paginate_by(None)
