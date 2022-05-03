@@ -161,7 +161,7 @@ class Command(BaseCommand):
                     if previous_index.get(tr_id) is not None:
                         # Enhance the previous ES document for this Transcription with the content of its next neighbor
                         to_insert[previous_index[tr_id]][
-                            "content"
+                            "context"
                         ] += f" {line_transcription.content}"
 
                     line_box = line.get_box()
@@ -181,8 +181,9 @@ class Command(BaseCommand):
                             "transcription_id": tr_id,
                             "transcription_name": line_transcription.transcription.name,
                             "line_number": line.order + 1,
-                            # Build the enhanced LineTranscription content by adding the last LineTranscription content for this Transcription
-                            "content": f"{previous_contents[tr_id]} {line_transcription.content}"
+                            "raw_content": line_transcription.content,
+                            # Build the enhanced LineTranscription context by adding the last LineTranscription content for this Transcription
+                            "context": f"{previous_contents[tr_id]} {line_transcription.content}"
                             if previous_contents.get(tr_id) is not None
                             else line_transcription.content,
                             # Rescaling the line bbox to match the thumbnail if necessary
@@ -194,7 +195,7 @@ class Command(BaseCommand):
                     previous_contents[tr_id] = line_transcription.content
                     previous_index[tr_id] = len(to_insert) - 1
 
-        to_insert = [entry for entry in to_insert if entry["content"]]
+        to_insert = [entry for entry in to_insert if entry["raw_content"]]
 
         nb_inserted, _ = es_bulk(self.es_client, to_insert, stats_only=True)
         return nb_inserted

@@ -81,6 +81,7 @@
       {% for content, line_number, transcription_pk, transcription_name, part_title, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
       <tr>
         <td>
+          {% if content %}
           <span title="{% trans 'Line transcription enhanced content' %}">{{ content|safe }}</span>
           <br/>
           <small class="text-muted text-sm align-bottom">
@@ -103,6 +104,11 @@
               ({{ transcription_name }})
             </a>
           </small>
+          {% else %}
+          <small class="text-muted text-sm">
+            {{ context_match_hint }}
+          </small>
+          {% endif %}
         </td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
           {% if viewbox %}

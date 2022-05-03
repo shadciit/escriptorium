@@ -26,18 +26,17 @@ def search_content(current_page, page_size, user_id, terms, projects=None, docum
                     # Prevent from loading results from archived documents
                     {"term": {"document_archived": False}},
                 ] + [
-                    {"match": {
-                        "content": {
-                            "query": unquote_plus(term),
-                            "fuzziness": "AUTO",
-                        }
+                    {"multi_match": {
+                        "query": unquote_plus(term),
+                        "fuzziness": "AUTO",
+                        "fields": ["raw_content^3", "context"],
                     }}
                     for term in terms_fuzzy if term.strip() != ""
                 ] + [
-                    {"match_phrase": {
-                        "content": {
-                            "query": unquote_plus(term)
-                        }
+                    {"multi_match": {
+                        "query": unquote_plus(term),
+                        "type": "phrase",
+                        "fields": ["raw_content^3", "context"]
                     }}
                     for term in terms_exact if term.strip() != ""
                 ]
@@ -46,7 +45,7 @@ def search_content(current_page, page_size, user_id, terms, projects=None, docum
         "highlight": {
             "pre_tags": ['<strong class="text-success">'],
             "post_tags": ["</strong>"],
-            "fields": {"content": {}},
+            "fields": {"raw_content": {}},
         },
     }
 
