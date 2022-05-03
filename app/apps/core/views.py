@@ -158,10 +158,13 @@ class Search(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
         context['page_obj'] = paginator.page(page)
         context['is_paginated'] = paginator.num_pages > 1
 
+        context['context_match_hint'] = _("The match only occurred on the context of this line (previous or following line), this result isn't relevant.")
+
         return context
 
     def convert_hit_to_template(self, hit):
         hit_source = hit['_source']
+        content_highlight = hit.get('highlight', {}).get('raw_content', [])
         bounding_box = hit_source['bounding_box']
         viewbox = " ".join([
             str(max([bounding_box[0] - 10, 0])),
@@ -170,7 +173,7 @@ class Search(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
             str(bounding_box[3] - bounding_box[1] + 20)
         ])
         return {
-            'content': hit.get('highlight', {}).get('content', [])[0],
+            'content': content_highlight[0] if content_highlight else None,
             'line_number': hit_source['line_number'],
             'transcription_pk': hit_source['transcription_id'],
             'transcription_name': hit_source['transcription_name'],
