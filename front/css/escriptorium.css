@@ -697,4 +697,5 @@ i.panel-icon {
 
 .not-rounded-left {
     border-radius: 0.2rem 0rem 0rem 0.2rem;
+    width: 100px;
 }

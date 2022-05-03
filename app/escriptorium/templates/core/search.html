@@ -78,15 +78,31 @@
       </tr>
     </thead>
     <tbody>
-      {% for content, line_number, transcription_name, part_title, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
+      {% for content, line_number, transcription_pk, transcription_name, part_title, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
       <tr>
-        <td title="{% trans 'Line transcription enhanced content' %}">
-          {{ content|safe }}
+        <td>
+          <span title="{% trans 'Line transcription enhanced content' %}">{{ content|safe }}</span>
           <br/>
           <small class="text-muted text-sm align-bottom">
-            {% blocktrans with line=line_number part=part_title doc=document_name trans=transcription_name %}
-            Line <strong>#{{ line }}</strong> of <strong>{{ part }}</strong> in document <strong>{{ doc }}</strong> ({{ trans }})
+            {% blocktrans with line=line_number part=part_title %}
+            Line <strong>#{{ line }}</strong> of <strong>{{ part }}</strong> in document
             {% endblocktrans %}
+            <strong>
+              {{ document_name }}
+              <a
+                title="{% trans 'Filter results by this document' %}"
+                href="?query={{ request.GET.query }}&project={{ request.GET.project }}&document={{ document_pk }}"
+              >
+                <i class="fas fa-filter"></i>
+              </a>
+            </strong>
+            ({{ transcription_name }}
+            <a
+              title="{% trans 'Filter results by this transcription level' %}"
+              href="?query={{ request.GET.query }}&project={{ request.GET.project }}&document={{ document_pk }}&transcription={{ transcription_pk }}"
+            >
+              <i class="fas fa-filter"></i>
+            </a>)
           </small>
         </td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
