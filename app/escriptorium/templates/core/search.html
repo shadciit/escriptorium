@@ -78,11 +78,15 @@
       </tr>
     </thead>
     <tbody>
-      {% for content, line_number, transcription_pk, transcription_name, part_title, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
+      {% for highlights, line_number, transcription_pk, transcription_name, part_title, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
       <tr>
         <td>
-          {% if content %}
-          <span title="{% trans 'Line transcription enhanced content' %}">{{ content|safe }}</span>
+          {% if highlights %}
+          <span title="{% trans 'Line transcription enhanced content' %}">
+            {% for content in highlights %}
+            {{ content|safe }}
+            {% endfor %}
+          </span>
           <br/>
           <small class="text-muted text-sm align-bottom">
             {% blocktrans with line=line_number part=part_title %}
@@ -106,7 +110,7 @@
           </small>
           {% else %}
           <small class="text-muted text-sm">
-            {{ context_match_hint }}
+            {% trans "The match only occurred on the context of this line (previous or following line), this result isn't relevant." %}
           </small>
           {% endif %}
         </td>
