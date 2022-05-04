@@ -88,21 +88,20 @@
             Line <strong>#{{ line }}</strong> of <strong>{{ part }}</strong> in document
             {% endblocktrans %}
             <strong>
-              {{ document_name }}
               <a
                 title="{% trans 'Filter results by this document' %}"
                 href="?query={{ request.GET.query }}&project={{ request.GET.project }}&document={{ document_pk }}"
               >
-                <i class="fas fa-filter"></i>
+                {{ document_name }}
               </a>
             </strong>
-            ({{ transcription_name }}
+
             <a
               title="{% trans 'Filter results by this transcription level' %}"
               href="?query={{ request.GET.query }}&project={{ request.GET.project }}&document={{ document_pk }}&transcription={{ transcription_pk }}"
             >
-              <i class="fas fa-filter"></i>
-            </a>)
+              ({{ transcription_name }})
+            </a>
           </small>
         </td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">

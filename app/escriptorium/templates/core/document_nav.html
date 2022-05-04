@@ -54,6 +54,7 @@
     <select
       class="form-control form-control-sm not-rounded-left"
       onchange="getElementById('hiddenSearchTrLevelInput').value = this.value;"
+      title="{% trans "Select a specific transcription to search in." %}"
     >
       <option value="">{% trans "All levels" %}</option>
       {% for tr_lvl in document.transcriptions.all %}
