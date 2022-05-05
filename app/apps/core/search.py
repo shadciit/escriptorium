@@ -29,14 +29,14 @@ def search_content(current_page, page_size, user_id, terms, projects=None, docum
                     {"multi_match": {
                         "query": unquote_plus(term),
                         "fuzziness": "AUTO",
-                        "fields": ["raw_content^3", "context"],
+                        "fields": ["raw_content^3", "context_before", "context_after"]
                     }}
                     for term in terms_fuzzy if term.strip() != ""
                 ] + [
                     {"multi_match": {
                         "query": unquote_plus(term),
                         "type": "phrase",
-                        "fields": ["raw_content^3", "context"]
+                        "fields": ["raw_content^3", "context_before", "context_after"]
                     }}
                     for term in terms_exact if term.strip() != ""
                 ]
@@ -45,7 +45,9 @@ def search_content(current_page, page_size, user_id, terms, projects=None, docum
         "highlight": {
             "pre_tags": ['<strong class="text-success">'],
             "post_tags": ["</strong>"],
-            "fields": {"raw_content": {}},
+            "fields": {"raw_content": {},
+                       "context_before": {},
+                       "context_after": {}},
         },
     }
 

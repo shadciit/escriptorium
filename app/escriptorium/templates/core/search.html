@@ -81,12 +81,25 @@
       {% for highlights, line_number, transcription_pk, transcription_name, part_title, part_pk, document_name, document_pk, score, img_url, img_w, img_h, viewbox, larger in page_obj %}
       <tr>
         <td>
-          {% if highlights %}
-          <span title="{% trans 'Line transcription enhanced content' %}">
-            {% for content in highlights %}
+          {% if highlights.raw_content %}
+          <h5 title="{% trans 'Line transcription enhanced content' %}" class="text-">
+            {% for content in highlights.raw_content %}
             {{ content|safe }}
             {% endfor %}
-          </span>
+          </h5>
+          {% else %}
+          <small class="text-muted text-sm">
+            {% trans "Search terms found in previous or next line." %}
+          </small>
+          {% endif %}
+          {% if highlights.context_before %}
+          <br/>
+          <small>{% trans "previous line:" %} {% for content in  highlights.context_before %}{{ content|safe }}{% endfor %}</small>
+          {% endif %}
+          {% if highlights.context_after %}
+          <br/>
+          <small>{% trans "next line:" %} {% for content in highlights.context_after %}{{ content|safe }}{% endfor %}</small>
+          {% endif %}
           <br/>
           <small class="text-muted text-sm align-bottom">
             {% blocktrans with line=line_number part=part_title %}
@@ -108,11 +121,6 @@
               ({{ transcription_name }})
             </a>
           </small>
-          {% else %}
-          <small class="text-muted text-sm">
-            {% trans "The match only occurred on the context of this line (previous or following line), this result isn't relevant." %}
-          </small>
-          {% endif %}
         </td>
         <td title="{% trans 'Full image cropped according to the transcription bounding box' %}">
           {% if viewbox %}
