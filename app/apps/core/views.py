@@ -170,7 +170,7 @@ class Search(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
             str(bounding_box[3] - bounding_box[1] + 20)
         ])
         return {
-            'highlights': hit.get('highlight', {}).get('raw_content', []),
+            'highlights': hit.get('highlight', {}),
             'line_number': hit_source['line_number'],
             'transcription_pk': hit_source['transcription_id'],
             'transcription_name': hit_source['transcription_name'],
