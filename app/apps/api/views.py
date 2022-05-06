@@ -92,9 +92,15 @@ CLIENT_TASK_NAME_MAP = {
 
 
 class IsAdminOrSelfOnly(BasePermission):
+    """
+    Permission class letting a non-admin user only update his own record,
+    and admin users can update everyone and create/delete users.
+    Really only makes sense for the UserViewset.
+    """
+    
     def has_permission(self, request, view):
         return bool(request.method in ("GET", "PUT", "PATCH")
-                    or (request.method == "POST" and request.user.is_staff))
+                    or (request.method in ("POST", "DELETE") and request.user.is_staff))
 
     def has_object_permission(self, request, view, obj):
         return bool(obj == request.user
