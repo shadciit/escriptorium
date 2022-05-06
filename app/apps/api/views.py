@@ -97,7 +97,7 @@ class IsAdminOrSelfOnly(BasePermission):
     and admin users can update everyone and create/delete users.
     Really only makes sense for the UserViewset.
     """
-    
+
     def has_permission(self, request, view):
         return bool(request.method in ("GET", "PUT", "PATCH")
                     or (request.method in ("POST", "DELETE") and request.user.is_staff))
