@@ -16,6 +16,37 @@ from users.models import User
 logger = logging.getLogger("es_indexing")
 logger.setLevel(logging.ERROR)
 
+# For the keyword field on text attributes, c.f.:
+# While text fields work well for full-text search, keyword fields are not analyzed and may work better for sorting or aggregations.
+EXTRA_FIELDS = {
+    "fields": {
+        "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+        }
+    }
+}
+
+INDEX_MAPPING = {
+    "properties": {
+        "bounding_box": {"type": "long"},
+        "context": {"type": "text", **EXTRA_FIELDS},
+        "document_id": {"type": "long"},
+        "document_name": {"type": "text", **EXTRA_FIELDS},
+        "document_part_id": {"type": "long"},
+        "have_access": {"type": "long"},
+        "image_height": {"type": "long"},
+        "image_url": {"type": "text", **EXTRA_FIELDS},
+        "image_width": {"type": "long"},
+        "line_number": {"type": "long"},
+        "part_title": {"type": "text", **EXTRA_FIELDS},
+        "project_id": {"type": "long"},
+        "raw_content": {"type": "text", **EXTRA_FIELDS},
+        "transcription_id": {"type": "long"},
+        "transcription_name": {"type": "text", **EXTRA_FIELDS},
+    }
+}
+
 
 class Command(BaseCommand):
     help = "Index projects by creating one Elasticsearch document for each LineTranscription."
@@ -64,6 +95,9 @@ class Command(BaseCommand):
             logger.info(
                 f"Created a new index named {settings.ELASTICSEARCH_COMMON_INDEX}"
             )
+
+        # Explicitly set the index mapping
+        indices.put_mapping(INDEX_MAPPING, index=settings.ELASTICSEARCH_COMMON_INDEX)
 
         extras = {}
         # Index all projects by default
