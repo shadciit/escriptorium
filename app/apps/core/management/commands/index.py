@@ -164,6 +164,7 @@ class Command(BaseCommand):
                             "content"
                         ] += f" {line_transcription.content}"
 
+                    line_box = line.get_box()
                     to_insert.append(
                         {
                             "_index": settings.ELASTICSEARCH_COMMON_INDEX,
@@ -184,7 +185,7 @@ class Command(BaseCommand):
                             if previous_contents.get(tr_id) is not None
                             else line_transcription.content,
                             # Rescaling the line bbox to match the thumbnail if necessary
-                            "bounding_box": [ceil(value * factor) for value, factor in zip(line.get_box(), scale_factors)],
+                            "bounding_box": [ceil(value * factor) for value, factor in zip(line.get_box(), scale_factors)] if line_box else None,
                             "have_access": list(set(allowed_users)),
                         }
                     )
@@ -192,7 +193,7 @@ class Command(BaseCommand):
                     previous_contents[tr_id] = line_transcription.content
                     previous_index[tr_id] = len(to_insert) - 1
 
-        to_insert = [entry for entry in to_insert if entry["content"]]
+        to_insert = [entry for entry in to_insert if entry["content"] and entry["bounding_box"]]
 
         nb_inserted, _ = es_bulk(self.es_client, to_insert, stats_only=True)
         return nb_inserted
