@@ -161,8 +161,12 @@ class Command(BaseCommand):
                     if previous_index.get(tr_id) is not None:
                         # Enhance the previous ES document for this Transcription with the content of its next neighbor
                         to_insert[previous_index[tr_id]][
+                            "context"
+                        ] += f" {line_transcription.content}"
+
+                        to_insert[previous_index[tr_id]][
                             "context_after"
-                        ] = f"{line_transcription.content}"
+                        ] = line_transcription.content
 
                     line_box = line.get_box()
                     to_insert.append(
@@ -183,8 +187,13 @@ class Command(BaseCommand):
                             "line_number": line.order + 1,
                             "raw_content": line_transcription.content,
                             # Build the enhanced LineTranscription context by adding the last LineTranscription content for this Transcription
-                            "context_before": previous_contents.get(tr_id),
+                            "context_before": previous_contents[tr_id]
+                            if tr_id in previous_contents
+                            else None,
                             "context_after": None,
+                            "context": f"{previous_contents[tr_id]} {line_transcription.content}"
+                            if previous_contents.get(tr_id) is not None
+                            else line_transcription.content,
                             # Rescaling the line bbox to match the thumbnail if necessary
                             "bounding_box": [ceil(value * factor) for value, factor in zip(line_box, scale_factors)] if line_box else None,
                             "have_access": list(set(allowed_users)),
