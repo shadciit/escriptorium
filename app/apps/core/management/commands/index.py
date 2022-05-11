@@ -193,7 +193,7 @@ class Command(BaseCommand):
                     previous_contents[tr_id] = line_transcription.content
                     previous_index[tr_id] = len(to_insert) - 1
 
-        to_insert = [entry for entry in to_insert if entry["content"] and entry["bounding_box"]]
+        to_insert = [entry for entry in to_insert if entry["content"]]
 
         nb_inserted, _ = es_bulk(self.es_client, to_insert, stats_only=True)
         return nb_inserted
