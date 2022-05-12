@@ -187,9 +187,7 @@ class Command(BaseCommand):
                             "line_number": line.order + 1,
                             "raw_content": line_transcription.content,
                             # Build the enhanced LineTranscription context by adding the last LineTranscription content for this Transcription
-                            "context_before": previous_contents[tr_id]
-                            if tr_id in previous_contents
-                            else None,
+                            "context_before": previous_contents.get(tr_id),
                             "context_after": None,
                             "context": f"{previous_contents[tr_id]} {line_transcription.content}"
                             if tr_id in previous_contents
