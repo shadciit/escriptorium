@@ -82,7 +82,7 @@
       <tr>
         <td>
           {% if result.context_before %}
-          <small style="opacity: 0.5" title="{% trans "Previous line" %}">
+          <small class="context" title="{% trans "Previous line" %}">
             {% for content in result.context_before %}{{ content|safe }}{% endfor %}
           </small>
           <br/>
@@ -100,7 +100,7 @@
 
           {% if result.context_after %}
           <br/>
-          <small style="opacity: 0.5" title="{% trans "Next line" %}">
+          <small class="context" title="{% trans "Next line" %}">
             {% for content in result.context_after %}{{ content|safe }}{% endfor %}
           </small>
           {% endif %}
