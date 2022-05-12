@@ -512,10 +512,15 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     });
 
     // training
+    var trainin_tune = new Audio('/static/music/elevator.mp3');
+    trainin_tune.loop = true;
+    var trainin_done = new Audio('/static/music/ding.mp3');
+    var fail = new Audio('/static/music/fail.mp3');
     var max_accuracy = 0;
     $alertsContainer.on('training:start', function(ev, data) {
         $('#train-selected').addClass('blink');
         $('#cancel-training').show();
+        trainin_tune.play();
     });
     $alertsContainer.on('training:gathering', function(ev, data) {
         $('#train-selected').addClass('blink');
@@ -528,6 +533,8 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
     $alertsContainer.on('training:done', function(ev, data) {
         $('#train-selected').removeClass('blink');
         $('#cancel-training').hide();
+        trainin_tune.pause();
+        trainin_done.play();
     });
     $alertsContainer.on('training:error', function(ev, data) {
         $('#train-selected').removeClass('blink').addClass('btn-danger');
@@ -536,6 +543,8 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
             Alert.add('training-failed',
                       "Training failed because '"+data.reason+"'", 'danger');
         }
+        trainin_tune.pause();
+        fail.play();
     });
     $('#cancel-training').click(function(ev, data) {
         let url = API.document + '/cancel_training/';
@@ -547,6 +556,8 @@ export function bootImageCards(documentId, diskStorageLeft, cpuMinutesLeft) {
             .fail(function(data) {
                 console.log("Couldn't cancel training");
             });
+        trainin_tune.pause();
+        fail.play();
     });
 
     // create & configure dropzone
