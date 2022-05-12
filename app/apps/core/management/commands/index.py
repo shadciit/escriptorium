@@ -192,7 +192,7 @@ class Command(BaseCommand):
                             else None,
                             "context_after": None,
                             "context": f"{previous_contents[tr_id]} {line_transcription.content}"
-                            if previous_contents.get(tr_id) is not None
+                            if tr_id in previous_contents
                             else line_transcription.content,
                             # Rescaling the line bbox to match the thumbnail if necessary
                             "bounding_box": [ceil(value * factor) for value, factor in zip(line_box, scale_factors)] if line_box else None,

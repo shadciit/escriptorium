@@ -89,10 +89,8 @@
           {% endif %}
 
           {% if result.content %}
-          <big title="{% trans 'Line transcription enhanced content' %}" class="text-">
-            {% for content in result.content %}
-            {{ content|safe }}
-            {% endfor %}
+          <big title="{% trans "Line transcription" %}">
+            {% for content in result.content %}{{ content|safe }}{% endfor %}
           </big>
           {% else %}
           <small class="text-muted text-sm">
@@ -109,7 +107,7 @@
           <br/>
           <small class="text-muted text-sm align-bottom">
             {% blocktrans with line=result.line_number part=result.part_title %}
-            Line <strong>#{{ result.line }}</strong> of <strong>{{ result.part }}</strong> in document
+            Line <strong>#{{ line }}</strong> of <strong>{{ part }}</strong> in document
             {% endblocktrans %}
             <strong>
               <a
@@ -122,7 +120,7 @@
 
             <a
               title="{% trans 'Filter results by this transcription level' %}"
-              href="?query={{ request.GET.query }}&project={{ request.GET.project }}&document={{ document_pk }}&transcription={{ result.transcription_pk }}"
+              href="?query={{ request.GET.query }}&project={{ request.GET.project }}&document={{ result.document_pk }}&transcription={{ result.transcription_pk }}"
             >
               ({{ result.transcription_name }})
             </a>

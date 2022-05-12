@@ -147,7 +147,6 @@ class Search(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
             return context
 
         template_results = [self.convert_hit_to_template(hit) for hit in es_results['hits']['hits']]
-        # results = [result.values() for result in template_results]
 
         # Pagination
         paginator = ESPaginator(template_results, paginate_by, total=int(es_results['hits']['total']['value']))
@@ -162,7 +161,7 @@ class Search(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
 
     def convert_hit_to_template(self, hit):
         hit_source = hit['_source']
-        hl = hit.get('highlight', {})
+        highlight = hit.get('highlight', {})
         bounding_box = hit_source['bounding_box']
 
         viewbox = None
@@ -177,9 +176,9 @@ class Search(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
             larger = (bounding_box[2] - bounding_box[0]) > (bounding_box[3] - bounding_box[1])
 
         return {
-            'context_before': hl.get('context_before'),
-            'content': hl.get('raw_content'),
-            'context_after': hl.get('context_after'),
+            'context_before': highlight.get('context_before'),
+            'content': highlight.get('raw_content'),
+            'context_after': highlight.get('context_after'),
             'line_number': hit_source['line_number'],
             'transcription_pk': hit_source['transcription_id'],
             'transcription_name': hit_source['transcription_name'],
