@@ -124,6 +124,9 @@ export default Vue.extend({
                     vm.onDraggingEnd(evt);
                 }
             });
+
+            // update heights and set ratio
+            this.refresh();
         }.bind(this));
 
         this.initAnnotations();

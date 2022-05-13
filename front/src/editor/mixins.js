@@ -37,7 +37,7 @@ export var BasePanel = {
         },
         updateView() {}
     }
-}
+};
 
 export var LineBase = {
     props: ['line', 'ratio'],
@@ -67,7 +67,7 @@ export var LineBase = {
             return this.line.mask.map(pt => Math.round(pt[0]*this.ratio)+','+Math.round(pt[1]*this.ratio)).join(' ');
         },
     }
-}
+};
 
 var KeyValueWidget = function(args) {
     // Annotorious/recogito-js widget to a key/value input in the annotation modal.
