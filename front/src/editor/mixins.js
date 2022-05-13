@@ -178,7 +178,7 @@ export var AnnoPanel = {
                 widgets.push({widget: KeyValueWidget,
                               name: compo.name,
                               values: compo.allowed_values});
-            })
+            });
             this.anno.widgets = widgets;
         },
 
@@ -191,7 +191,7 @@ export var AnnoPanel = {
                     return {
                         'component': annotation.taxonomy.components.find(c => 'attribute-'+c.name == b.purpose).pk,
                         'value': b.value
-                    }
+                    };
                 })
             };
         }
