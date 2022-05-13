@@ -1334,6 +1334,9 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             ]
             region.save()
 
+        # rotate img annotations
+        # for annotation in self.
+
     def crop(self, x1, y1, x2, y2):
         """
         Crops the image outside the rectangle defined

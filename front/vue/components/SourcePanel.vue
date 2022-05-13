@@ -158,6 +158,7 @@ export default Vue.extend({
 
         async fetchAnnotations() {
             await this.$store.dispatch('imageAnnotations/fetch');
+            if (this.imageLoaded) this.loadAnnotations();
         },
 
         initAnnotations() {
