@@ -1335,7 +1335,20 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             region.save()
 
         # rotate img annotations
-        # for annotation in self.
+        for annotation in self.imageannotation_set.prefetch_related('taxonomy'):
+            if annotation.taxonomy.marker_type == AnnotationTaxonomy.MARKER_TYPE_RECTANGLE:
+                poly = affinity.rotate(LineString(annotation.coordinates), angle, origin=center)
+                annotation.coordinates = [
+                    (int(x - offset[0]), int(y - offset[1])) for x, y in poly.coords
+                ]
+            else:
+                poly = affinity.rotate(Polygon(annotation.coordinates), angle, origin=center)
+                annotation.coordinates = [
+                    (int(x - offset[0]), int(y - offset[1]))
+                    for x, y in poly.exterior.coords
+                ]
+
+            annotation.save()
 
     def crop(self, x1, y1, x2, y2):
         """
