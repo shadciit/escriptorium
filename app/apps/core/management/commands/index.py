@@ -100,18 +100,19 @@ class Command(BaseCommand):
                 f"Created a new index named {settings.ELASTICSEARCH_COMMON_INDEX}"
             )
 
-        # Explicitly set the index mapping
-        indices.put_mapping(INDEX_MAPPING, index=settings.ELASTICSEARCH_COMMON_INDEX)
+        try:
+            # Explicitly set the index mapping
+            indices.put_mapping(INDEX_MAPPING, index=settings.ELASTICSEARCH_COMMON_INDEX)
 
-        # Assert that the current index mapping really match INDEX_MAPPING constant
-        real_index_mapping = (
-            indices.get_mapping(index=settings.ELASTICSEARCH_COMMON_INDEX)
-            .get(settings.ELASTICSEARCH_COMMON_INDEX, {})
-            .get("mappings", {})
-        )
-        assert (
-            real_index_mapping == INDEX_MAPPING
-        ), f"The index named {settings.ELASTICSEARCH_COMMON_INDEX} has an internal mapping that differs from the one defined in the constant INDEX_MAPPING, please use the --drop option to clean the data and reindex everything."
+            # Assert that the current index mapping really match INDEX_MAPPING constant
+            real_index_mapping = (
+                indices.get_mapping(index=settings.ELASTICSEARCH_COMMON_INDEX)
+                .get(settings.ELASTICSEARCH_COMMON_INDEX, {})
+                .get("mappings", {})
+            )
+            assert real_index_mapping == INDEX_MAPPING
+        except Exception:
+            raise Exception(f"The index named {settings.ELASTICSEARCH_COMMON_INDEX} has an internal mapping that conflicts from the one defined in the constant INDEX_MAPPING, please use the --drop option to clean the data and reindex everything.")
 
         extras = {}
         # Index all projects by default
