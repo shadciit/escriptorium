@@ -29,3 +29,4 @@ requests==2.21.0
 scikit-learn==1.0.2
 scipy==1.5.4
 uWSGI~=2.0.20
+saxonpy==0.0.2

@@ -8,12 +8,14 @@ from django.conf import settings
 from django.db.models import Avg, Prefetch, Q
 from django.template import loader
 from django.utils.text import slugify
+import requests
 
 TEXT_FORMAT = "text"
 PAGEXML_FORMAT = "pagexml"
 ALTO_FORMAT = "alto"
 OPENITI_MARKDOWN_FORMAT = "openitimarkdown"
 TEI_XML_FORMAT = "teixml"
+PAGE_TO_TEI_FORMAT = "pagetotei"
 
 
 class BaseExporter:
@@ -61,6 +63,7 @@ class BaseExporter:
         ), "file_extension attribute is mandatory and must be defined on your exporter"
         filename = f"{base_filename}.{self.file_extension}"
         self.filepath = os.path.join(self.user.get_document_store_path(), filename)
+        self.teifilepath = os.path.join(self.user.get_document_store_path(), "xmlpage_to_tei.xsl")
 
 
 class TextExporter(BaseExporter):
@@ -240,6 +243,99 @@ class TEIXMLExporter(OpenITIMARkdownExporter):
         super().render(tei_conversion=True)
 
 
+class PAGEToTEITemplateExporter(BaseExporter):
+    file_extension = "zip"
+    file_format = PAGE_TO_TEI_FORMAT
+    template_path = "export/pagexml.xml"
+
+    def get_xslt(self, verify=True):
+        url_xsl = "https://raw.githubusercontent.com/TEI4HTR/page2tei/main/xmlpage_to_tei_without_output.xsl"
+        file_path = os.path.join(settings.MEDIA_ROOT, os.path.basename(url_xsl))
+        if os.path.exists(file_path):
+            xslt_text = open(file_path, 'r').read()
+        else:
+            r = requests.get(url_xsl, allow_redirects=True, verify=verify)
+            if r.status_code != 200:
+                self.report.append(
+                    "Export failed because '{reason}'.".format(reason="XSL file not found")
+                )
+                xslt_text = None
+            else:
+                xslt_text = r.text
+                open(file_path, "wb").write(r.content)
+        
+        return xslt_text
+
+    def render(self):
+        from saxonpy import PySaxonProcessor
+        tplt = loader.get_template(self.template_path)
+        xlst_file = self.get_xslt()
+
+        DocumentPart = apps.get_model("core", "DocumentPart")
+        parts = DocumentPart.objects.filter(
+            document=self.document, pk__in=self.part_pks
+        )
+
+        region_filters = Q(typology_id__in=self.region_types)
+        if self.include_undefined:
+            region_filters |= Q(typology_id__isnull=True)
+        
+        with PySaxonProcessor(license=False) as proc:
+            with ZipFile(self.filepath, "w") as zip_:
+                for part in parts:
+                    render_orphans = (
+                        {}
+                        if not self.include_orphans
+                        else {
+                            "orphan_lines": part.lines.prefetch_transcription(
+                                self.transcription
+                            ).filter(block=None)
+                        }
+                    )               
+
+                    if self.include_images:
+                        # Note adds image before the xml file
+                        zip_.write(part.image.path, part.filename)
+                    try:
+                        Line = apps.get_model("core", "Line")
+                        page = tplt.render(
+                            {
+                                "valid_block_types": self.document.valid_block_types.all(),
+                                "valid_line_types": self.document.valid_line_types.all(),
+                                "part": part,
+                                "blocks": (
+                                    part.blocks.filter(region_filters)
+                                    .annotate(avglo=Avg("lines__order"))
+                                    .order_by("avglo")
+                                    .prefetch_related(
+                                        Prefetch(
+                                            "lines",
+                                            queryset=Line.objects.prefetch_transcription(
+                                                self.transcription
+                                            ),
+                                        )
+                                    )
+                                ),
+                                **render_orphans,
+                            }
+                        )
+                    except Exception as e:
+                        self.report.append(
+                            "Skipped {element}({image}) because '{reason}'.".format(
+                                element=part.name, image=part.filename, reason=str(e)
+                            )
+                        )
+                    else:
+                        if xlst_file != "":
+                            xsltproc = proc.new_xslt_processor()
+                            document = proc.parse_xml(xml_text=page)
+                            xsltproc.set_source(xdm_node=document)
+                            xsltproc.compile_stylesheet(stylesheet_text=xlst_file)
+                            page = xsltproc.transform_to_string()
+                        zip_.writestr("%s.tei.xml" % os.path.splitext(part.filename)[0], page)
+                zip_.close()
+
+
 ENABLED_EXPORTERS = {
     TEXT_FORMAT: {"class": TextExporter, "label": "Text"},
     PAGEXML_FORMAT: {"class": PageXMLExporter, "label": "PAGE"},
@@ -255,4 +351,9 @@ if settings.EXPORT_TEI_XML_ENABLED:
     ENABLED_EXPORTERS[TEI_XML_FORMAT] = {
         "class": TEIXMLExporter,
         "label": "OpenITI TEI XML",
+    }
+if settings.EXPORT_PAGE_TO_TEI_XML_ENABLED:
+    ENABLED_EXPORTERS[PAGE_TO_TEI_FORMAT] = {
+        "class": PAGEToTEITemplateExporter,
+        "label": "ALMANACH PAGE -> TEI XML",
     }

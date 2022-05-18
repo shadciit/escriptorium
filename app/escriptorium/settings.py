@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'language_flags',
     'reporting',
     'django_prometheus',
+    'saxonpy',
 ]
 
 MIDDLEWARE = [
@@ -429,3 +430,6 @@ EXPORT_OPENITI_MARKDOWN_ENABLED = os.getenv('EXPORT_OPENITI_MARKDOWN', "False").
 
 # Boolean used to enable the OpenITI TEI XML export mode
 EXPORT_TEI_XML_ENABLED = os.getenv('EXPORT_TEI_XML', "False").lower() not in ("false", "0")
+
+# Boolean used to enable the ALMANACH PAGE to TEI XML export mode
+EXPORT_PAGE_TO_TEI_XML_ENABLED = os.getenv('EXPORT_PAGE_TO_TEI_XML', "False").lower() not in ("false", "0")
