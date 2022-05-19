@@ -280,60 +280,61 @@ class PAGEToTEITemplateExporter(BaseExporter):
         if self.include_undefined:
             region_filters |= Q(typology_id__isnull=True)
         
-        with PySaxonProcessor(license=False) as proc:
-            with ZipFile(self.filepath, "w") as zip_:
-                for part in parts:
-                    render_orphans = (
-                        {}
-                        if not self.include_orphans
-                        else {
-                            "orphan_lines": part.lines.prefetch_transcription(
-                                self.transcription
-                            ).filter(block=None)
-                        }
-                    )               
+        #with PySaxonProcessor(license=False) as proc:
+        proc = PySaxonProcessor(license=False)
+        with ZipFile(self.filepath, "w") as zip_:
+            for part in parts:
+                render_orphans = (
+                    {}
+                    if not self.include_orphans
+                    else {
+                        "orphan_lines": part.lines.prefetch_transcription(
+                            self.transcription
+                        ).filter(block=None)
+                    }
+                )               
 
-                    if self.include_images:
-                        # Note adds image before the xml file
-                        zip_.write(part.image.path, part.filename)
-                    try:
-                        Line = apps.get_model("core", "Line")
-                        page = tplt.render(
-                            {
-                                "valid_block_types": self.document.valid_block_types.all(),
-                                "valid_line_types": self.document.valid_line_types.all(),
-                                "part": part,
-                                "blocks": (
-                                    part.blocks.filter(region_filters)
-                                    .annotate(avglo=Avg("lines__order"))
-                                    .order_by("avglo")
-                                    .prefetch_related(
-                                        Prefetch(
-                                            "lines",
-                                            queryset=Line.objects.prefetch_transcription(
-                                                self.transcription
-                                            ),
-                                        )
+                if self.include_images:
+                    # Note adds image before the xml file
+                    zip_.write(part.image.path, part.filename)
+                try:
+                    Line = apps.get_model("core", "Line")
+                    page = tplt.render(
+                        {
+                            "valid_block_types": self.document.valid_block_types.all(),
+                            "valid_line_types": self.document.valid_line_types.all(),
+                            "part": part,
+                            "blocks": (
+                                part.blocks.filter(region_filters)
+                                .annotate(avglo=Avg("lines__order"))
+                                .order_by("avglo")
+                                .prefetch_related(
+                                    Prefetch(
+                                        "lines",
+                                        queryset=Line.objects.prefetch_transcription(
+                                            self.transcription
+                                        ),
                                     )
-                                ),
-                                **render_orphans,
-                            }
+                                )
+                            ),
+                            **render_orphans,
+                        }
+                    )
+                except Exception as e:
+                    self.report.append(
+                        "Skipped {element}({image}) because '{reason}'.".format(
+                            element=part.name, image=part.filename, reason=str(e)
                         )
-                    except Exception as e:
-                        self.report.append(
-                            "Skipped {element}({image}) because '{reason}'.".format(
-                                element=part.name, image=part.filename, reason=str(e)
-                            )
-                        )
-                    else:
-                        if xlst_file != "":
-                            xsltproc = proc.new_xslt_processor()
-                            document = proc.parse_xml(xml_text=page)
-                            xsltproc.set_source(xdm_node=document)
-                            xsltproc.compile_stylesheet(stylesheet_text=xlst_file)
-                            page = xsltproc.transform_to_string()
-                        zip_.writestr("%s.tei.xml" % os.path.splitext(part.filename)[0], page)
-                zip_.close()
+                    )
+                else:
+                    if xlst_file != "":
+                        xsltproc = proc.new_xslt_processor()
+                        document = proc.parse_xml(xml_text=page)
+                        xsltproc.set_source(xdm_node=document)
+                        xsltproc.compile_stylesheet(stylesheet_text=xlst_file)
+                        page = xsltproc.transform_to_string()
+                    zip_.writestr("%s.tei.xml" % os.path.splitext(part.filename)[0], page)
+            zip_.close()
 
 
 ENABLED_EXPORTERS = {
