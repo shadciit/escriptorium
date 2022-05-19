@@ -137,12 +137,15 @@ export default Vue.extend({
 
         getCoordinatesFromW3C(annotation) {
             var coordinates = [];
-            if (annotation.taxonomy.marker_type == 'Rectangle') {
+            if (annotation.target.selector.type == 'FragmentSelector') {
                 // looks like xywh=pixel:133.98072814941406,144.94607543945312,169.30674743652344,141.2919921875"
                 let m = annotation.target.selector.value.match(rectangleRegExp).groups;
                 coordinates = [[parseInt(m.x), parseInt(m.y)],
-                               [parseInt(m.x)+parseInt(m.w), parseInt(m.y)+parseInt(m.h)]];
-            } else if (annotation.taxonomy.marker_type == 'Polygon') {
+                               [parseInt(m.x)+parseInt(m.w), parseInt(m.y)],
+                               [parseInt(m.x)+parseInt(m.w), parseInt(m.y)+parseInt(m.h)],
+                               [parseInt(m.x), parseInt(m.y)+parseInt(m.h)]
+                              ];
+            } else if (annotation.target.selector.type == 'SvgSelector') {
                 // looks like <svg><polygon points=\"168.08567810058594,230.20848083496094 422.65484619140625,242.38882446289062 198.5365447998047,361.75616455078125\"></polygon></svg>
                 let matches = annotation.target.selector.value.matchAll(polygonRegExp);
                 for (let m of matches) {
@@ -236,8 +239,12 @@ export default Vue.extend({
             }.bind(this));
 
             this.anno.on('selectAnnotation', function(annotation) {
-                this.enableTaxonomy(annotation.taxonomy);
-                this.setAnnoTaxonomy(annotation.taxonomy);
+                if (this.currentTaxonomy != annotation.taxonomy) {
+                    this.toggleTaxonomy(annotation.taxonomy);
+                    // have to use this trick to make it editable..
+                    this.anno.selectAnnotation();
+                    this.anno.selectAnnotation(annotation);
+                }
             }.bind(this));
 
             this.anno.on('deleteAnnotation', function(annotation) {

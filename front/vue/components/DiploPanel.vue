@@ -251,8 +251,9 @@ export default Vue.extend({
             }.bind(this));
 
             this.anno.on('selectAnnotation', function(annotation) {
-                this.enableTaxonomy(annotation.taxonomy);
-                this.setTextAnnoTaxonomy(annotation.taxonomy);
+                if (this.currentTaxonomy != annotation.taxonomy) {
+                    this.toggleTaxonomy(annotation.taxonomy);
+                }
             }.bind(this));
 
             this.anno.on('deleteAnnotation', function(annotation) {
