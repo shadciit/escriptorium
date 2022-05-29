@@ -786,7 +786,6 @@ class LineViewSetMoveTestCase(CoreFactoryTestCase):
 
         return payload
 
-
     def test_move_one(self):
         self.client.force_login(self.user)
 

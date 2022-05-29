@@ -715,7 +715,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
                 return False
 
             return True
-        
+
         data = request.data.get('lines')
         qs = Line.objects.filter(pk__in=[line['pk'] for line in data])
         serializer = LineOrderSerializer(qs, data=data, many=True)
@@ -736,7 +736,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         if part_pk is None or document_pk is None:
             return Response(dict(status='error', msg="Reordering multiple lines requires specifying a document and part"), status=status.HTTP_400_BAD_REQUEST)
 
-        lines = { line.pk: line for line in Line.objects.filter(document_part__pk=part_pk) }
+        lines = {line.pk: line for line in Line.objects.filter(document_part__pk=part_pk)}
 
         # Step 1 - update all lines
         updated_lines = []
@@ -756,9 +756,8 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         # Step 3 - update
         Line.objects.bulk_update(updated_lines, ['order'])
 
-        response = [ { 'pk': line.pk, 'order': line.order } for line in updated_lines]
+        response = [{'pk': line.pk, 'order': line.order} for line in updated_lines]
         return Response(response, status=status.HTTP_200_OK)
-        
 
 
 class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
