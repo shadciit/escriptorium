@@ -743,6 +743,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(self.line.mask, '[[60, 40], [60, 50], [90, 50], [90, 40]]')
         self.assertEqual(self.line2.mask, '[[50, 40], [50, 30], [70, 30], [70, 40]]')
 
+
 class LineViewSetMoveTestCase(CoreFactoryTestCase):
     def setUp(self):
         super().setUp()
@@ -780,11 +781,10 @@ class LineViewSetMoveTestCase(CoreFactoryTestCase):
         return ''.join(order)
 
     def build_payload(self, order: List[Tuple[str, int]]) -> Dict:
-        lines = { line.external_id: line for line in Line.objects.all() }
+        lines = {line.external_id: line for line in Line.objects.all()}
         payload = dict(lines=[dict(pk=lines[t[0]].pk, order=t[1]) for t in order])
 
         return payload
-
 
 
     def test_move_one(self):
@@ -801,7 +801,6 @@ class LineViewSetMoveTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
 
         # Change to CBDA
-        lines = { line.external_id: line for line in Line.objects.all() }
         new_order = [('A', 3), ('C', 0), ('D', 2)]
         resp = self.client.post(self.url, self.build_payload(new_order), content_type='application/json')
         self.assertEqual(resp.status_code, 200, "Line move did not return 200")
@@ -816,6 +815,7 @@ class LineViewSetMoveTestCase(CoreFactoryTestCase):
         payload = self.build_payload([('B', 0), ('C', 1)])
         resp = self.client.post(self.url, payload, content_type='application/json')
         self.assertEqual(resp.status_code, 409, "Server did not report a move conflict")
+
 
 class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
