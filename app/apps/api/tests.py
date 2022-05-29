@@ -742,6 +742,34 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(self.line.mask, '[[60, 40], [60, 50], [90, 50], [90, 40]]')
         self.assertEqual(self.line2.mask, '[[50, 40], [50, 30], [70, 30], [70, 40]]')
 
+class LineViewSetMoveTestCase(CoreFactoryTestCase):
+    def setUp(self):
+        super().setUp()
+        self.part = self.factory.make_part()
+        self.user = self.part.document.owner
+        self.block = Block.objects.create(
+            box=[10, 10, 200, 200],
+            document_part=self.part)
+        self.line = Line.objects.create(
+            mask=[0, 0, 100, 0],
+            document_part=self.part,
+            block=self.block)
+        self.line2 = Line.objects.create(
+            mask=[0, 10, 100, 10],
+            document_part=self.part,
+            block=self.block)
+        self.line3 = Line.objects.create(
+            mask=[0, 20, 100, 20],
+            document_part=self.part,
+            block=self.block)
+        self.line4 = Line.objects.create(
+            mask=[0, 30, 100, 30],
+            document_part=self.part,
+            block=self.block)
+
+    def test_move_one(self):
+        self.client.force_login(self.user)
+
 
 class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
