@@ -5,6 +5,7 @@ So no need to test the content unless there is some magic in the serializer.
 """
 
 import unittest
+from typing import Dict, List, Tuple
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -747,29 +748,74 @@ class LineViewSetMoveTestCase(CoreFactoryTestCase):
         super().setUp()
         self.part = self.factory.make_part()
         self.user = self.part.document.owner
+        self.url = reverse('api:line-move', kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
         self.block = Block.objects.create(
             box=[10, 10, 200, 200],
             document_part=self.part)
         self.line = Line.objects.create(
             mask=[0, 0, 100, 0],
             document_part=self.part,
+            external_id="A",
             block=self.block)
         self.line2 = Line.objects.create(
             mask=[0, 10, 100, 10],
             document_part=self.part,
+            external_id="B",
             block=self.block)
         self.line3 = Line.objects.create(
             mask=[0, 20, 100, 20],
             document_part=self.part,
+            external_id="C",
             block=self.block)
         self.line4 = Line.objects.create(
             mask=[0, 30, 100, 30],
             document_part=self.part,
+            external_id="D",
             block=self.block)
+
+    def get_order(self):
+        lines = Line.objects.order_by('order')
+        order = [line.external_id for line in lines]
+
+        return ''.join(order)
+
+    def build_payload(self, order: List[Tuple[str, int]]) -> Dict:
+        lines = { line.external_id: line for line in Line.objects.all() }
+        payload = dict(lines=[dict(pk=lines[t[0]].pk, order=t[1]) for t in order])
+
+        return payload
+
+
 
     def test_move_one(self):
         self.client.force_login(self.user)
 
+        # Move Line B after Line C
+        resp = self.client.post(self.url, self.build_payload([('B', 2)]), content_type='application/json')
+        self.assertEqual(resp.status_code, 200, "Line move did not return 200")
+
+        order = self.get_order()
+        self.assertEqual(order, 'ACBD', 'Line B was not moved after line C')
+
+    def test_move_many(self):
+        self.client.force_login(self.user)
+
+        # Change to CBDA
+        lines = { line.external_id: line for line in Line.objects.all() }
+        new_order = [('A', 3), ('C', 0), ('D', 2)]
+        resp = self.client.post(self.url, self.build_payload(new_order), content_type='application/json')
+        self.assertEqual(resp.status_code, 200, "Line move did not return 200")
+
+        order = self.get_order()
+        self.assertEqual(order, 'CBDA', 'Multi order change did not work')
+
+    def test_bad_move(self):
+        self.client.force_login(self.user)
+
+        # Move B to position 0 and C to position 1 without moving A, resulting in an illegal permutation
+        payload = self.build_payload([('B', 0), ('C', 1)])
+        resp = self.client.post(self.url, payload, content_type='application/json')
+        self.assertEqual(resp.status_code, 409, "Server did not report a move conflict")
 
 class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
