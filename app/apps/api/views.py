@@ -732,7 +732,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
 
         # Update the order of more than one line. We do not use a serializer here, because serializer validations are
         # expected to work on the serializer's input data. Our validations include reading all lines - objects that are not
-        # part of the seriazlization data at all. 
+        # part of the seriazlization data at all.
         if part_pk is None or document_pk is None:
             return Response(dict(status='error', msg="Reordering multiple lines requires specifying a document and part"), status=status.HTTP_400_BAD_REQUEST)
 
