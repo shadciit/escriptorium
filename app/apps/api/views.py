@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import List
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -699,15 +700,65 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         return Response(dict(status='ok', lines=response_json), status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post'])
+    @transaction.atomic()
     def move(self, request, document_pk=None, part_pk=None, pk=None):
+        def is_valid_perm(values: List[int]):
+            # Check whether values form a valid permutation from 0 to len(values) - 1
+            non_negative = [v for v in values if v >= 0]  # Remove negative values and make su
+            unique = list(set(non_negative))
+            if len(unique) != len(values):  # No number is repeated twice in a permutation
+                return False
+
+            # unique has non repeating non-negative numbers. The permutation is valid iff the sum is the sum of all numbers from 0 to len(values)-1
+            expected = (len(values) - 1) * len(values) / 2
+            if sum(unique) != expected:
+                return False
+
+            return True
+        
         data = request.data.get('lines')
         qs = Line.objects.filter(pk__in=[line['pk'] for line in data])
         serializer = LineOrderSerializer(qs, data=data, many=True)
-        if serializer.is_valid():
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # From here on, we're sure data is in the valid format
+        if len(qs) == 1:
+            # The LineOrderSerializer (and the LineOrderListSerializer) has issues when updating the order of more than one line
+            # It works if all lines are moved in the same direction (up or down), but not if some lines move up the order and others
+            # move down the order.
             resp = serializer.save()
             return Response(resp, status=200)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the order of more than one line. We do not use a serializer here, because serializer validations are
+        # expected to work on the serializer's input data. Our validations include reading all lines - objects that are not
+        # part of the seriazlization data at all. 
+        if part_pk is None or document_pk is None:
+            return Response(dict(status='error', msg="Reordering multiple lines requires specifying a document and part"), status=status.HTTP_400_BAD_REQUEST)
+
+        lines = { line.pk: line for line in Line.objects.filter(document_part__pk=part_pk) }
+
+        # Step 1 - update all lines
+        updated_lines = []
+        for to_update in data:
+            try:
+                line_obj = lines[to_update['pk']]
+            except KeyError:
+                return Response(dict(status='error', msg=f"Line {to_update['pk']} is not part of part {part_pk}"), status=status.HTTP_409_CONFLICT)
+            line_obj.order = to_update['order']
+            updated_lines.append(line_obj)
+
+        # Step 2 - validate the new order
+        order_values = [line.order for line in lines.values()]
+        if not is_valid_perm(order_values):
+            return Response(dict(status='error', msg="The new order values conflict with existing values in the database"), status=status.HTTP_409_CONFLICT)
+
+        # Step 3 - update
+        Line.objects.bulk_update(updated_lines, ['order'])
+
+        response = [ { 'pk': line.pk, 'order': line.order } for line in updated_lines]
+        return Response(response, status=status.HTTP_200_OK)
+        
 
 
 class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
