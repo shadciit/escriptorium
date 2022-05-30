@@ -42,6 +42,10 @@ body {
     margin: 0;
 }
 
+#segmentation-panel.loading {
+    cursor: wait;
+}
+
 /* .container { */
 /*   margin-right: auto; */
 /*   margin-left: auto; */

@@ -1,6 +1,6 @@
 <template>
-  <div class="col panel">
-    <loading :active.sync="isWorking" :is-full-page="false" />
+  <div class="col panel" :class="{ 'loading': isWorking }">
+    <loading :active.sync="isWorking" :is-full-page="false" :opacity="0"/>
     <div class="tools">
       <i title="Segmentation Panel" class="panel-icon fas fa-align-left"></i>
       <div class="btn-group">
