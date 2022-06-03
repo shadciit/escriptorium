@@ -285,7 +285,7 @@ class Command(BaseCommand):
             ).values_list("id", flat=True)
         )
 
-        if document.owner:
-            shared_with_users.append(document.owner.id)
+        if document.owner_id:
+            shared_with_users.append(document.owner_id)
 
         return shared_with_users
