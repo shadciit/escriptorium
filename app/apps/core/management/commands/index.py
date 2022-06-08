@@ -184,7 +184,7 @@ class Command(BaseCommand):
         thumbnailer = get_thumbnailer(part.image)
         try:
             thumbnail = thumbnailer.get_thumbnail(
-                settings.THUMBNAIL_ALIASES[""]["large"]
+                settings.THUMBNAIL_ALIASES[""]["large"], generate=False
             )
             assert thumbnail
         except Exception:
