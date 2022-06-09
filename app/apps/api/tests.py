@@ -749,10 +749,8 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:line-bulk-update',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
         resp = self.client.put(uri, {'lines': [
-            {'pk': self.line.pk,
-              'order': order2},
-            {'pk': self.line2.pk,
-              'order': order1}
+            {'pk': self.line.pk, 'order': order2},
+            {'pk': self.line2.pk, 'order': order1}
         ]}, content_type='application/json')
         self.assertEqual(resp.status_code, 200, resp.content)
 
@@ -760,9 +758,6 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.line2.refresh_from_db()
         self.assertEqual(self.line.order, order2)
         self.assertEqual(self.line2.order, order1)
-
-
-        
 
 
 class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
