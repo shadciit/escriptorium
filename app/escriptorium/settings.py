@@ -124,6 +124,7 @@ STATICFILES_FINDERS = (
 
 WSGI_APPLICATION = 'escriptorium.wsgi.application'
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
