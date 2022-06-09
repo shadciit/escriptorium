@@ -461,7 +461,7 @@ class LineSerializer(serializers.ModelSerializer):
         model = Line
         fields = ('pk', 'document_part', 'external_id', 'order', 'region', 'baseline', 'mask', 'typology')
         extra_kwargs = {
-            'order': {'read_only': False}
+            'order': {'read_only': False, 'required': False}
         }
         list_serializer_class = LineListSerializer
 
