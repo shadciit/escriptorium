@@ -70,6 +70,7 @@ from core.models import (
     LineType,
     OcrModel,
     Project,
+    ProtectedObjectException,
     Script,
     TextAnnotation,
     Transcription,
@@ -262,14 +263,15 @@ class DocumentViewSet(ModelViewSet):
         if count:
             try:
                 # send a single websocket message for all parts
-                send_event('document', document.pk, 'parts:workflow', {
-                    'parts': [{
-                        'id': report.document_part.pk,
-                        'process': task_name,
-                        'status': 'error',
-                        'reason': _('Canceled.')
-                    } for report in reports]
-                })
+                if report.document_part:
+                    send_event('document', document.pk, 'parts:workflow', {
+                        'parts': [{
+                            'id': report.document_part.pk,
+                            'process': task_name,
+                            'status': 'error',
+                            'reason': _('Canceled.')
+                        } for report in reports]
+                    })
             except Exception as e:
                 # don't crash on websocket error
                 logger.exception(e)
@@ -488,7 +490,7 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
         document_part = DocumentPart.objects.get(pk=pk)
         angle = self.request.data.get('angle')
         if angle:
-            document_part.rotate(angle)
+            document_part.rotate(angle, user=self.request.user)
             return Response({'status': 'done'}, status=200)
         else:
             return Response({'error': "Post an angle."},
@@ -523,8 +525,12 @@ class DocumentTranscriptionViewSet(ModelViewSet):
             archived=False,
             document=self.kwargs['document_pk'])
 
-    def perform_delete(self, serializer):
-        serializer.instance.archive()
+    def destroy(self, request, *args, **kwargs):
+        try:
+            self.get_object().archive()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProtectedObjectException:
+            return Response("This object can not be deleted.", status=400)
 
 
 class BlockTypeViewSet(ModelViewSet):
@@ -704,6 +710,10 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
             return Response(dict(status='error', error=f"Can't merge more than {MAX_MERGE_SIZE} lines"), status=status.HTTP_400_BAD_REQUEST)
 
         lines = list(Line.objects.filter(pk__in=original_lines))
+        for line in lines:
+            if not line.baseline:
+                return Response(dict(status='error', error="Lines without a baseline cannot be merged"), status=status.HTTP_400_BAD_REQUEST)
+
         original_serializer = DetailedLineSerializer(lines, many=True)
         deleted_json = original_serializer.data
 

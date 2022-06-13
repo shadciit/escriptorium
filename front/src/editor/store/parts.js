@@ -80,6 +80,8 @@ export const actions = {
         let pk = state.pk
         commit('regions/reset', {}, {root: true})
         commit('lines/reset', {}, {root: true})
+        commit('imageAnnotations/reset', {}, {root: true})
+        commit('textAnnotations/reset', {}, {root: true})
         commit('reset')
         await dispatch('fetchPart', {pk: pk})
     },
@@ -87,6 +89,8 @@ export const actions = {
     async loadPartByOrder({state, commit, dispatch, rootState}, order) {
         commit('regions/reset', {}, {root: true})
         commit('lines/reset', {}, {root: true})
+        commit('imageAnnotations/reset', {}, {root: true})
+        commit('textAnnotations/reset', {}, {root: true})
         commit('reset')
         try {
             await dispatch('fetchPart', {order: order})
@@ -102,6 +106,8 @@ export const actions = {
         let part = state[direction]
         commit('regions/reset', {}, {root: true})
         commit('lines/reset', {}, {root: true})
+        commit('imageAnnotations/reset', {}, {root: true})
+        commit('textAnnotations/reset', {}, {root: true})
         commit('reset')
         try {
             await dispatch('fetchPart', {pk: part})
