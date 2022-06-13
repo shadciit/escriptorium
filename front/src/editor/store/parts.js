@@ -15,6 +15,8 @@ export const initialState = () => ({
     transcription_progress: null,
     typology: null,
     workflow: {},
+    metadatas: null,
+    typologies: null,
 })
 
 export const mutations = {
@@ -27,6 +29,15 @@ export const mutations = {
     },
     reset (state) {
         assign(state, initialState())
+    },
+    setName(state, value) {
+        state.name = value
+    },
+    setTypologies(state, data) {
+        state.typologies = data
+    },
+    setTypology(state, value) {
+        state.typology = value
     }
 }
 
@@ -100,6 +111,27 @@ export const actions = {
             console.log('couldnt fetch part data!', err)
         }
     },
+    async updatePartName({state, commit, rootState}, data) {
+        const resp = await api.updatePart(rootState.document.id, state.pk, data)
+        commit('setName', resp.data.name)
+    },async updatePartTypology({state, commit, rootState}, data) {
+        const resp = await api.updatePart(rootState.document.id, state.pk, data)
+        commit('setTypology', resp.data.typology)
+    },
+    async createPartMetadata({state, commit, rootState}, data) {
+        await api.createPartMetadata(rootState.document.id, state.pk, data)
+    },
+    async updatePartMetadata({state, commit, rootState}, data) {
+        const resp = await api.updatePartMetadata(rootState.document.id, state.pk, data.pk, data)
+        
+    },
+    async deletePartMetadata({state, commit, rootState}, data) {
+        await api.deletePartMetadata(rootState.document.id, state.pk, data.pk)
+    },
+    async fetchPartTypologies({state, commit, rootState}) {
+        const _document = await api.retrieveDocument(rootState.document.id)
+        commit('setTypologies', _document.data.valid_part_types)
+    }
 }
 
 export default {

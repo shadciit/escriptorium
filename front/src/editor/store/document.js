@@ -18,7 +18,8 @@ export const initialState = () => ({
         source: userProfile.get('visible-panels')?userProfile.get('visible-panels').source:false,
         segmentation: userProfile.get('visible-panels')?userProfile.get('visible-panels').segmentation:true,
         visualisation: userProfile.get('visible-panels')?userProfile.get('visible-panels').visualisation:true,
-        diplomatic: userProfile.get('visible-panels')?userProfile.get('visible-panels').diplomatic:false
+        diplomatic: userProfile.get('visible-panels')?userProfile.get('visible-panels').diplomatic:false,
+        metadata: userProfile.get('visible-panels')?userProfile.get('visible-panels').metadata:false
     },
 
     enabledVKs: userProfile.get('VK-enabled')? userProfile.get('VK-enabled'):[]

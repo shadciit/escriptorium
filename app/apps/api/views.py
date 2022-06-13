@@ -49,6 +49,8 @@ from api.serializers import (
     TranscribeSerializer,
     TranscriptionSerializer,
     UserSerializer,
+    DocumentPartTypeSerializer,
+    DocumentPartMetadataSerializer,
 )
 from core.merger import MAX_MERGE_SIZE, merge_lines
 from core.models import (
@@ -71,6 +73,8 @@ from core.models import (
     Script,
     TextAnnotation,
     Transcription,
+    DocumentPartMetadata,
+    DocumentPartType,
 )
 from core.tasks import recalculate_masks
 from imports.forms import ExportForm, ImportForm
@@ -394,6 +398,21 @@ class DocumentMetadataViewSet(DocumentPermissionMixin, ModelViewSet):
         return context
 
 
+class PartMetadataViewSet(DocumentPermissionMixin, ModelViewSet):
+    queryset = DocumentPartMetadata.objects.all().select_related('part')
+    serializer_class = DocumentPartMetadataSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(part=self.kwargs.get('part_pk'))
+        return qs
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['part'] = DocumentPart.objects.get(pk=self.kwargs.get('part_pk'))
+        return context
+
+
+
 class PartViewSet(DocumentPermissionMixin, ModelViewSet):
     queryset = DocumentPart.objects.all().select_related('document')
 
@@ -401,7 +420,7 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
         qs = super().get_queryset()
         qs = qs.filter(document=self.kwargs.get('document_pk'))
         if self.action == 'retrieve':
-            return qs.prefetch_related('lines', 'blocks')
+            return qs.prefetch_related('lines', 'blocks', 'metadatas')
         else:
             return qs
 
@@ -522,6 +541,10 @@ class AnnotationTypeViewSet(ModelViewSet):
     queryset = AnnotationType.objects.filter(public=True)
     serializer_class = AnnotationTypeSerializer
 
+
+class DocumentPartTypeViewSet(ModelViewSet):
+    queryset = DocumentPartType.objects.filter(public=True)
+    serializer_class = DocumentPartTypeSerializer
 
 class AnnotationComponentViewSet(DocumentPermissionMixin, ModelViewSet):
     queryset = AnnotationComponent.objects.all()

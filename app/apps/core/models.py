@@ -353,6 +353,15 @@ class DocumentMetadata(ExportModelOperationsMixin("DocumentMetadata"), models.Mo
         return "%s:%s" % (self.document.name, self.key.name)
 
 
+class DocumentPartMetadata(models.Model):
+    part = models.ForeignKey("core.DocumentPart", on_delete=models.CASCADE, related_name="metadatas")
+    key = models.ForeignKey(Metadata, on_delete=models.CASCADE)
+    value = models.CharField(max_length=512)
+
+    def __str__(self):
+        return "%s:%s" % (self.part.name, self.key.name)
+
+
 class ProjectManager(models.Manager):
     def for_user_write(self, user):
         # return the list of EDITABLE projects
@@ -496,6 +505,9 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
     )
     valid_line_types = models.ManyToManyField(
         LineType, blank=True, related_name="valid_in"
+    )
+    valid_part_types = models.ManyToManyField(
+        DocumentPartType, blank=True, related_name="valid_in"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
