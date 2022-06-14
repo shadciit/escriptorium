@@ -36,7 +36,7 @@ from kraken.lib import models as kraken_models
 from kraken.lib import vgsl
 from kraken.lib.segmentation import calculate_polygonal_environment
 from kraken.lib.util import is_bitonal
-from ordered_model.models import OrderedModel
+from ordered_model.models import OrderedModel, OrderedModelManager
 from PIL import Image
 from shapely import affinity
 from shapely.geometry import LineString, Polygon
@@ -1463,7 +1463,7 @@ class Block(ExportModelOperationsMixin("Block"), OrderedModel, models.Model):
         return super().save(*args, **kwargs)
 
 
-class LineManager(models.Manager):
+class LineManager(OrderedModelManager):
     def prefetch_transcription(self, transcription):
         return (self.get_queryset().order_by('order')
                 .prefetch_related(

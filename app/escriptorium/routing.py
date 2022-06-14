@@ -3,8 +3,10 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 
 import users.routing
 
+from .asgi import application as asgi_app
+
 application = ProtocolTypeRouter({
-    # Empty for now (http->django views is added by default)
+    'http': asgi_app,
     'websocket': AuthMiddlewareStack(
         URLRouter(
             users.routing.websocket_urlpatterns
