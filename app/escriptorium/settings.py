@@ -46,6 +46,8 @@ CUSTOM_HOME = os.getenv('CUSTOM_HOME', False) == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+ASGI_APPLICATION = "escriptorium.routing.application"
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
