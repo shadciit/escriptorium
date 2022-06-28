@@ -16,7 +16,9 @@ from django.utils.text import slugify
 from django.utils.translation import gettext as _
 from django_redis import get_redis_connection
 from easy_thumbnails.files import get_thumbnailer
-from kraken.lib import train as kraken_train
+from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
+from kraken.lib.default_specs import RECOGNITION_HYPER_PARAMS, SEGMENTATION_HYPER_PARAMS
+from kraken.lib.train import KrakenTrainer, RecognitionModel, SegmentationModel
 
 # DO NOT REMOVE THIS IMPORT, it will break celery tasks located in this file
 from reporting.tasks import create_task_reporting  # noqa F401
@@ -146,7 +148,8 @@ def binarize(instance_pk=None, user_pk=None, binarizer=None, threshold=None, **k
 def make_segmentation_training_data(part):
     data = {
         'image': part.image.path,
-        'baselines': [{'script': line.typology and line.typology.name or 'default',
+        # TODO: ermmmmm tags is a dict?!
+        'baselines': [{'tags': {'a': line.typology and line.typology.name or 'default'},
                        'baseline': line.baseline}
                       for line in part.lines.only('baseline', 'typology')
                       if line.baseline],
@@ -194,7 +197,7 @@ def segtrain(task, model_pk, part_pks, document_pk=None, user_pk=None, **kwargs)
     try:
         load = model.file.path
     except ValueError:  # model is empty
-        load = settings.KRAKEN_DEFAULT_SEGMENTATION_MODEL
+        load = SEGMENTATION_DEFAULT_MODEL
         model.file = model.file.field.upload_to(model, slugify(model.name) + '.mlmodel')
 
     model_dir = os.path.join(settings.MEDIA_ROOT, os.path.split(model.file.path)[0])
@@ -228,23 +231,34 @@ def segtrain(task, model_pk, part_pks, document_pk=None, user_pk=None, **kwargs)
         for part in qs[:partition]:
             evaluation_data.append(make_segmentation_training_data(part))
 
-        DEVICE = getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu')
+        device_ = getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu')
+        if device_ == 'cpu':
+            device = None
+        elif device_.startswith('cuda'):
+            device = [int(device_.split(':')[-1])]
+
         LOAD_THREADS = getattr(settings, 'KRAKEN_TRAINING_LOAD_THREADS', 0)
-        trainer = kraken_train.KrakenTrainer.segmentation_train_gen(
-            message=msg,
-            output=os.path.join(model_dir, 'version'),
-            format_type=None,
-            device=DEVICE,
-            load=load,
-            training_data=training_data,
-            evaluation_data=evaluation_data,
-            threads=LOAD_THREADS,
-            augment=True,
-            resize='both',
-            hyper_params={'epochs': 30},
-            load_hyper_parameters=True,
-            topline=topline
-        )
+
+        kraken_model = SegmentationModel(SEGMENTATION_HYPER_PARAMS,
+                                         output=os.path.join(model_dir, 'version'),
+                                         # spec=spec,
+                                         model=load,
+                                         format_type=None,
+                                         training_data=training_data,
+                                         evaluation_data=evaluation_data,
+                                         partition=partition,
+                                         num_workers=LOAD_THREADS,
+                                         load_hyper_parameters=True,
+                                         # force_binarization=force_binarization,
+                                         # suppress_regions=suppress_regions,
+                                         # suppress_baselines=suppress_baselines,
+                                         # valid_regions=valid_regions,
+                                         # valid_baselines=valid_baselines,
+                                         # merge_regions=merge_regions,
+                                         # merge_baselines=merge_baselines,
+                                         # bounding_regions=bounding_regions,
+                                         resize='both',
+                                         topline=topline)
 
         def _print_eval(epoch=0, accuracy=0, mean_acc=0, mean_iu=0, freq_iu=0,
                         val_metric=0):
@@ -266,10 +280,17 @@ def segtrain(task, model_pk, part_pks, document_pk=None, user_pk=None, **kwargs)
                 # 'error': error
             })
 
-        trainer.run(_print_eval)
+        trainer = KrakenTrainer(gpus=device,
+                                # max_epochs=30, # default is 50
+                                # min_epochs=5,
+                                enable_progress_bar=False,
+                                val_check_interval=1,
+                                callbacks={'on_train_epoch_end': _print_eval})
+
+        trainer.fit(kraken_model)
 
         best_version = os.path.join(model_dir,
-                                    f'version_{trainer.stopper.best_epoch}.mlmodel')
+                                    f'version_{kraken_model.best_epoch}.mlmodel')
 
         try:
             shutil.copy(best_version, model.file.path)  # os.path.join(model_dir, filename)
@@ -288,13 +309,14 @@ def segtrain(task, model_pk, part_pks, document_pk=None, user_pk=None, **kwargs)
         logger.exception(e)
         raise e
     else:
+        model.file_size = model.file.size
+
         if user:
             user.notify(_("Training finished!"),
                         id="training-success",
                         level='success')
     finally:
         model.training = False
-        model.file_size = model.file.size
         model.save()
 
         send_event('document', document_pk, "training:done", {
@@ -417,27 +439,38 @@ def train_(qs, document, transcription, model=None, user=None):
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
-    DEVICE = getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu')
+    device_ = getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu')
+    if device_ == 'cpu':
+        device = None
+    elif device_.startswith('cuda'):
+        device = [int(device_.split(':')[-1])]
+
     LOAD_THREADS = getattr(settings, 'KRAKEN_TRAINING_LOAD_THREADS', 0)
+
     if (document.main_script
         and (document.main_script.text_direction == 'horizontal-rl'
              or document.main_script.text_direction == 'vertical-rl')):
         reorder = 'R'
     else:
         reorder = 'L'
-    trainer = (kraken_train.KrakenTrainer
-               .recognition_train_gen(device=DEVICE,
-                                      load=load,
-                                      output=os.path.join(model_dir, 'version'),
-                                      format_type=None,
-                                      training_data=training_data,
-                                      evaluation_data=evaluation_data,
-                                      resize='add',
-                                      threads=LOAD_THREADS,
-                                      augment=False,
-                                      hyper_params={'batch_size': 1},
-                                      load_hyper_parameters=True,
-                                      reorder=reorder))
+
+    kraken_model = RecognitionModel(hyper_params=RECOGNITION_HYPER_PARAMS,
+                                    output=os.path.join(model_dir, 'version'),
+                                    # spec=spec,
+                                    # append=append,
+                                    model=load,
+                                    reorder=reorder,
+                                    format_type=None,
+                                    training_data=training_data,
+                                    evaluation_data=evaluation_data,
+                                    partition=partition,
+                                    # binary_dataset_split=fixed_splits,
+                                    num_workers=LOAD_THREADS,
+                                    load_hyper_parameters=True,
+                                    repolygonize=False,
+                                    # force_binarization=force_binarization,
+                                    # codec=codec,
+                                    resize='add')
 
     def _print_eval(epoch=0, accuracy=0, chars=0, error=0, val_metric=0):
         model.refresh_from_db()
@@ -457,10 +490,18 @@ def train_(qs, document, transcription, model=None, user=None):
             'chars': int(chars),
             'error': int(error)})
 
-    trainer.run(_print_eval)
+    trainer = KrakenTrainer(gpus=device,
+                            # max_epochs=,
+                            # min_epochs=hyper_params['min_epochs'],
+                            enable_progress_bar=False,
+                            val_check_interval=1,
+                            # deterministic=ctx.meta['deterministic'],
+                            callbacks={'on_train_epoch_end': _print_eval})
 
-    if trainer.stopper.best_epoch != 0:
-        best_version = os.path.join(model_dir, f'version_{trainer.stopper.best_epoch}.mlmodel')
+    trainer.fit(kraken_model)
+
+    if kraken_model.best_epoch != 0:
+        best_version = os.path.join(model_dir, f'version_{kraken_model.best_epoch}.mlmodel')
         shutil.copy(best_version, model.file.path)
     else:
         raise ValueError('No model created.')
@@ -505,6 +546,7 @@ def train(task, transcription_pk, model_pk=None, part_pks=None, user_pk=None, **
               .exclude(Q(content='') | Q(content=None)))
         train_(qs, document, transcription, model=model, user=user)
     except Exception as e:
+        # TODO: catch KrakenInputException specificely?
         send_event('document', document.pk, "training:error", {
             "id": model.pk,
         })
@@ -513,13 +555,14 @@ def train(task, transcription_pk, model_pk=None, part_pks=None, user_pk=None, **
                         id="training-error", level='danger')
         logger.exception(e)
     else:
+        model.file_size = model.file.size
+
         if user:
             user.notify(_("Training finished!"),
                         id="training-success",
                         level='success')
     finally:
         model.training = False
-        model.file_size = model.file.size
         model.save()
 
         send_event('document', document.pk, "training:done", {

@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 from kraken.lib import vgsl
 from kraken.lib.exceptions import KrakenInvalidModelException
 from PIL import Image
@@ -539,7 +540,7 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
         queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_SEGMENT),
         label=_("Model"),
         empty_label="default ({name})".format(
-            name=settings.KRAKEN_DEFAULT_SEGMENTATION_MODEL.rsplit('/')[-1]),
+            name=SEGMENTATION_DEFAULT_MODEL.rsplit('/')[-1]),
         required=False)
 
     SEGMENTATION_STEPS_CHOICES = (
