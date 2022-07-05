@@ -19,6 +19,7 @@ from easy_thumbnails.files import get_thumbnailer
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 from kraken.lib.default_specs import RECOGNITION_HYPER_PARAMS, SEGMENTATION_HYPER_PARAMS
 from kraken.lib.train import KrakenTrainer, RecognitionModel, SegmentationModel
+from pytorch_lightning.callbacks import Callback
 
 # DO NOT REMOVE THIS IMPORT, it will break celery tasks located in this file
 from reporting.tasks import create_task_reporting  # noqa F401
@@ -148,8 +149,7 @@ def binarize(instance_pk=None, user_pk=None, binarizer=None, threshold=None, **k
 def make_segmentation_training_data(part):
     data = {
         'image': part.image.path,
-        # TODO: ermmmmm tags is a dict?!
-        'baselines': [{'tags': {'a': line.typology and line.typology.name or 'default'},
+        'baselines': [{'tags': {'typology': line.typology and line.typology.name or 'default'},
                        'baseline': line.baseline}
                       for line in part.lines.only('baseline', 'typology')
                       if line.baseline],
@@ -159,6 +159,37 @@ def make_segmentation_training_data(part):
             key=lambda reg: reg.typology and reg.typology.name or 'default')}
     }
     return data
+
+
+class FrontendFeedback(Callback):
+    """
+    Callback that sends websocket messages to the front for feedback display
+    """
+    def __init__(self, es_model, model_directory, document_pk, *args, **kwargs):
+        self.es_model = es_model
+        self.model_directory = model_directory
+        self.document_pk = document_pk
+        super().__init__(*args, **kwargs)
+
+    def on_train_epoch_end(self, trainer, pl_module) -> None:
+        self.es_model.refresh_from_db()
+        self.es_model.training_epoch = trainer.current_epoch
+        val_metric = float(trainer.logged_metrics['val_metric'])
+        self.es_model.training_accuracy = val_metric
+        # model.training_total = chars
+        # model.training_errors = error
+        relpath = os.path.relpath(self.model_directory, settings.MEDIA_ROOT)
+        self.es_model.new_version(file=f'{relpath}/version_{trainer.current_epoch}.mlmodel')
+        self.es_model.save()
+
+        send_event('document', self.document_pk, "training:eval", {
+            "id": self.es_model.pk,
+            'versions': self.es_model.versions,
+            'epoch': trainer.current_epoch,
+            'accuracy': val_metric
+            # 'chars': chars,
+            # 'error': error
+        })
 
 
 @shared_task(bind=True, autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
@@ -260,32 +291,12 @@ def segtrain(task, model_pk, part_pks, document_pk=None, user_pk=None, **kwargs)
                                          resize='both',
                                          topline=topline)
 
-        def _print_eval(epoch=0, accuracy=0, mean_acc=0, mean_iu=0, freq_iu=0,
-                        val_metric=0):
-            model.refresh_from_db()
-            model.training_epoch = epoch
-            model.training_accuracy = float(val_metric)
-            # model.training_total = chars
-            # model.training_errors = error
-            relpath = os.path.relpath(model_dir, settings.MEDIA_ROOT)
-            model.new_version(file=f'{relpath}/version_{epoch}.mlmodel')
-            model.save()
-
-            send_event('document', document_pk, "training:eval", {
-                "id": model.pk,
-                'versions': model.versions,
-                'epoch': epoch,
-                'accuracy': float(val_metric)
-                # 'chars': chars,
-                # 'error': error
-            })
-
         trainer = KrakenTrainer(gpus=device,
-                                # max_epochs=30, # default is 50
+                                max_epochs=2,
                                 # min_epochs=5,
                                 enable_progress_bar=False,
                                 val_check_interval=1,
-                                callbacks={'on_train_epoch_end': _print_eval})
+                                callbacks=[FrontendFeedback(model, model_dir, document_pk)])
 
         trainer.fit(kraken_model)
 
@@ -472,31 +483,13 @@ def train_(qs, document, transcription, model=None, user=None):
                                     # codec=codec,
                                     resize='add')
 
-    def _print_eval(epoch=0, accuracy=0, chars=0, error=0, val_metric=0):
-        model.refresh_from_db()
-        model.training_epoch = epoch
-        model.training_accuracy = float(accuracy.item())
-        model.training_total = int(chars)
-        model.training_errors = int(error)
-        relpath = os.path.relpath(model_dir, settings.MEDIA_ROOT)
-        model.new_version(file=f'{relpath}/version_{epoch}.mlmodel')
-        model.save()
-
-        send_event('document', document.pk, "training:eval", {
-            "id": model.pk,
-            'versions': model.versions,
-            'epoch': epoch,
-            'accuracy': float(accuracy.item()),
-            'chars': int(chars),
-            'error': int(error)})
-
     trainer = KrakenTrainer(gpus=device,
                             # max_epochs=,
                             # min_epochs=hyper_params['min_epochs'],
                             enable_progress_bar=False,
                             val_check_interval=1,
                             # deterministic=ctx.meta['deterministic'],
-                            callbacks={'on_train_epoch_end': _print_eval})
+                            callbacks=[FrontendFeedback(model, model_dir, document.pk)])
 
     trainer.fit(kraken_model)
 
