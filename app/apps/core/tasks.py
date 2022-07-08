@@ -149,7 +149,7 @@ def binarize(instance_pk=None, user_pk=None, binarizer=None, threshold=None, **k
 def make_segmentation_training_data(part):
     data = {
         'image': part.image.path,
-        'baselines': [{'tags': {'typology': line.typology and line.typology.name or 'default'},
+        'baselines': [{'tags': {'type': line.typology and line.typology.name or 'default'},
                        'baseline': line.baseline}
                       for line in part.lines.only('baseline', 'typology')
                       if line.baseline],
@@ -292,7 +292,7 @@ def segtrain(task, model_pk, part_pks, document_pk=None, user_pk=None, **kwargs)
                                          topline=topline)
 
         trainer = KrakenTrainer(gpus=device,
-                                max_epochs=2,
+                                # max_epochs=2,
                                 # min_epochs=5,
                                 enable_progress_bar=False,
                                 val_check_interval=1,

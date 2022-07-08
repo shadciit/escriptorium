@@ -1,4 +1,5 @@
 import logging
+import os.path
 
 from bootstrap.forms import BootstrapFormMixin
 from django import forms
@@ -520,7 +521,8 @@ class BinarizeForm(BootstrapFormMixin, DocumentProcessFormBase):
             raise forms.ValidationError(_("Uploaded image should be black and white."))
         isize = (self.cleaned_data.get('parts')[0].image.width, self.parts[0].image.height)
         if fh.size != isize:
-            raise forms.ValidationError(_("Uploaded image should be the same size as original image {size}.").format(size=isize))
+            raise forms.ValidationError(
+                _("Uploaded image should be the same size as original image {size}.").format(size=isize))
         return img
 
     def process(self):
@@ -539,8 +541,7 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
     model = forms.ModelChoiceField(
         queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_SEGMENT),
         label=_("Model"),
-        empty_label="default ({name})".format(
-            name=SEGMENTATION_DEFAULT_MODEL.rsplit('/')[-1]),
+        empty_label="default ({name})".format(name=os.path.basename(SEGMENTATION_DEFAULT_MODEL)),
         required=False)
 
     SEGMENTATION_STEPS_CHOICES = (
