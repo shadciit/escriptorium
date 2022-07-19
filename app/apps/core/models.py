@@ -1150,7 +1150,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                                 "baseline": line.baseline,
                                 "boundary": line.mask,
                                 "text_direction": text_direction,
-                                "script": "default",
+                                "tags": {'type': line.typology and line.typology.name or 'default'},
                             }
                         ],  # self.document.main_script.name
                         "type": "baselines",
