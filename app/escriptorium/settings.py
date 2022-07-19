@@ -45,7 +45,7 @@ CUSTOM_HOME = os.getenv('CUSTOM_HOME', False) == 'True'
 
 ALLOWED_HOSTS = ['*']
 
-ASGI_APPLICATION = "escriptorium.routing.application"
+ASGI_APPLICATION = "escriptorium.asgi.application"
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -123,6 +123,7 @@ STATICFILES_FINDERS = (
 
 WSGI_APPLICATION = 'escriptorium.wsgi.application'
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
@@ -342,6 +343,9 @@ LOGGING = {
         }
     },
 }
+
+# Setup CSRF trusted origins explicitly as it's needed from Django 4
+CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:8000").split(",")
 
 COMPRESS_ENABLE = True
 ALWAYS_CONVERT = False
