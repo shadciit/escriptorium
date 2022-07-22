@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from django.utils.translation import gettext as _
 
 from core.models import DocumentPart, Transcription
-from imports.export import ALTO_FORMAT, ENABLED_EXPORTERS
+from imports.export import ALTO_FORMAT, ENABLED_EXPORTERS, PAGEXML_FORMAT
 from imports.models import DocumentImport
 from imports.parsers import ParseError, make_parser
 from imports.tasks import document_export, document_import
@@ -150,6 +150,12 @@ class ExportForm(BootstrapFormMixin, forms.Form):
         initial=False, required=False,
         label=_('Include images'),
         help_text=_("Will significantly increase the time to produce and download the export."))
+    include_mets_file = forms.BooleanField(
+        initial=False,
+        required=False,
+        label=_("Include METS file"),
+        help_text=_(f"METS file can only be generated along with {ENABLED_EXPORTERS[PAGEXML_FORMAT]['label']} and {ENABLED_EXPORTERS[ALTO_FORMAT]['label']} export formats.")
+    )
     region_types = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple)
 
     def __init__(self, document, user, *args, **kwargs):
@@ -189,5 +195,6 @@ class ExportForm(BootstrapFormMixin, forms.Form):
                               self.cleaned_data['region_types'],
                               document_pk=self.document.pk,
                               include_images=self.cleaned_data['include_images'],
+                              include_mets_file=self.cleaned_data['include_mets_file'],
                               user_pk=self.user.pk,
                               report_label=_('Export %(document_name)s') % {'document_name': self.document.name})

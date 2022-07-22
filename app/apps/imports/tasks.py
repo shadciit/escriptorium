@@ -77,7 +77,7 @@ def document_import(task, import_pk=None, resume=True, task_id=None, user_pk=Non
 @shared_task(bind=True)
 def document_export(task, file_format, part_pks,
                     transcription_pk, region_types, document_pk=None, include_images=False,
-                    user_pk=None, report_label=None):
+                    include_mets_file=False, user_pk=None, report_label=None):
     User = apps.get_model('users', 'User')
     Document = apps.get_model('core', 'Document')
     Transcription = apps.get_model('core', 'Transcription')
@@ -102,7 +102,7 @@ def document_export(task, file_format, part_pks,
 
         transcription = Transcription.objects.get(document=document, pk=transcription_pk)
         exporter = ENABLED_EXPORTERS[file_format]["class"](
-            part_pks, region_types, include_images, user, document, report, transcription
+            part_pks, region_types, include_images, user, document, report, transcription, include_mets_file
         )
         exporter.render()
     except Exception as e:
