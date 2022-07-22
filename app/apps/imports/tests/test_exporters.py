@@ -177,6 +177,17 @@ class ExportersTestCase(CoreFactoryTestCase):
             open(f"{SAMPLES_DIR}/text_export_full.txt").read(),
         )
 
+    def test_text_exporter_render_render_mets_unsupported(self, timezone_mock):
+        include_mets_file = True
+        exporter = TextExporter(
+            self.all_parts_pks,
+            self.all_regions_types,
+            self.include_images,
+            *self.params,
+            include_mets_file,
+        )
+        self.assertFalse(exporter.include_mets_file)
+
     def test_text_exporter_render_only_one_part(self, timezone_mock):
         parts_pk = [self.part.pk]
         exporter = TextExporter(
