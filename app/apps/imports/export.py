@@ -115,8 +115,8 @@ class XMLTemplateExporter(BaseExporter):
 
         with ZipFile(self.filepath, "w") as zip_:
             mets_elements = []
-            for part in parts:
-                mets_element = {"page": None, "image": None}
+            for index, part in enumerate(parts, start=1):
+                mets_element = {"id": index, "page": None, "image": None}
 
                 render_orphans = (
                     {}
@@ -171,7 +171,7 @@ class XMLTemplateExporter(BaseExporter):
 
             if self.include_mets_file:
                 mets_template = loader.get_template("export/METS.xml")
-                mets = mets_template.render({"elements": mets_elements})
+                mets = mets_template.render({"elements": mets_elements, "include_images": any([element["image"] for element in mets_elements])})
                 zip_.writestr("METS.xml", mets)
 
             zip_.close()
