@@ -17,8 +17,6 @@ TEI_XML_FORMAT = "teixml"
 
 
 class BaseExporter:
-    support_mets = False
-
     def __init__(
         self,
         part_pks,
@@ -28,7 +26,6 @@ class BaseExporter:
         document,
         report,
         transcription,
-        include_mets_file=False,
     ):
         self.part_pks = part_pks
         self.region_types = region_types
@@ -37,7 +34,6 @@ class BaseExporter:
         self.document = document
         self.report = report
         self.transcription = transcription
-        self.include_mets_file = self.support_mets and include_mets_file
 
         self.prepare_for_rendering()
 
@@ -98,7 +94,6 @@ class TextExporter(BaseExporter):
 
 
 class XMLTemplateExporter(BaseExporter):
-    support_mets = True
     file_extension = "zip"
 
     def render(self):
@@ -169,10 +164,10 @@ class XMLTemplateExporter(BaseExporter):
 
                 mets_elements.append(mets_element)
 
-            if self.include_mets_file:
-                mets_template = loader.get_template("export/METS.xml")
-                mets = mets_template.render({"elements": mets_elements, "include_images": any([element["image"] for element in mets_elements])})
-                zip_.writestr("METS.xml", mets)
+            # Adding METS file in the archive
+            mets_template = loader.get_template("export/METS.xml")
+            mets = mets_template.render({"elements": mets_elements, "include_images": any([element["image"] for element in mets_elements])})
+            zip_.writestr("METS.xml", mets)
 
             zip_.close()
 
