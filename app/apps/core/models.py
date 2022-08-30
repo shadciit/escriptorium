@@ -22,7 +22,7 @@ from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
 from django.db.models import Avg, JSONField, Prefetch, Q, Sum
 from django.db.models.functions import Coalesce, Length
-from django.db.models.signals import pre_delete
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 from django.forms import ValidationError
 from django.template.defaultfilters import slugify
@@ -1902,3 +1902,23 @@ def delete_thumbnails(sender, instance, using, **kwargs):
     thumbnailer.delete_thumbnails()
     thumbnailer = get_thumbnailer(instance.bw_image)
     thumbnailer.delete_thumbnails()
+
+
+@receiver(post_save, sender=LineTranscription, dispatch_uid="line_trans_updated")
+def update_document_part_date_from_transc(sender, instance, **kwargs):
+    instance.line.document_part.save()
+
+
+@receiver(post_save, sender=Line, dispatch_uid="line_updated")
+def update_document_part_date_from_line(sender, instance, **kwargs):
+    instance.document_part.save()
+
+
+@receiver(post_save, sender=DocumentPart, dispatch_uid="part_updated")
+def update_document_date(sender, instance, **kwargs):
+    instance.document.save()
+
+
+@receiver(post_save, sender=Document, dispatch_uid="doc_updated")
+def update_project_date(sender, instance, **kwargs):
+    instance.project.save()
