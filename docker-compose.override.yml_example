@@ -165,6 +165,15 @@ services:
     #    environment:
     #       - KRAKEN_TRAINING_DEVICE=cuda:1
 
+    # Needed to enable text alignment with passim!
+    # celery-jvm:
+    #   <<: *app
+    #   build:
+    #     context: .
+    #     args:
+    #       hasjvm: "true"
+    #   command: "celery worker -l INFO -E -A escriptorium -Ofair --prefetch-multiplier 1 -Q jvm -c 1 --max-tasks-per-child=1"
+
   # celerybeat:
      #   restart: always
 
