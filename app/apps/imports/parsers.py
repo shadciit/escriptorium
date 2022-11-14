@@ -272,7 +272,16 @@ class METSZipParser(ZipParser):
                                 _(f"You ran out of disk storage. {self.total - index} METS pages were left to import (over {self.total - start_at})")
                             )
 
-                        part, _created = DocumentPart.objects.get_or_create(document=self.document, original_filename=filename)
+                        try:
+                            part = DocumentPart.objects.filter(
+                                document=self.document,
+                                original_filename=filename
+                            )[0]
+                        except IndexError:
+                            part = DocumentPart(
+                                document=self.document,
+                                original_filename=filename
+                            )
                         part.image_file_size = 0
                         part.image.save(filename, ContentFile(ziped_image.read()))
                         part.image_file_size = part.image.size
