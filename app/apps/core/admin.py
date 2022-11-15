@@ -43,7 +43,7 @@ class DocumentTagInline(admin.TabularInline):
 
 
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'name']
+    list_display = ['pk', 'name', 'updated_at']
     inlines = (TagInline,)
 
 

@@ -22,7 +22,7 @@ from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
 from django.db.models import Avg, JSONField, Prefetch, Q, Sum
 from django.db.models.functions import Coalesce, Length
-from django.db.models.signals import post_save, pre_delete
+from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.forms import ValidationError
 from django.template.defaultfilters import slugify
@@ -536,7 +536,7 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
 
     def save(self, *args, **kwargs):
         created = not self.pk
-        res = super().save(*args, **kwargs)
+        instance = super().save(*args, **kwargs)
         if created:
             Transcription.objects.get_or_create(
                 document=self, name=_(Transcription.DEFAULT_NAME)
@@ -550,7 +550,10 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
                  for type_ in LineType.objects.filter(public=True, default=True)]
             )
 
-        return res
+        if not hasattr(self, 'skip_tree_update'):
+            self.project.save()
+
+        return instance
 
     @property
     def is_published(self):
@@ -828,6 +831,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
         for order, line in enumerate(ls):
             if line.order != order:
                 line.order = order
+                line.skip_tree_update = True
                 line.save()
 
     def save(self, *args, **kwargs):
@@ -841,6 +845,10 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             send_event("document", self.document.pk, "part:new", {"id": self.pk})
         else:
             self.calculate_progress()
+
+        if not hasattr(self, 'skip_tree_update'):
+            self.document.save()
+
         return instance
 
     def delete(self, *args, **kwargs):
@@ -1103,11 +1111,13 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                 block_types = {t.name: t for t in self.document.valid_block_types.all()}
                 for region_type, regions in res["regions"].items():
                     for region in regions:
-                        Block.objects.create(
+                        block = Block(
                             document_part=self,
                             typology=block_types.get(region_type),
                             box=region,
                         )
+                        block.skip_tree_update = True
+                        block.save()
 
             regions = self.blocks.all()
             if steps in ["lines", "both"]:
@@ -1123,13 +1133,15 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                         (r for r in regions if Polygon(r.box).contains(center)), None
                     )
 
-                    Line.objects.create(
+                    line = Line(
                         document_part=self,
                         typology=line_types.get(line["tags"].get("type")),
                         block=region,
                         baseline=baseline,
                         mask=mask,
                     )
+                    line.skip_tree_update = True
+                    line.save()
 
         im.close()
 
@@ -1188,9 +1200,18 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                     pad=16,  # TODO: % of the image?
                     bidi_reordering=reorder
                 )
-                lt, created = LineTranscription.objects.get_or_create(
-                    line=line, transcription=trans
-                )
+                try:
+                    lt = LineTranscription.objects.get(
+                        line=line, transcription=trans
+                    )
+                    lt.skip_tree_update = True
+                except LineTranscription.DoesNotExist:
+                    lt = LineTranscription(
+                        line=line, transcription=trans
+                    )
+                    lt.skip_tree_update = True
+                    lt.save()
+
                 for pred in it:
                     lt.content = pred.prediction
                     lt.graphs = [{
@@ -1508,7 +1529,10 @@ class Block(ExportModelOperationsMixin("Block"), OrderedModel, models.Model):
     def save(self, *args, **kwargs):
         if self.external_id is None:
             self.make_external_id()
-        return super().save(*args, **kwargs)
+        instance = super().save(*args, **kwargs)
+        if not hasattr(self, 'skip_tree_update'):
+            self.document_part.save()
+        return instance
 
 
 class LineManager(OrderedModelManager):
@@ -1597,7 +1621,12 @@ class Line(OrderedModel):  # Versioned,
     def save(self, *args, **kwargs):
         if self.external_id is None:
             self.make_external_id()
-        return super().save(*args, **kwargs)
+        instance = super().save(*args, **kwargs)
+
+        if not hasattr(self, 'skip_tree_update'):
+            self.document_part.save()
+
+        return instance
 
 
 class ProtectedObjectException(Exception):
@@ -1691,6 +1720,12 @@ class LineTranscription(
 
     class Meta:
         unique_together = ["line", "transcription"]
+
+    def save(self, *args, **kwargs):
+        instance = super().save(*args, **kwargs)
+        if not hasattr(self, 'skip_tree_update'):
+            self.line.save()
+        return instance
 
     @property
     def text(self):
@@ -1902,23 +1937,3 @@ def delete_thumbnails(sender, instance, using, **kwargs):
     thumbnailer.delete_thumbnails()
     thumbnailer = get_thumbnailer(instance.bw_image)
     thumbnailer.delete_thumbnails()
-
-
-@receiver(post_save, sender=LineTranscription, dispatch_uid="line_trans_updated")
-def update_document_part_date_from_transc(sender, instance, **kwargs):
-    instance.line.document_part.save()
-
-
-@receiver(post_save, sender=Line, dispatch_uid="line_updated")
-def update_document_part_date_from_line(sender, instance, **kwargs):
-    instance.document_part.save()
-
-
-@receiver(post_save, sender=DocumentPart, dispatch_uid="part_updated")
-def update_document_date(sender, instance, **kwargs):
-    instance.document.save()
-
-
-@receiver(post_save, sender=Document, dispatch_uid="doc_updated")
-def update_project_date(sender, instance, **kwargs):
-    instance.project.save()

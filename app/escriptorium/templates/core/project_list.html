@@ -18,7 +18,6 @@
                 <td><a href="{% url 'documents-list' slug=project.slug %}">{{project.name}}</a></td>
                 <td title="{% trans "Owner" %}">{{project.owner}}</td>
                 <td>{% blocktrans count n=project.documents_count %}1 document.{% plural %}{{ n }} documents.{% endblocktrans %}</td>
-
                 <td>
                 {% if request.user in project.shared_with_users.all %}
                 <form method="post" class="text-right" action="{% url "delete-project-share" %}" onsubmit="return confirm('{% trans "Do you really want to remove the project from your list?" %}');">{% csrf_token %}

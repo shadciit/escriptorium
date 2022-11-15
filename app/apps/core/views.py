@@ -78,7 +78,8 @@ class PerPageMixin():
 
     def get_paginate_by(self, queryset):
         try:
-            return min(int(self.request.GET.get("paginate_by", self.paginate_by)), self.MAX_PAGINATE_BY)
+            return min(int(self.request.GET.get("paginate_by", self.paginate_by)),
+                       self.MAX_PAGINATE_BY)
         except ValueError:
             return self.paginate_by
 
@@ -209,7 +210,8 @@ class ProjectList(LoginRequiredMixin, PerPageMixin, ListView):
                     'documents',
                     filter=~Q(documents__workflow_state=Document.WORKFLOW_STATE_ARCHIVED),
                     distinct=True))
-                .select_related('owner'))
+                .select_related('owner')
+                .order_by('-updated_at'))
 
 
 class CreateProject(LoginRequiredMixin, SuccessMessageMixin, CreateView):
