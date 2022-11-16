@@ -7,7 +7,7 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
-METSPage = namedtuple('METSPage', ['image', 'sources'], defaults=[None, []])
+METSPage = namedtuple('METSPage', ['image', 'sources'], defaults=[None, {}])
 
 
 class METSProcessor:
@@ -51,6 +51,21 @@ class METSProcessor:
 
         return file_pointers
 
+    def get_file_location(self, file):
+        location = file.find("FLocat", self.mets_xml.nsmap)
+        for attrib, value in location.attrib.items():
+            if "href" in attrib:
+                return value
+
+        return ""
+
+    def get_file_group_name(self, file):
+        parent = file.getparent()
+        if parent and "filegrp" in parent.tag.lower():
+            return parent.get("USE")
+
+        return None
+
     def process(self):
         mets_pages = []
         files = self.get_files_from_file_sec()
@@ -58,16 +73,14 @@ class METSProcessor:
         pages = self.get_pages_from_struct_map()
         for page in pages:
             mets_page_image = None
-            mets_page_sources = []
+            mets_page_sources = {}
+            layers_count = 1
 
             file_pointers = self.get_file_pointers(page)
             for file_pointer in file_pointers:
-                file_id = file_pointer.get("FILEID")
-                location = files[file_id].find("FLocat", self.mets_xml.nsmap)
-                for attrib, value in location.attrib.items():
-                    if "href" in attrib:
-                        href = value
-                        break
+                file = files[file_pointer.get("FILEID")]
+                href = self.get_file_location(file)
+                layer_name = self.get_file_group_name(file) or f"Layer {layers_count}"
 
                 if self.archive:
                     try:
@@ -87,7 +100,8 @@ class METSProcessor:
                         mets_page_image = href
                 except IOError:
                     # If it's not an image then we can add it as a data source to be loaded
-                    mets_page_sources.append(href)
+                    mets_page_sources[layer_name] = href
+                    layers_count += 1
                 finally:
                     file.close()
 

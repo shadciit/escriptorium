@@ -40,6 +40,6 @@ class Command(BaseCommand):
             method="imports.tasks.document_import",
         )
 
-        parser = METSZipParser(document, options["archive_path"], report, transcription_name="METS archive import")
+        parser = METSZipParser(document, options["archive_path"], report)
         parser.validate()
         list(parser.parse())

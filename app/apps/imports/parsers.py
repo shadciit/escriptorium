@@ -217,7 +217,7 @@ class ZipParser(ParserDocument):
 
 
 class METSZipParser(ZipParser):
-    DEFAULT_NAME = _("METS Import (archive)")
+    DEFAULT_NAME = _("METS Import")
 
     def __init__(self, document, file_handler, report, transcription_name=None):
         self.mets_pages = []
@@ -289,16 +289,14 @@ class METSZipParser(ZipParser):
                         part.save()
                         generate_part_thumbnails.si(instance_pk=part.pk)
 
-                for source in mets_page.sources:
+                for layer_name, source in mets_page.sources.items():
                     with archive.open(source) as ziped_source:
                         filename = os.path.basename(ziped_source.name)
 
                         try:
-                            parser = make_parser(self.document, ziped_source, name=self.name, report=self.report)
+                            parser = make_parser(self.document, ziped_source, name=f"{self.name} | {layer_name}", report=self.report)
                             for part in parser.parse(override=override, user=user):
                                 yield part
-                            # When we succeeded to import one source that's enough
-                            break
                         except ParseError as e:
                             # We let go to try other sources
                             msg = _("Parse error in {filename}: {xmlfile}: {error}, skipping it.").format(
