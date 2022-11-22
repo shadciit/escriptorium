@@ -7,6 +7,7 @@ from PIL import Image
 
 logger = logging.getLogger(__name__)
 
+NAMESPACES = {"mets": "http://www.loc.gov/METS/"}
 METSPage = namedtuple('METSPage', ['image', 'sources'], defaults=[None, {}])
 
 
@@ -21,23 +22,23 @@ class METSProcessor:
             return archive.open(filename)
 
     def get_files_from_file_sec(self):
-        file_sec = self.mets_xml.find("fileSec", self.mets_xml.nsmap)
+        file_sec = self.mets_xml.find("mets:fileSec", namespaces=NAMESPACES)
         if not file_sec:
             raise ParserError("The file section <fileSec/> wasn't found in the METS file.")
 
         files = {}
-        for element in file_sec.findall(".//file[@ID]", self.mets_xml.nsmap):
+        for element in file_sec.findall(".//mets:file[@ID]", namespaces=NAMESPACES):
             files[element.get("ID")] = element
 
         return files
 
     def get_pages_from_struct_map(self):
-        struct_map = self.mets_xml.find("structMap", self.mets_xml.nsmap)
+        struct_map = self.mets_xml.find("mets:structMap", namespaces=NAMESPACES)
         if not struct_map:
             raise ParserError("The structure mapping <structMap/> wasn't found in the METS file.")
 
         pages = []
-        for element in struct_map.findall(".//div[@TYPE]", self.mets_xml.nsmap):
+        for element in struct_map.findall(".//mets:div[@TYPE]", namespaces=NAMESPACES):
             if "page" in element.get("TYPE", ""):
                 pages.append(element)
 
@@ -46,13 +47,13 @@ class METSProcessor:
     def get_file_pointers(self, page):
         file_pointers = []
 
-        for element in page.findall("fptr", self.mets_xml.nsmap):
+        for element in page.findall("mets:fptr", namespaces=NAMESPACES):
             file_pointers.append(element)
 
         return file_pointers
 
     def get_file_location(self, file):
-        location = file.find("FLocat", self.mets_xml.nsmap)
+        location = file.find("mets:FLocat", namespaces=NAMESPACES)
         for attrib, value in location.attrib.items():
             if "href" in attrib:
                 return value
@@ -60,6 +61,9 @@ class METSProcessor:
         return ""
 
     def get_file_group_name(self, file):
+        if file.get("USE"):
+            return file.get("USE")
+
         parent = file.getparent()
         if parent and "filegrp" in parent.tag.lower():
             return parent.get("USE")

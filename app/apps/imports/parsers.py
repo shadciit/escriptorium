@@ -28,7 +28,7 @@ from core.models import (
     Transcription,
 )
 from core.tasks import generate_part_thumbnails
-from imports.mets import METSProcessor
+from imports.mets import NAMESPACES, METSProcessor
 from versioning.models import NoChangeException
 
 logger = logging.getLogger(__name__)
@@ -237,12 +237,12 @@ class METSZipParser(ZipParser):
                 with archive.open(xml_filename) as ziped_file:
                     try:
                         root = etree.parse(ziped_file).getroot()
-                        schema = root.nsmap[None]
+                        schemas = root.nsmap.values()
                     except (etree.XMLSyntaxError, KeyError):
                         logger.debug(f"Skipping file {xml_filename} in archive as it isn't a METS file")
                         continue
 
-                    if "METS" in schema:
+                    if NAMESPACES["mets"] in schemas:
                         mets_file_content = root
                         break
 
@@ -294,10 +294,10 @@ class METSZipParser(ZipParser):
                         filename = os.path.basename(ziped_source.name)
 
                         try:
-                            parser = make_parser(self.document, ziped_source, name=f"{self.name} | {layer_name}", report=self.report)
+                            parser = make_parser(self.document, ziped_source, name=f"{self.name} | {layer_name}", report=self.report, zip_allowed=False, pdf_allowed=False)
                             for part in parser.parse(override=override, user=user):
                                 yield part
-                        except ParseError as e:
+                        except (ValueError, ParseError) as e:
                             # We let go to try other sources
                             msg = _("Parse error in {filename}: {xmlfile}: {error}, skipping it.").format(
                                 filename=self.file.name, xmlfile=filename, error=e.args[0]
