@@ -28,7 +28,7 @@ from core.models import (
     Transcription,
 )
 from core.tasks import generate_part_thumbnails
-from imports.mets import NAMESPACES, METSProcessor
+from imports.mets import METSProcessor
 from versioning.models import NoChangeException
 
 logger = logging.getLogger(__name__)
@@ -242,12 +242,12 @@ class METSZipParser(ZipParser):
                         logger.debug(f"Skipping file {xml_filename} in archive as it isn't a METS file")
                         continue
 
-                    if NAMESPACES["mets"] in schemas:
+                    if METSProcessor.NAMESPACES["mets"] in schemas:
                         mets_file_content = root
                         break
 
         # If we didn't find a METS file in the archive after browsing everything, something is wrong
-        if not mets_file_content:
+        if mets_file_content is None:
             raise ParseError(
                 "Couldn't find the METS file that should be there to define the archive."
             )
