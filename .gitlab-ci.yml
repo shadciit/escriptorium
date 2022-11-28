@@ -69,7 +69,7 @@ build:
 
 .docker-build:
   stage: build
-  image: docker:19.03.1
+  image: docker:20.10
   services:
     - docker:dind
   variables:
