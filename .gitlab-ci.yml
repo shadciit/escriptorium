@@ -69,7 +69,7 @@ build:
 
 .docker-build:
   stage: test # trashme
-  image: docker:20.10
+  image: docker:19.03.1
   services:
     - docker:dind
   variables:
