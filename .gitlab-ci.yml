@@ -68,7 +68,7 @@ build:
     - npm run production
 
 .docker-build:
-  stage: build
+  stage: test # trashme
   image: docker:20.10
   services:
     - docker:dind
