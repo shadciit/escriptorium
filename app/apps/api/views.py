@@ -9,6 +9,8 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.translation import gettext as _
+from django_filters import Filter, FilterSet
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -96,6 +98,21 @@ CLIENT_TASK_NAME_MAP = {
 }
 
 
+class TagFilter(Filter):
+    def filter(self, qs, value):
+        if value and '|' in value:
+            return qs.filter(**{'tags__in': value.split('|')})
+        elif value == 'none':
+            return qs.filter(tags__isnull=True)
+        else:
+            return super().filter(qs, value)
+        return qs
+
+
+class TagFilterSet(FilterSet):
+    tags = TagFilter()
+
+
 class IsAdminOrSelfOnly(BasePermission):
     """
     Permission class letting a non-admin user only update his own record,
@@ -172,6 +189,9 @@ class DocumentTagViewSet(ModelViewSet):
 class DocumentViewSet(ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TagFilterSet
+    filterset_fields = ['project', 'tags']
 
     def get_queryset(self):
         return Document.objects.for_user(self.request.user).prefetch_related(
