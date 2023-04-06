@@ -524,6 +524,51 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         model.refresh_from_db()
         self.assertEqual(model.training, False)
 
+    def test_filter_project(self):
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:document-list')
+        resp = self.client.get(uri)
+        self.assertEqual(resp.json()['count'], 2)
+
+        resp = self.client.get(uri + '?project=' + str(self.doc.project.pk))
+        self.assertEqual(resp.json()['count'], 1)
+        self.assertEqual(resp.json()['results'][0]['pk'], self.doc.pk)
+
+    def test_filter_tags(self):
+        tag1 = self.factory.make_document_tag(project=self.doc.project, name='tag1')
+        tag2 = self.factory.make_document_tag(project=self.doc.project, name='tag2')
+        self.doc.tags.add(tag1)
+        self.doc2.tags.add(tag1)
+        self.doc2.tags.add(tag2)
+
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:document-list')
+        resp = self.client.get(uri)
+        self.assertEqual(resp.json()['count'], 2)
+
+        resp = self.client.get(uri + '?tags=' + str(tag1.pk))
+        self.assertEqual(resp.json()['count'], 2)
+
+        resp = self.client.get(uri + '?tags=' + str(tag2.pk))
+        self.assertEqual(resp.json()['count'], 1)
+        self.assertEqual(resp.json()['results'][0]['pk'], self.doc2.pk)
+
+        resp = self.client.get(uri + '?tags=' + str(tag1.pk) + '|' + str(tag2.pk))
+        self.assertEqual(resp.json()['count'], 2)
+
+    def test_filter_no_tag(self):
+        tag1 = self.factory.make_document_tag(project=self.doc.project)
+        self.doc.tags.add(tag1)
+
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:document-list')
+        resp = self.client.get(uri)
+        self.assertEqual(resp.json()['count'], 2)
+
+        resp = self.client.get(uri + '?tags=none')
+        self.assertEqual(resp.json()['count'], 1)
+        self.assertEqual(resp.json()['results'][0]['pk'], self.doc2.pk)
+
 
 class PartViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
@@ -1073,6 +1118,45 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
             }, content_type='application/json')
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertEqual(self.project.tags.count(), 1)
+
+    def test_filter_tags(self):
+        project2 = self.factory.make_project(owner=self.project.owner, name='proj2')
+        self.factory.make_project(owner=self.project.owner, name='proj3')
+        tag1 = self.factory.make_project_tag(user=self.project.owner, name='tag1')
+        tag2 = self.factory.make_project_tag(user=self.project.owner, name='tag2')
+        self.project.tags.add(tag1)
+        project2.tags.add(tag1)
+        project2.tags.add(tag2)
+
+        self.client.force_login(self.project.owner)
+        uri = reverse('api:project-list')
+        resp = self.client.get(uri)
+        self.assertEqual(resp.json()['count'], 3)
+
+        resp = self.client.get(uri + '?tags=' + str(tag1.pk))
+        self.assertEqual(resp.json()['count'], 2)
+
+        resp = self.client.get(uri + '?tags=' + str(tag2.pk))
+        self.assertEqual(resp.json()['count'], 1)
+        self.assertEqual(resp.json()['results'][0]['id'], project2.pk)
+
+        resp = self.client.get(uri + '?tags=' + str(tag1.pk) + '|' + str(tag2.pk))
+        self.assertEqual(resp.json()['count'], 2)
+
+    def test_filter_no_tag(self):
+        tag1 = self.factory.make_project_tag(user=self.project.owner)
+        self.project.tags.add(tag1)
+        project_without_tag = self.factory.make_project(owner=self.project.owner)
+
+        self.client.force_login(self.project.owner)
+        uri = reverse('api:project-list')
+        resp = self.client.get(uri)
+
+        self.assertEqual(resp.json()['count'], 2)
+
+        resp = self.client.get(uri + '?tags=none')
+        self.assertEqual(resp.json()['count'], 1)
+        self.assertEqual(resp.json()['results'][0]['id'], project_without_tag.pk)
 
 
 class DocumentPartMetadataTestCase(CoreFactoryTestCase):

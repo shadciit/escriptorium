@@ -103,7 +103,7 @@ class TagFilter(Filter):
         if value and '|' in value:
             return qs.filter(**{'tags__in': value.split('|')})
         elif value == 'none':
-            return qs.filter(tags__isnull=True)
+            return qs.annotate(tag_count=Count('tags')).filter(tag_count=0)
         else:
             return super().filter(qs, value)
         return qs
@@ -111,6 +111,12 @@ class TagFilter(Filter):
 
 class TagFilterSet(FilterSet):
     tags = TagFilter()
+
+
+class DocumentTagFilterSet(TagFilterSet):
+    class Meta:
+        model = Document
+        fields = ['project', 'tags']
 
 
 class IsAdminOrSelfOnly(BasePermission):
@@ -153,7 +159,8 @@ class ScriptViewSet(ReadOnlyModelViewSet):
 class ProjectViewSet(ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
-    filter_backends = [filters.OrderingFilter]
+    filterset_class = TagFilterSet
+    filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
     ordering_fields = ['created_at', 'documents_count', 'id', 'name', 'owner', 'updated_at']
 
     def get_queryset(self):
@@ -190,8 +197,8 @@ class DocumentViewSet(ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_class = TagFilterSet
     filterset_fields = ['project', 'tags']
+    filterset_class = DocumentTagFilterSet
 
     def get_queryset(self):
         return Document.objects.for_user(self.request.user).prefetch_related(
