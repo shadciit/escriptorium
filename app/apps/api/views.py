@@ -3,12 +3,14 @@ import logging
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
+from django.views.decorators.cache import cache_page
 from django_filters import Filter, FilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status
@@ -422,6 +424,7 @@ class DocumentPermissionMixin():
                              .get(pk=self.kwargs.get('document_pk')))
         except Document.DoesNotExist:
             raise PermissionDenied
+
         return super().get_queryset()
 
 
@@ -552,16 +555,18 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
 
 
-class DocumentTranscriptionViewSet(ModelViewSet):
+class DocumentTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
     # Note: there is no dedicated Transcription viewset, it's always in the context of a Document
     queryset = Transcription.objects.all()
     serializer_class = TranscriptionSerializer
     pagination_class = None
 
     def get_queryset(self):
-        return Transcription.objects.filter(
+        qs = super().get_queryset()
+        qs = qs.filter(
             archived=False,
-            document=self.kwargs['document_pk'])
+            document=self.document)
+        return qs
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -569,6 +574,24 @@ class DocumentTranscriptionViewSet(ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ProtectedObjectException:
             return Response("This object can not be deleted.", status=400)
+
+    @method_decorator(cache_page(60 * 60))  # one hour
+    @action(detail=True, methods=['GET'])
+    def characters(self, request, document_pk=None, pk=None):
+        transcription = self.get_object()
+        with connection.cursor() as cursor:
+            cursor.execute('''
+            SELECT char, count(*) as frequency
+            FROM "core_linetranscription", regexp_split_to_table(content, '') t(char), core_line, core_documentpart
+            WHERE "core_linetranscription"."line_id" = "core_line"."id"
+            AND "core_line"."document_part_id" = "core_documentpart"."id"
+            AND ("core_documentpart"."document_id" = %s AND "core_linetranscription"."transcription_id" = %s)
+            AND char != ' '
+            GROUP BY char ORDER BY frequency DESC;
+            ''', [self.document.pk, transcription.pk])
+            all_ = cursor.fetchall()
+            data = [{'char': char, 'frequency': freq} for char, freq in all_]
+        return Response(data)
 
 
 class BlockTypeViewSet(ModelViewSet):

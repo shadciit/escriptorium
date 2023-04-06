@@ -875,6 +875,30 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.assertIsNotNone(Line.objects.filter(pk=self.line2.pk).first())
 
 
+class TranscriptionViewSetTestCase(CoreFactoryTestCase):
+    def setUp(self):
+        super().setUp()
+        self.part = self.factory.make_part()
+        self.user = self.part.document.owner
+        self.transcription = self.factory.make_transcription(document=self.part.document)
+
+    def test_characters_frequency(self):
+        self.factory.make_content(self.part, transcription=self.transcription)
+        self.client.force_login(self.user)
+        uri = reverse('api:transcription-characters', kwargs={
+            'document_pk': self.part.document.pk,
+            'pk': self.transcription.pk
+        })
+
+        with self.assertNumQueries(5):
+            resp = self.client.get(uri)
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(resp.data[0]['char'], 'e')
+            self.assertEqual(resp.data[0]['frequency'], '44')
+            self.assertEqual(resp.data[1]['char'], 'M')
+            self.assertEqual(resp.data[0]['frequency'], '43')
+
+
 class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
         super().setUp()
