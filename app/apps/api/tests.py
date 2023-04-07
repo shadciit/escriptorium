@@ -896,10 +896,12 @@ class TranscriptionViewSetTestCase(CoreFactoryTestCase):
         with self.assertNumQueries(5):
             resp = self.client.get(uri)
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.data[0]['char'], 'e')
-            self.assertEqual(resp.data[0]['frequency'], 44)
-            self.assertEqual(resp.data[1]['char'], 'M')
-            self.assertEqual(resp.data[1]['frequency'], 43)
+            self.assertEqual(resp.data[0]['char'], ' ')
+            self.assertEqual(resp.data[0]['frequency'], 191)
+            self.assertEqual(resp.data[1]['char'], 'e')
+            self.assertEqual(resp.data[1]['frequency'], 44)
+            self.assertEqual(resp.data[2]['char'], 'M')
+            self.assertEqual(resp.data[2]['frequency'], 43)
             self.assertEqual(resp.data[-1]['char'], 'I')
             self.assertEqual(resp.data[-1]['frequency'], 20)
 

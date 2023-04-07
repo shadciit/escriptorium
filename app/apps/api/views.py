@@ -592,7 +592,6 @@ class DocumentTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
             WHERE "core_linetranscription"."line_id" = "core_line"."id"
             AND "core_line"."document_part_id" = "core_documentpart"."id"
             AND ("core_documentpart"."document_id" = %s AND "core_linetranscription"."transcription_id" = %s)
-            AND char != ' '
             GROUP BY char ORDER BY frequency DESC;
             ''', [self.document.pk, transcription.pk])
             all_ = cursor.fetchall()
