@@ -569,6 +569,9 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['count'], 1)
         self.assertEqual(resp.json()['results'][0]['pk'], self.doc2.pk)
 
+        resp = self.client.get(uri + '?tags=none|' + str(tag1.pk))
+        self.assertEqual(resp.json()['count'], 2)
+
 
 class PartViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
@@ -894,9 +897,11 @@ class TranscriptionViewSetTestCase(CoreFactoryTestCase):
             resp = self.client.get(uri)
             self.assertEqual(resp.status_code, 200)
             self.assertEqual(resp.data[0]['char'], 'e')
-            self.assertEqual(resp.data[0]['frequency'], '44')
+            self.assertEqual(resp.data[0]['frequency'], 44)
             self.assertEqual(resp.data[1]['char'], 'M')
-            self.assertEqual(resp.data[0]['frequency'], '43')
+            self.assertEqual(resp.data[1]['frequency'], 43)
+            self.assertEqual(resp.data[-1]['char'], 'I')
+            self.assertEqual(resp.data[-1]['frequency'], 20)
 
 
 class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
@@ -1181,6 +1186,9 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
         resp = self.client.get(uri + '?tags=none')
         self.assertEqual(resp.json()['count'], 1)
         self.assertEqual(resp.json()['results'][0]['id'], project_without_tag.pk)
+
+        resp = self.client.get(uri + '?tags=none|' + str(tag1.pk))
+        self.assertEqual(resp.json()['count'], 2)
 
 
 class DocumentPartMetadataTestCase(CoreFactoryTestCase):

@@ -103,7 +103,13 @@ CLIENT_TASK_NAME_MAP = {
 class TagFilter(Filter):
     def filter(self, qs, value):
         if value and '|' in value:
-            return qs.filter(**{'tags__in': value.split('|')})
+            values = value.split('|')
+            if 'none' in values:
+                values.remove('none')
+                qs = (qs.annotate(tag_count=Count('tags'))
+                      .filter(Q(tag_count=0) | Q(**{'tags__in': values})))
+            else:
+                return qs.filter(**{'tags__in': values})
         elif value == 'none':
             return qs.annotate(tag_count=Count('tags')).filter(tag_count=0)
         else:
