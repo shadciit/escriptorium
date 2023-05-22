@@ -87,7 +87,7 @@ from imports.forms import ExportForm, ImportForm
 from imports.parsers import ParseError
 from reporting.models import TaskReport
 from users.consumers import send_event
-from users.models import User
+from users.models import Group, User
 from versioning.models import NoChangeException
 
 logger = logging.getLogger(__name__)
@@ -179,6 +179,35 @@ class ProjectViewSet(ModelViewSet):
                     filter=~Q(documents__workflow_state=Document.WORKFLOW_STATE_ARCHIVED),
                     distinct=True))
                 .select_related('owner'))
+
+    @action(detail=True, methods=['post'])
+    def share(self, request, pk=None):
+        project = self.get_object()
+        if 'group' in request.data:
+            try:
+                target = (Group.objects
+                          .filter(user=request.user)
+                          .get(pk=request.data['group']))
+            except Group.DoesNotExist:
+                return Response({'error': 'invalid group.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                project.shared_with_groups.add(target)
+        elif 'user' in request.data:
+            try:
+                target = User.objects.get(username=request.data['user'])
+            except User.DoesNotExist:
+                return Response({'error': 'invalid username.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                project.shared_with_users.add(target)
+        else:
+            return Response({'error': 'Please provide either a group(pk) or user(username).'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # re-instantiate serializer to use updated data
+        serializer = ProjectSerializer(project)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProjectTagViewSet(ModelViewSet):
