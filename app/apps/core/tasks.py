@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+class DidNotConverge(Exception):
+    pass
+
+
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60)
 def generate_part_thumbnails(instance_pk=None, user_pk=None, **kwargs):
     if not getattr(settings, 'THUMBNAIL_ENABLE', True):
@@ -167,6 +171,17 @@ class FrontendFeedback(Callback):
         })
 
 
+def _to_ptl_device(device: str):
+    if device in ['cpu', 'mps']:
+        return device, 'auto'
+    elif any([device.startswith(x) for x in ['tpu', 'cuda', 'hpu', 'ipu']]):
+        dev, idx = device.split(':')
+        if dev == 'cuda':
+            dev = 'gpu'
+        return dev, [int(idx)]
+    raise Exception(f'Invalid device {device} specified')
+
+
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
 def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwargs):
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
@@ -232,11 +247,7 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
         for part in qs[:partition]:
             evaluation_data.append(make_segmentation_training_data(part))
 
-        device_ = getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu')
-        if device_ == 'cpu':
-            device = None
-        elif device_.startswith('cuda'):
-            device = [int(device_.split(':')[-1])]
+        accelerator, device = _to_ptl_device(getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu'))
 
         LOAD_THREADS = getattr(settings, 'KRAKEN_TRAINING_LOAD_THREADS', 0)
 
@@ -261,7 +272,8 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
                                          resize='both',
                                          topline=topline)
 
-        trainer = KrakenTrainer(devices=device,
+        trainer = KrakenTrainer(accelerator=accelerator,
+                                devices=device,
                                 # max_epochs=2,
                                 # min_epochs=5,
                                 enable_progress_bar=False,
@@ -270,8 +282,10 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
 
         trainer.fit(kraken_model)
 
-        best_version = os.path.join(model_dir,
-                                    f'version_{kraken_model.best_epoch}.mlmodel')
+        if kraken_model.best_epoch == -1:
+            raise DidNotConverge
+
+        best_version = os.path.join(model_dir, kraken_model.best_model)
 
         try:
             shutil.copy(best_version, model.file.path)  # os.path.join(model_dir, filename)
@@ -280,6 +294,14 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
             user.notify(_("Training didn't get better results than base model!"),
                         id="seg-no-gain-error", level='warning')
             shutil.copy(load, model.file.path)
+
+    except DidNotConverge:
+        send_event('document', ground_truth[0].document.pk, "training:error", {
+            "id": model.pk,
+        })
+        user.notify(_("The model did not converge, probably because of lack of data."),
+                    id="training-warning", level='warning')
+        model.delete()
 
     except Exception as e:
         send_event('document', document_pk, "training:error", {
@@ -421,11 +443,7 @@ def train_(qs, document, transcription, model=None, user=None):
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
 
-    device_ = getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu')
-    if device_ == 'cpu':
-        device = None
-    elif device_.startswith('cuda'):
-        device = [int(device_.split(':')[-1])]
+    accelerator, device = _to_ptl_device(getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu'))
 
     LOAD_THREADS = getattr(settings, 'KRAKEN_TRAINING_LOAD_THREADS', 0)
 
@@ -454,7 +472,8 @@ def train_(qs, document, transcription, model=None, user=None):
                                     # codec=codec,
                                     resize='add')
 
-    trainer = KrakenTrainer(devices=device,
+    trainer = KrakenTrainer(accelerator=accelerator,
+                            devices=device,
                             # max_epochs=,
                             # min_epochs=hyper_params['min_epochs'],
                             enable_progress_bar=False,
@@ -464,12 +483,12 @@ def train_(qs, document, transcription, model=None, user=None):
 
     trainer.fit(kraken_model)
 
-    if kraken_model.best_epoch != 0:
-        best_version = os.path.join(model_dir, f'version_{kraken_model.best_epoch}.mlmodel')
+    if kraken_model.best_epoch == -1:
+        raise DidNotConverge
+    else:
+        best_version = os.path.join(model_dir, kraken_model.best_model)
         shutil.copy(best_version, model.file.path)
         model.training_accuracy = kraken_model.best_metric
-    else:
-        raise ValueError('No model created.')
 
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
@@ -508,8 +527,15 @@ def train(transcription_pk=None, model_pk=None, part_pks=None, user_pk=None, **k
                       line__document_part__pk__in=part_pks)
               .exclude(Q(content='') | Q(content=None)))
         train_(qs, document, transcription, model=model, user=user)
+    except DidNotConverge:
+        send_event('document', document.pk, "training:error", {
+            "id": model.pk,
+        })
+        user.notify(_("The model did not converge, probably because of lack of data."),
+                    id="training-warning", level='warning')
+        model.delete()
+
     except Exception as e:
-        # TODO: catch KrakenInputException specificely?
         send_event('document', document.pk, "training:error", {
             "id": model.pk,
         })
