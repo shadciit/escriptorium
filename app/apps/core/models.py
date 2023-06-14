@@ -401,6 +401,7 @@ class ProjectManager(models.Manager):
 class Project(ExportModelOperationsMixin("Project"), models.Model):
     name = models.CharField(max_length=512)
     slug = models.SlugField(unique=True)
+    guidelines = models.URLField(null=True, blank=True, help_text=_("An optional URL pointing to an external document that explains content editing and authorship guidelines for this project, in order to guide a team or group towards consistent practices for manual segmentation/transcription."))
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1329,7 +1330,13 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
 
             if steps in ["regions", "both"]:
                 for region_type, regions in res["regions"].items():
-                    typo, created = self.document.valid_block_types.get_or_create(name=region_type)
+                    try:
+                        typo, created = self.document.valid_block_types.get_or_create(
+                            name=region_type)
+                    except BlockType.MultipleObjectsReturned:
+                        # Note: this should not happen if the modelisation was alright
+                        # but for now we hack
+                        typo = self.document.valid_block_types.filter(name=region_type)[0]
                     for region in regions:
                         Block.objects.create(
                             document_part=self,
@@ -1349,9 +1356,13 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                     region = next(
                         (r for r in regions if Polygon(r.box).contains(center)), None
                     )
-
-                    typo, created = self.document.valid_line_types.get_or_create(
-                        name=line["tags"].get("type"))
+                    try:
+                        typo, created = self.document.valid_line_types.get_or_create(
+                            name=line["tags"].get("type"))
+                    except LineType.MultipleObjectsReturned:
+                        # Note: this should not happen if the modelisation was alright
+                        # but for now we hack
+                        typo = self.document.valid_line_types.filter(name=line["tags"].get("type"))[0]
                     Line.objects.create(
                         document_part=self,
                         typology=typo,
@@ -1366,21 +1377,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
         self.save()
         self.recalculate_ordering(read_direction=read_direction)
 
-    def transcribe(self, model, transcription=None, text_direction=None, user=None):
-        if transcription is not None:
-            trans = transcription
-        else:
-            # create a new one
-            trans_name = "kraken:" + model.name
-            # if a transcription with this name already exists we add the date to the name
-            if Transcription.objects.filter(
-                    name=trans_name,
-                    document=self.document).exists():
-                trans_name += ' (' + datetime.strftime(datetime.now(), '%y/%m/%d-%H:%M') + ')'
-            trans = Transcription.objects.create(
-                name=trans_name,
-                document=self.document)
-
+    def transcribe(self, model, transcription, text_direction=None, user=None):
         model_ = kraken_models.load_any(model.file.path)
 
         lines = self.lines.all()
@@ -1401,12 +1398,8 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             line_confidences = []
             for line in lines:
                 if not line.baseline:
-                    bounds = {
-                        "boxes": [line.box],
-                        "text_direction": text_direction,
-                        "type": "baselines",
-                        # 'script_detection': True
-                    }
+                    # bypass lines without baseline
+                    continue
                 else:
                     bounds = {
                         "lines": [
@@ -1429,7 +1422,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                     bidi_reordering=reorder
                 )
                 lt, created = LineTranscription.objects.get_or_create(
-                    line=line, transcription=trans
+                    line=line, transcription=transcription
                 )
 
                 if not created:
@@ -1467,14 +1460,14 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
         if line_confidences and not created:
             # if new line_confidences have been added to existing transcription,
             # then recalculate average confidence across the transcription
-            lines_with_confidence = trans.linetranscription_set.filter(avg_confidence__isnull=False)
-            trans.avg_confidence = lines_with_confidence.aggregate(avg=Avg("avg_confidence")).get("avg")
-            trans.save()
+            lines_with_confidence = transcription.linetranscription_set.filter(avg_confidence__isnull=False)
+            transcription.avg_confidence = lines_with_confidence.aggregate(avg=Avg("avg_confidence")).get("avg")
+            transcription.save()
         elif line_confidences:
             # if this is a new transcription, its avg confidence will be the avg of lines
             # transcribed here
-            trans.avg_confidence = avg_line_confidence
-            trans.save()
+            transcription.avg_confidence = avg_line_confidence
+            transcription.save()
 
     def chain_tasks(self, *tasks):
         chain(*tasks).delay()
