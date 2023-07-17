@@ -443,7 +443,13 @@ class DocumentViewSet(ModelViewSet):
         document = self.get_object()
 
         if 'parts' in request.data:
-            parts = document.parts.filter(pk__in=request.GET.get('parts'))
+            pks = request.data.get('parts')
+            try:
+                iter(pks)
+            except TypeError:
+                return Response({'error': "'parts' has to be a list."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            parts = document.parts.filter(pk__in=pks)
         else:
             parts = document.parts.all()
 
@@ -824,6 +830,10 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     @transaction.atomic
     def merge(self, request, document_pk=None, part_pk=None):
         original_lines = request.data.get("lines")
+
+        if original_lines is None:
+            return Response({'status': 'error', 'error': _("'lines' is mandatory.")}, status=status.HTTP_400_BAD_REQUEST)
+
         if len(original_lines) > MAX_MERGE_SIZE:
             return Response(dict(status='error', error=f"Can't merge more than {MAX_MERGE_SIZE} lines"), status=status.HTTP_400_BAD_REQUEST)
 
