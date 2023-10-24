@@ -3,7 +3,7 @@
         <span
             v-for="tag in tags"
             :key="tag.pk"
-            :class="tagClasses(tag.variant)"
+            :class="tagClasses(tag.variant || toVariant(tag.color))"
         >
             {{ tag.name }}
         </span>
@@ -27,7 +27,7 @@
                     <span
                         v-for="tag in overflowTags"
                         :key="tag.pk"
-                        :class="tagClasses(tag.variant)"
+                        :class="tagClasses(tag.variant || toVariant(tag.color))"
                     >
                         {{ tag.name }}
                     </span>
@@ -38,6 +38,7 @@
 </template>
 <script>
 import { Dropdown as VDropdown } from "floating-vue";
+import { tagColorToVariant } from "../../store/util/color";
 import "./Tag.css";
 import "./TagGroup.css";
 
@@ -52,7 +53,7 @@ export default {
         /**
          * The list of tags, each an `Object` with a `name` (`String`) property,
          * a `pk` (`Number`) property, and a `variant` (`Number`) property, which
-         * must be between 1 and 12
+         * must be between 0 and 30
          */
         tags: {
             type: Array,
@@ -117,7 +118,7 @@ export default {
         tagClasses(variant) {
             return {
                 "escr-tag": true,
-                [`escr-tag--variant-${variant || 12}`]: true,
+                [`escr-tag--variant-${variant || 0}`]: true,
             };
         },
         /**
@@ -131,6 +132,12 @@ export default {
          */
         hideOverflowed() {
             this.overflowVisible = false;
+        },
+        /**
+         * Convert color to variant if variant is not available.
+         */
+        toVariant(color) {
+            return tagColorToVariant(color);
         },
     }
 

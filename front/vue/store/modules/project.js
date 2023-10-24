@@ -1,6 +1,7 @@
 import axios from "axios";
 import {
     createDocument,
+    createDocumentMetadata,
     createProjectDocumentTag,
     deleteDocument,
     deleteProject,
@@ -48,7 +49,7 @@ const state = () => ({
     editModalOpen: false,
     guidelines: "",
     id: null,
-    loading: false,
+    loading: true,
     menuOpen: false,
     name: "",
     nextPage: "",
@@ -143,10 +144,11 @@ const actions = {
         commit("setMenuOpen", false);
     },
     /**
-     * Close the "add group or user" modal.
+     * Close the "add group or user" modal and clear out state.
      */
-    closeShareModal({ commit }) {
+    closeShareModal({ commit, dispatch }) {
         commit("setShareModalOpen", false);
+        dispatch("forms/clearForm", "share", { root: true });
     },
     /**
      * Create a new document with the data from state.
@@ -163,6 +165,15 @@ const actions = {
                 tags: rootState.forms?.editDocument?.tags,
             });
             if (data) {
+                // try to create metadata too
+                await Promise.all(
+                    rootState.forms?.editDocument?.metadata.map((metadatum) =>
+                        createDocumentMetadata({
+                            documentId: data.pk,
+                            metadatum,
+                        }),
+                    ),
+                );
                 // show toast alert on success
                 dispatch(
                     "alerts/add",
@@ -172,7 +183,8 @@ const actions = {
                     },
                     { root: true },
                 );
-                // TODO: redirect to new document
+                // redirect to new document
+                window.location = `/document/${data.pk}/images/`;
                 commit("setCreateDocumentModalOpen", false);
             } else {
                 commit("setLoading", false);
@@ -204,8 +216,8 @@ const actions = {
                 commit("setDocumentTags", documentTags);
                 // select the new tag and reset the tag name add/search field
                 commit(
-                    "forms/selectTag",
-                    { form: "editDocument", tag: data },
+                    "forms/addToArray",
+                    { form: "editDocument", field: "tags", value: data.pk },
                     { root: true },
                 );
                 commit(
@@ -233,6 +245,7 @@ const actions = {
         commit("setLoading", true);
         try {
             await deleteDocument({ documentId: state?.documentToDelete?.pk });
+            await dispatch("fetchProjectDocuments");
             commit("setDeleteDocumentModalOpen", false);
             // show toast alert on success
             dispatch(
@@ -252,8 +265,16 @@ const actions = {
         commit("setLoading", true);
         try {
             await deleteProject(state.id);
+            dispatch(
+                "alerts/add",
+                {
+                    color: "success",
+                    message: "Project deleted successfully",
+                },
+                { root: true },
+            );
             commit("setDeleteModalOpen", false);
-            // TODO: redirect to projects list on delete
+            window.location = "/projects/";
         } catch (error) {
             dispatch("alerts/addError", error, { root: true });
         }
@@ -269,7 +290,12 @@ const actions = {
             const { data } = await axios.get(state.nextPage);
             if (data?.results) {
                 data.results.forEach((document) => {
-                    commit("addDocument", document);
+                    commit("addDocument", {
+                        ...document,
+                        tags: { tags: document.tags },
+                        // TODO: link to document dashboard
+                        href: `/document/${document.pk}/images/`,
+                    });
                 });
                 commit("setNextPage", data.next);
             } else {
@@ -277,6 +303,7 @@ const actions = {
                 throw new Error("Unable to retrieve projects");
             }
         } catch (error) {
+            commit("setLoading", false);
             dispatch("alerts/addError", error, { root: true });
         }
         commit("setLoading", false);
@@ -294,9 +321,11 @@ const actions = {
         if (data) {
             commit("setName", data.name);
             commit("setSlug", data.slug);
+            commit("setGuidelines", data.guidelines);
+            const tagPks = data.tags.map((tag) => tag.pk);
             commit(
                 "setTags",
-                rootState.projects.tags.filter((t) => data.tags.includes(t.pk)),
+                rootState.projects.tags.filter((t) => tagPks.includes(t.pk)),
             );
             commit("setSharedWithGroups", data.shared_with_groups);
             commit("setSharedWithUsers", data.shared_with_users);
@@ -307,7 +336,7 @@ const actions = {
                     formState: {
                         name: data.name,
                         guidelines: data.guidelines,
-                        tags: data.tags,
+                        tags: tagPks,
                         tagColor: "",
                         tagName: "",
                     },
@@ -333,6 +362,8 @@ const actions = {
         });
         if (data?.next) {
             commit("setNextPage", data.next);
+        } else {
+            commit("setNextPage", "");
         }
         if (data?.results) {
             commit(
@@ -340,6 +371,8 @@ const actions = {
                 data.results.map((result) => ({
                     ...result,
                     tags: { tags: result.tags },
+                    // TODO: link to document dashboard
+                    href: `/document/${result.pk}/images/`,
                 })),
             );
         } else {
@@ -373,13 +406,6 @@ const actions = {
         } else {
             throw new Error("Unable to retrieve scripts");
         }
-    },
-    /**
-     * Navigate to the images page for this document.
-     */
-    navigateToImages(_, item) {
-        // TODO: implement this; not yet designed
-        console.log(item);
     },
     /**
      * Open the "create document" modal.
@@ -432,10 +458,11 @@ const actions = {
             if (data) {
                 commit("setName", name);
                 commit("setGuidelines", guidelines);
+                const tagPks = data.tags.map((tag) => tag.pk);
                 commit(
                     "setTags",
                     rootState.projects.tags.filter((t) =>
-                        data?.tags?.includes(t.pk),
+                        tagPks.includes(t.pk),
                     ),
                 );
                 commit("setEditModalOpen", false);
@@ -443,6 +470,7 @@ const actions = {
                 throw new Error("Unable to retrieve project");
             }
         } catch (error) {
+            commit("setLoading", false);
             dispatch("alerts/addError", error, { root: true });
         }
         commit("setLoading", false);
@@ -462,14 +490,20 @@ const actions = {
     async share({ commit, dispatch, rootState, state }) {
         const { user, group } = rootState.forms.share;
         try {
-            const { data } = await shareProject({ projectId: state.id, user, group });
+            const { data } = await shareProject({
+                projectId: state.id,
+                user,
+                group,
+            });
             if (data) {
                 // show toast alert on success
                 dispatch(
                     "alerts/add",
                     {
                         color: "success",
-                        message: `${user ? "User" : "Group"} added successfully`,
+                        message: `${
+                            user ? "User" : "Group"
+                        } added successfully`,
                     },
                     { root: true },
                 );
@@ -489,11 +523,13 @@ const actions = {
      */
     async sortDocuments({ commit, dispatch }, { field, direction }) {
         await commit("setSortState", { field, direction });
+        commit("setLoading", true);
         try {
             await dispatch("fetchProjectDocuments");
         } catch (error) {
             dispatch("alerts/addError", error, { root: true });
         }
+        commit("setLoading", false);
     },
 };
 

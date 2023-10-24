@@ -1,8 +1,10 @@
 import html
 import logging
+import os.path
 
 import bleach
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db.models import Count, Q
 from django.db.utils import IntegrityError
 from django.utils import timezone
@@ -36,9 +38,13 @@ from core.models import (
     Script,
     TextAnnotation,
     TextAnnotationComponentValue,
+    TextualWitness,
     Transcription,
 )
 from core.tasks import segment, segtrain, train, transcribe
+from imports.forms import FileImportError, clean_import_uri, clean_upload_file
+from imports.models import DocumentImport
+from imports.tasks import document_import
 from reporting.models import TaskReport
 from users.consumers import send_event
 from users.models import Group, User
@@ -85,12 +91,17 @@ class ScriptSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    can_invite = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ('pk', 'is_active',
                   'username', 'email', 'first_name', 'last_name',
-                  'date_joined', 'last_login')
-        read_only_fields = ('date_joined', 'last_login')
+                  'date_joined', 'last_login', 'is_staff', 'can_invite')
+        read_only_fields = ('date_joined', 'last_login', 'is_staff', 'can_invite')
+
+    def get_can_invite(self, user):
+        return user.has_perms(['user.can_invite'])
 
 
 class DetailedGroupSerializer(serializers.ModelSerializer):
@@ -108,6 +119,16 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = ('pk', 'name')
 
 
+class ProjectTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectTag
+        fields = ("pk", "name", "color")
+
+    def create(self, data):
+        data['user'] = self.context['request'].user
+        return super().create(data)
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     slug = serializers.ReadOnlyField()
@@ -123,6 +144,12 @@ class ProjectSerializer(serializers.ModelSerializer):
         data['owner'] = self.context["view"].request.user
         obj = super().create(data)
         return obj
+
+    def to_representation(self, instance):
+        # only use ProjectTagSerializer on GET; otherwise, use pks
+        repr = super().to_representation(instance)
+        repr['tags'] = [ProjectTagSerializer(tag).data for tag in instance.tags.all()]
+        return repr
 
 
 class PartMoveSerializer(serializers.ModelSerializer):
@@ -311,16 +338,6 @@ class TextAnnotationSerializer(serializers.ModelSerializer):
         return anno
 
 
-class ProjectTagSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProjectTag
-        fields = ("pk", "name", "color")
-
-    def create(self, data):
-        data['user'] = self.context['request'].user
-        return super().create(data)
-
-
 class DocumentTagSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentTag
@@ -334,7 +351,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     valid_block_types = BlockTypeSerializer(many=True, read_only=True)
     valid_line_types = LineTypeSerializer(many=True, read_only=True)
     valid_part_types = DocumentPartTypeSerializer(many=True, read_only=True)
-    parts_count = serializers.SerializerMethodField()
+    parts_count = serializers.ReadOnlyField()
     project = serializers.SlugRelatedField(slug_field='slug',
                                            queryset=Project.objects.all())
 
@@ -349,14 +366,129 @@ class DocumentSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         self.fields['project'].queryset = Project.objects.for_user_write(self.context['user'])
 
-    def get_parts_count(self, document):
-        return document.parts.count()
-
     def validate_main_script(self, value):
         try:
             return Script.objects.get(name=value)
         except Script.DoesNotExist:
             raise serializers.ValidationError('This script does not exists in the database.')
+
+    def to_representation(self, instance):
+        # only use DocumentTagSerializer on GET; otherwise, use pks
+        repr = super().to_representation(instance)
+        repr['tags'] = [DocumentTagSerializer(tag).data for tag in instance.tags.all()]
+        return repr
+
+
+class ImportSerializer(serializers.Serializer):
+    MODE_CHOICES = (
+        ('pdf', 'Import a pdf file.'),
+        ('iiif', 'Import from a iiif manifest.'),
+        ('mets', 'Import a mets file.'),
+        ('xml', 'Import from a xml file.')
+    )
+    mode = serializers.ChoiceField(choices=MODE_CHOICES)
+
+    transcription = serializers.PrimaryKeyRelatedField(
+        queryset=Transcription.objects.all(),
+        required=False)
+    override = serializers.BooleanField(required=False)
+    upload_file = serializers.FileField(required=False)
+
+    iiif_uri = serializers.URLField(required=False)
+
+    METS_TYPE_CHOICES = (
+        ('local', _('Upload local file')),
+        ('url', _('download file from url')),
+    )
+    mets_type = serializers.ChoiceField(choices=METS_TYPE_CHOICES, required=False)
+    mets_uri = serializers.URLField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = self.context["view"].request.user
+        self.document = Document.objects.get(pk=self.context["view"].kwargs["document_pk"])
+        self.mets_base_uri = None
+        self.fields['transcription'].queryset = Transcription.objects.filter(document=self.document)
+
+    def validate_iiif_uri(self, uri):
+        try:
+            content, total = clean_import_uri(uri, self.document, 'tmp.json')
+            self.file = ContentFile(content, name='iiif_manifest.json')
+            self.total = total
+        except FileImportError as e:
+            raise serializers.ValidationError(repr(e))
+
+    def validate_mets_uri(self, uri):
+        try:
+            self.mets_base_uri = os.path.dirname(uri)
+            content, total = clean_import_uri(uri, self.document, 'tmp.xml',
+                                              is_mets=True, mets_base_uri=self.mets_base_uri)
+            self.file = ContentFile(content, name='mets.xml')
+            self.total = total
+        except FileImportError as e:
+            raise serializers.ValidationError(repr(e))
+
+    def validate_upload_file(self, upload_file):
+        try:
+            parser = clean_upload_file(upload_file, self.document, self.user)
+            self.file = parser.file
+            self.total = parser.total
+        except FileImportError as e:
+            raise serializers.ValidationError(repr(e))
+
+    def validate(self, data):
+        data = super().validate(data)
+
+        # validate different modes
+        mode = data.get('mode')
+        if mode == 'iiif':
+            if 'iiif_uri' not in data:
+                raise serializers.ValidationError("'iiif_uri' is mandatory with mode 'iiif'.")
+
+        elif mode == 'mets':
+            if 'mets_type' not in data:
+                raise serializers.ValidationError("'mets_type' is mandatory with mode 'mets'.")
+            else:
+                if data.get('mets_type') == 'url':
+                    if 'mets_uri' not in data:
+                        raise serializers.ValidationError("'mets_uri' is mandatory with mode 'mets'. and type 'url'")
+                elif 'upload_file' not in data:
+                    raise serializers.ValidationError("'upload_file' is mandatory with mode 'mets'. and type 'local'")
+
+        elif mode == 'pdf':
+            if 'upload_file' not in data:
+                raise serializers.ValidationError("'upload_file' is mandatory with mode 'pdf'.")
+
+        elif mode == 'xml':
+            if 'upload_file' not in data:
+                raise serializers.ValidationError("'upload_file' is mandatory with mode 'xml'.")
+
+        if not settings.DISABLE_QUOTAS:
+            if not self.user.has_free_cpu_minutes():
+                raise serializers.ValidationError(_("You don't have any CPU minutes left."))
+
+        return data
+
+    def create(self, validated_data):
+        imp = DocumentImport(
+            document=self.document,
+            name=validated_data.get('transcription').name if 'transcription' in validated_data else '',
+            override=validated_data.get('override') or False,
+            import_file=self.file,
+            total=self.total,
+            started_by=self.user,
+            with_mets=validated_data.get('mode') == 'mets',
+            mets_base_uri=self.mets_base_uri
+        )
+        imp.save()
+
+        document_import.delay(
+            import_pk=imp.pk,
+            user_pk=self.user.pk,
+            report_label=_('Import in %(document_name)s') % {'document_name': self.document.name}
+        )
+
+        return imp
 
 
 class DocumentTasksSerializer(serializers.ModelSerializer):
@@ -386,6 +518,18 @@ class DocumentTasksSerializer(serializers.ModelSerializer):
         return last_task.started_at
 
 
+class TaskReportSerializer(serializers.ModelSerializer):
+    document_part = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TaskReport
+        fields = ('pk', 'document', 'document_part', 'workflow_state', 'label', 'messages',
+                  'queued_at', 'started_at', 'done_at', 'method', 'user')
+
+    def get_document_part(self, task_report):
+        return str(task_report.document_part) if task_report.document_part else None
+
+
 class MetadataSerializer(serializers.ModelSerializer):
     name = serializers.CharField(validators=[])
 
@@ -412,6 +556,18 @@ class DocumentMetadataSerializer(serializers.ModelSerializer):
                                               key=md,
                                               **validated_data)
         return dmd
+
+    def update(self, instance, validated_data):
+        instance.value = validated_data.get('value', instance.value)
+        instance.save()
+
+        if "key" in validated_data:
+            new_key = validated_data.get('key')
+            nested_serializer = self.fields['key']
+            nested_instance = instance.key
+            nested_serializer.update(nested_instance, new_key)
+
+        return instance
 
 
 class DocumentPartMetadataSerializer(serializers.ModelSerializer):
@@ -469,7 +625,8 @@ class PartSerializer(serializers.ModelSerializer):
             'transcription_progress',
             'source',
             'max_avg_confidence',
-            'comments'
+            'comments',
+            'updated_at',
         )
 
     def validate(self, data):
@@ -641,11 +798,15 @@ class OcrModelSerializer(serializers.ModelSerializer):
     job = DisplayChoiceField(choices=OcrModel.MODEL_JOB_CHOICES)
     training = serializers.ReadOnlyField()
     file_size = serializers.IntegerField(required=False)
+    rights = serializers.SerializerMethodField(source='get_rights')
+    script = serializers.ReadOnlyField(source='script.name')
+    parent = serializers.ReadOnlyField(source='parent.name')
 
     class Meta:
         model = OcrModel
         fields = ('pk', 'name', 'file', 'file_size', 'job',
-                  'owner', 'training', 'versions')
+                  'owner', 'training', 'versions', 'documents',
+                  'accuracy_percent', 'rights', 'script', 'parent')
 
     def create(self, data):
         # If quotas are enforced, assert that the user still has free disk storage
@@ -656,6 +817,16 @@ class OcrModelSerializer(serializers.ModelSerializer):
         data['file_size'] = data['file'].size
         obj = super().create(data)
         return obj
+
+    def get_rights(self, instance):
+        # get the requesting user's permissions for the model
+        user = self.context["view"].request.user
+        if instance.owner == user:
+            return "owner"
+        elif instance.public:
+            return "public"
+        else:
+            return "user"
 
 
 class ProcessSerializerMixin():
@@ -804,6 +975,14 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
                        user_pk=self.user.pk)
 
 
+class TextualWitnessSerializer(serializers.ModelSerializer):
+    owner = serializers.ReadOnlyField(source='owner.username')
+
+    class Meta:
+        model = TextualWitness
+        fields = ('name', 'pk', 'file', 'owner')
+
+
 class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
     CHECK_GPU_QUOTA = True
     CHECK_DISK_QUOTA = True
@@ -910,3 +1089,165 @@ class TranscribeSerializer(ProcessSerializerMixin, serializers.Serializer):
                     model_pk=model.pk,
                     user_pk=self.user.pk)
             )
+
+
+class AlignSerializer(ProcessSerializerMixin, serializers.Serializer):
+    parts = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=DocumentPart.objects.all())
+
+    transcription = serializers.PrimaryKeyRelatedField(
+        queryset=Transcription.objects.filter(archived=False),
+        required=True,
+        help_text=_("The transcription on which to perform alignment."),
+    )
+    witness_file = serializers.FileField(
+        # validators=[FileExtensionValidator(allowed_extensions=["txt"])],
+        required=False,
+        help_text=_("The reference text for alignment; must be a .txt file."),
+    )
+    existing_witness = serializers.PrimaryKeyRelatedField(
+        queryset=TextualWitness.objects.all(),
+        required=False,
+        help_text=_("Reuse a previously-uploaded reference text."),
+    )
+    n_gram = serializers.IntegerField(
+        label=_("N-gram"),
+        required=True,
+        min_value=2,
+        max_value=25,
+        initial=25,
+        help_text=_("Length (2–25) of token sequences to compare; 25 should work well for at least moderately clean OCR. For very poor OCR, lower to 3 or 4."),
+    )
+    max_offset = serializers.IntegerField(
+        label=_("Max offset"),
+        help_text=_("Enables max-offset and disables beam search. Maximum number of characters (20–80) difference between the aligned witness text and the original transcription."),
+        required=False,
+        min_value=0,
+        max_value=80,
+    )
+    beam_size = serializers.IntegerField(
+        label=_("Beam size"),
+        help_text=_("Enables beam search; if this and max offset are left unset, beam search will be on and beam size set to 20. Higher beam size (1-100) will result in slower computation but more accurate results."),
+        required=False,
+        min_value=0,
+        max_value=100,
+    )
+    gap = serializers.IntegerField(
+        label=_("Gap"),
+        required=True,
+        min_value=1,
+        max_value=1000000,
+        initial=600,
+        help_text=_("The distance between matching unique n-grams; 600 should work well for clean OCR or texts where passages align to different portions of the witness text. To force end-to-end alignment of two documents, increase to 1,000,000.")
+    )
+    merge = serializers.BooleanField(
+        label=_("Merge aligned text with existing transcription"),
+        required=False,
+        initial=False,
+        help_text=_("If checked, the aligner will reuse the text of the original transcription when alignment could not be performed; if unchecked, those lines will be blank."),
+    )
+    full_doc = serializers.BooleanField(
+        label=_("Use full transcribed document"),
+        required=False,
+        initial=True,
+        help_text=_("If checked, the aligner will use all transcribed pages of the document to find matches. If unchecked, it will compare each page to the text separately."),
+    )
+    threshold = serializers.FloatField(
+        label=_("Line length match threshold"),
+        help_text=_("Minimum proportion (0.0–1.0) of aligned line length to original transcription, below which matches are ignored. At 0.0, all matches are accepted."),
+        required=True,
+        initial=0.8,
+        min_value=0.0,
+        max_value=1.0,
+    )
+    region_types = serializers.MultipleChoiceField(
+        required=True,
+        choices=[('Undefined', '(Undefined region type)'), ('Orphan', '(Orphan lines)')],
+        help_text=_("Region types to include in the alignment."),
+    )
+    layer_name = serializers.CharField(
+        required=True,
+        label=_("Layer name"),
+        help_text=_("Name for the new transcription layer produced by this alignment. If you reuse an existing layer name, the layer will be overwritten; use caution."),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['transcription'].queryset = self.document.transcriptions.filter(archived=False)
+        self.fields['existing_witness'].queryset = TextualWitness.objects.filter(owner=self.user)
+        self.fields['region_types'].choices.update({
+            rt.id: rt.name
+            for rt in self.document.valid_block_types.all()
+        })
+
+    def validate(self, data):
+        data = super().validate(data)
+
+        if 'witness_file' not in data and 'existing_witness' not in data:
+            raise serializers.ValidationError(
+                _("You must supply a textual witness (reference text).")
+            )
+        elif 'witness_file' in data and 'existing_witness' in data:
+            raise serializers.ValidationError(
+                _("You may only supply one witness text (file upload or existing text).")
+            )
+
+        if data.get("layer_name") == data.get("transcription"):
+            raise serializers.ValidationError(
+                _("Alignment layer name cannot be the same as the transcription you are trying to align.")
+            )
+
+        # ensure max offset and beam size not both set
+        max_offset = data.get("max_offset")
+        beam_size = data.get("beam_size")
+        if max_offset and int(max_offset) != 0 and beam_size and int(beam_size) != 0:
+            raise serializers.ValidationError(_("Max offset and beam size cannot both be non-zero."))
+
+        # If quotas are enforced, assert that the user still has free CPU minutes
+        if not settings.DISABLE_QUOTAS and not self.user.has_free_cpu_minutes():
+            raise serializers.ValidationError(_("You don't have any CPU minutes left."))
+
+        return data
+
+    def process(self):
+        """Instantiate or set the witness to use, then enqueue the task(s)"""
+        transcription = self.validated_data.get("transcription")
+        witness_file = self.validated_data.get("witness_file")
+        existing_witness = self.validated_data.get("existing_witness")
+        max_offset = self.validated_data.get("max_offset", 0)
+        beam_size = self.validated_data.get("beam_size", 20)
+        n_gram = self.validated_data.get("n_gram", 25)
+        gap = self.validated_data.get("gap", 600)
+        merge = self.validated_data.get("merge")
+        full_doc = self.validated_data.get("full_doc", True)
+        threshold = self.validated_data.get("threshold", 0.8)
+        region_types = self.validated_data.get("region_types", ["Orphan", "Undefined"])
+        parts = self.validated_data.get("parts")
+        layer_name = self.validated_data.get("layer_name")
+
+        if existing_witness:
+            witness = existing_witness
+        else:
+            witness = TextualWitness(
+                file=witness_file,
+                name=os.path.splitext(witness_file.name)[0],
+                owner=self.user,
+            )
+            witness.save()
+
+        self.document.queue_alignment(
+            parts=parts,
+            user_pk=self.user.pk,
+            transcription_pk=transcription.pk,
+            witness_pk=witness.pk,
+            # handle empty strings, NoneType; allow some values that could be false
+            n_gram=int(n_gram if n_gram else 25),
+            max_offset=int(max_offset if (max_offset is not None and max_offset != '') else 0),
+            merge=bool(merge),
+            full_doc=bool(full_doc if (full_doc is not None and full_doc != '') else True),
+            threshold=float(threshold if (threshold is not None and threshold != '') else 0.8),
+            region_types=list(region_types),
+            layer_name=layer_name,
+            beam_size=int(beam_size if (beam_size is not None and beam_size != '') else 20),
+            gap=int(gap if gap else 600),
+        )

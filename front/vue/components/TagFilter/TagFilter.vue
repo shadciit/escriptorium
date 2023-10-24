@@ -92,7 +92,7 @@ export default {
     methods: {
         /**
          * Determine which variant class to apply based on props,
-         * default variant is 12 (gray).
+         * default variant is 0 (gray).
          */
         tagClasses: Tags.methods.tagClasses,
         /**
@@ -100,6 +100,9 @@ export default {
          */
         setOperator(operator) {
             this.selectedOperator = operator;
+            if (operator === "and" && this.untagged) {
+                this.untagged = false;
+            }
         },
         /**
          * add or remove tags from selected list
@@ -350,7 +353,8 @@ export default {
                                     type: "checkbox",
                                     id: "untagged",
                                     onchange: this.toggleUntagged,
-                                    checked: this.untagged,
+                                    checked: this.untagged && this.selectedOperator !== "and",
+                                    disabled: this.selectedOperator === "and",
                                 },
                             },
                         ),

@@ -19,26 +19,45 @@ export default {
             type: Boolean,
             required: true,
         },
+        /**
+         * Callback function for submitting after changing the tags selection
+         */
         onChange: {
             type: Function,
             required: true,
         },
+        /**
+         * Callback function for changing the string in the "Add/search tags" field
+         */
         onChangeTagName: {
             type: Function,
             required: true,
         },
+        /**
+         * Callback function for creating a new tag
+         */
         onCreateTag: {
             type: Function,
             required: true,
         },
+        /**
+         * String currently typed into the "Add/search tags" field
+         */
         tagName: {
             type: String,
             required: true,
         },
+        /**
+         * Array of tag objects to populate the list of all tags, each structured as follows:
+         * { pk: Number, name: String, variant: Number }
+         */
         tags: {
             type: Array,
             required: true,
         },
+        /**
+         * Array of numbers, which correspond to selected tag primary keys.
+         */
         selectedTags: {
             type: Array,
             required: true,
@@ -53,8 +72,7 @@ export default {
     },
     methods: {
         /**
-         * Determine which variant class to apply based on props,
-         * default variant is 12 (gray).
+         * Determine which variant class to apply based on props.
          */
         tagClasses: Tags.methods.tagClasses,
         /*
@@ -62,42 +80,44 @@ export default {
          */
         renderTagColorPicker(h) {
             return [
-                h(
-                    VDropdown,
-                    {
-                        props: {
-                            theme: "tags-dropdown",
-                        },
-                        scopedSlots: {
-                            popper: ({ hide }) => h(
-                                "div",
-                                {
-                                    class: "escr-tag-colors",
-                                },
-                                [...Array(12).keys()].map((n) =>
-                                    h(
-                                        "button",
-                                        {
-                                            class: `escr-tag--variant-${n+1}`,
-                                            domProps: {
-                                                disabled: this.disabled,
+                h("div", { class: "escr-create-tag" }, [
+                    h(
+                        VDropdown,
+                        {
+                            props: {
+                                theme: "tags-dropdown",
+                            },
+                            scopedSlots: {
+                                popper: ({ hide }) => h(
+                                    "div",
+                                    {
+                                        class: "escr-tag-colors",
+                                    },
+                                    [...Array(30).keys()].map((n) =>
+                                        h(
+                                            "button",
+                                            {
+                                                class: `escr-tag--variant-${n+1}`,
+                                                domProps: {
+                                                    disabled: this.disabled,
+                                                },
+                                                on: {
+                                                    click: () => {
+                                                        this.onCreateTag(tagVariants[n]);
+                                                        hide();
+                                                    }
+                                                },
                                             },
-                                            on: {
-                                                click: () => {
-                                                    this.onCreateTag(tagVariants[n]);
-                                                    hide();
-                                                }
-                                            },
-                                        },
-                                    )
+                                        )
+                                    ),
                                 ),
-                            ),
-                        }
-                    },
-                    [
-                        this.renderAddTagButton(h),
-                    ],
-                ),
+                            }
+                        },
+                        [
+                            this.renderAddTagButton(h),
+                        ],
+                    ),
+                ]),
             ]
         },
         /*
@@ -172,32 +192,27 @@ export default {
          */
         renderAddTagButton(h) {
             return h(
-                "div",
-                { class: "escr-create-tag" },
-                [
-                    h(
-                        EscrButton,
-                        {
-                            props: {
-                                color: "text",
-                                label: this.tagName
-                                    ? `Create a tag "${this.tagName}"`
-                                    : "Create a tag",
-                                disabled: this.disabled || !this.tagName || this.tags.some(
-                                    (tag) => tag.name === this.tagName
-                                ),
-                                // color picker will bind to this button, so its onClick can be noop
-                                onClick: () => {},
-                                size: "small",
-                            },
-                            scopedSlots: {
-                                "button-icon": () => {
-                                    return h(PlusIcon)
-                                },
-                            },
+                EscrButton,
+                {
+                    props: {
+                        color: "text",
+                        label: this.tagName
+                            ? `Create a tag "${this.tagName}"`
+                            : "Create a tag",
+                        disabled: this.disabled || !this.tagName || this.tags.some(
+                            (tag) => tag.name === this.tagName
+                        ),
+                        // color picker will bind to this button, so its onClick can be noop
+                        onClick: () => {},
+                        size: "small",
+                    },
+                    scopedSlots: {
+                        "button-icon": () => {
+                            return h(PlusIcon)
                         },
-                    )]
-            );
+                    },
+                },
+            )
         },
     },
     render(h) {
@@ -216,6 +231,7 @@ export default {
                             onInput: this.onChangeTagName,
                             placeholder: "Add/search tags",
                             value: this.tagName,
+                            maxLength: 100,
                         },
                     }
                 ),

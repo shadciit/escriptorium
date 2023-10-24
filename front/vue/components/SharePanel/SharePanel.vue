@@ -1,7 +1,7 @@
 <template>
     <div>
         <div
-            v-if="data?.groups"
+            v-if="data && data.groups"
             class="escr-share-list"
         >
             <h3>Groups</h3>
@@ -15,7 +15,7 @@
             </ul>
         </div>
         <div
-            v-if="data?.users"
+            v-if="data && data.users"
             class="escr-share-list"
         >
             <h3>Users</h3>
@@ -28,9 +28,10 @@
                 </li>
             </ul>
         </div>
+        <!-- disabled until invite API endpoint implemented -->
         <EscrButton
-            :on-click="data?.openShareModal || (() => {})"
-            :disabled="data?.disabled"
+            :on-click="(data && data.openShareModal) || (() => {})"
+            :disabled="/*data && data.disabled*/ true"
             label="Add Group or User"
             size="small"
             color="outline-primary"

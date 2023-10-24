@@ -12,6 +12,9 @@
     <meta name="author" content="">
     {% endcomment %}
     <link rel="icon" href="{% static "images/favicon.ico" %}">
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -22,10 +25,15 @@
     {% block styles %}
     <link href="{% static 'vendor.css' %}" rel="stylesheet" type="text/css">
     <link href="{% static 'main.css' %}" rel="stylesheet" type="text/css">
+    {% if not user.legacy_mode %}
+    <link href="{% static 'globalNavigation.css' %}" rel="stylesheet" type="text/css">
+    {% endif %}
     <link href="{% static 'css/flags.css' %}" rel="stylesheet" type="text/css">
     {% endblock styles %}
+    {% block extrastyle %}{% endblock extrastyle %}
   </head>
-  <body id="escriptorium" class="{% block bodyclass %}{% endblock %}">
+  <body id="escriptorium" class="escr-body {% block bodyclass %}{% endblock %}">
+    {% if user.legacy_mode %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <a class="navbar-brand" href="{% url 'home' %}">
         <img src="{% static "images/escriptorium_hd.png" %}" alt="" width="30" height="30" class="mb-1">
@@ -51,9 +59,9 @@
         </ul>
 
         <ul class="navbar-nav ml-auto mr-auto pt-1">
-          {% if user.is_authenticated and not DISABLE_ELASTICSEARCH and request.resolver_match.view_name != "search" %}
+          {% if user.is_authenticated and not DISABLE_ELASTICSEARCH and request.resolver_match.view_name != "search" and request.resolver_match.view_name != "find-replace" %}
           <li class="nav-item">
-            <form method="get" action="{% url 'search' %}">
+            <form method="get" action="{% url 'search' %}" id="searchbar">
               {% block searchbar_hidden_inputs %}{% endblock %}
               <div class="input-group">
                 {% block searchbar_transcription_filter %}{% endblock %}
@@ -68,8 +76,19 @@
                   <button
                     class="btn btn-primary btn-sm mb-2"
                     type="submit"
+                    title="{% translate 'Search' %}"
                   >
                     <i class="fas fa-search"></i>
+                  </button>
+                </div>
+                <div class="input-group-append">
+                  <button
+                    id="find-replace-button"
+                    class="btn btn-secondary btn-sm mb-2"
+                    type="submit"
+                    title="{% translate 'Find & Replace' %}"
+                  >
+                    <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
               </div>
@@ -140,16 +159,29 @@
         </ul>
       </div>
     </nav>
+    {% else %}
+    <div id="vue-global-nav">
+      <global-navigation
+        :is-authenticated="{% if user.is_authenticated %}true{% else %}false{% endif %}"
+        :search-disabled="{% if DISABLE_ELASTICSEARCH %}true{% else %}false{% endif %}"
+      ></global-navigation>
+    </div>
+    {% endif %}
 
+    <main><section>
     <div id="main" class="container-fluid">
     {% block body %}
     {% endblock body %}
     </div>
+    </section></main>
 
     <script src="{% static 'vendor.js' %}"></script>
 
     {% block scripts %}
     <script src="{% static 'main.js' %}"></script>
+    {% if not user.legacy_mode %}
+    <script src="{% static 'globalNavigation.js' %}"></script>
+    {% endif %}
     <script>
      const DEBUG = {% if debug %}true{% else %}false{% endif %};
     </script>
@@ -157,6 +189,10 @@
       <script>
         $(document).ready(function(){
           bootWebsocket();
+
+          $('#find-replace-button').on('click', function(ev) {
+            $('#searchbar').attr('action', '{% url 'find-replace' %}');
+          });
         });
       </script>
       {% include 'includes/messages.html' %}
@@ -166,7 +202,8 @@
         userProfile.getCookieConsent();
       </script>
       {% endif %}
-      {% endif %}
-   {% endblock scripts %}
+    {% endif %}
+    {% endblock scripts %}
+    {% block extrascript %}{% endblock extrascript %}
   </body>
 </html>

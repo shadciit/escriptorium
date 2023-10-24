@@ -17,13 +17,17 @@ from rest_framework import filters, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotAuthenticated
+from rest_framework.filters import OrderingFilter
+from rest_framework.mixins import CreateModelMixin
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.serializers import PrimaryKeyRelatedField
-from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
 
 from api.serializers import (
+    AlignSerializer,
     AnnotationComponentSerializer,
     AnnotationTaxonomySerializer,
     AnnotationTypeSerializer,
@@ -38,6 +42,7 @@ from api.serializers import (
     DocumentTagSerializer,
     DocumentTasksSerializer,
     ImageAnnotationSerializer,
+    ImportSerializer,
     LineOrderSerializer,
     LineSerializer,
     LineTranscriptionSerializer,
@@ -51,7 +56,9 @@ from api.serializers import (
     ScriptSerializer,
     SegmentSerializer,
     SegTrainSerializer,
+    TaskReportSerializer,
     TextAnnotationSerializer,
+    TextualWitnessSerializer,
     TrainSerializer,
     TranscribeSerializer,
     TranscriptionSerializer,
@@ -81,6 +88,7 @@ from core.models import (
     ProtectedObjectException,
     Script,
     TextAnnotation,
+    TextualWitness,
     Transcription,
 )
 from core.tasks import recalculate_masks
@@ -104,6 +112,7 @@ CLIENT_TASK_NAME_MAP = {
 class TagFilter(Filter):
     def filter(self, qs, value):
         if value and '|' in value:
+            # OR boolean
             values = value.split('|')
             if 'none' in values:
                 values.remove('none')
@@ -111,6 +120,11 @@ class TagFilter(Filter):
                       .filter(Q(tag_count=0) | Q(**{'tags__in': values})))
             else:
                 return qs.filter(**{'tags__in': values})
+        elif value and ',' in value:
+            # AND boolean
+            values = value.split(',')
+            for tag in values:
+                qs = qs.filter(tags=tag)
         elif value == 'none':
             return qs.annotate(tag_count=Count('tags')).filter(tag_count=0)
         else:
@@ -163,6 +177,24 @@ class UserViewSet(ModelViewSet):
             return qs.filter(id=self.request.user.id)
         return qs
 
+    @action(detail=False, methods=['get'])
+    def current(self, request):
+        """Get the currently logged in user"""
+        if not request.user.is_authenticated:
+            raise NotAuthenticated
+        qs = self.get_queryset()
+        # get_queryset will contain only the current user for non-staff, so we can save a DB query
+        if not request.user.is_staff:
+            user = qs.first()
+        else:
+            user = qs.get(id=request.user.id)
+        serializer = UserSerializer(user)
+        json = serializer.data
+        return Response(
+            status=status.HTTP_200_OK,
+            data=json,
+        )
+
 
 class GroupViewSet(ModelViewSet):
     queryset = Group.objects.all()
@@ -176,6 +208,16 @@ class ScriptViewSet(ReadOnlyModelViewSet):
     pagination_class = ExtraLargeResultsSetPagination
     queryset = Script.objects.all()
     serializer_class = ScriptSerializer
+
+
+class TextualWitnessViewSet(ModelViewSet):
+    queryset = TextualWitness.objects.all()
+    serializer_class = TextualWitnessSerializer
+
+    def get_queryset(self):
+        return TextualWitness.objects.filter(
+            owner=self.request.user
+        )
 
 
 class ProjectViewSet(ModelViewSet):
@@ -220,15 +262,16 @@ class DocumentTagViewSet(ModelViewSet):
 class DocumentViewSet(ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
     filterset_fields = ['project', 'tags']
     filterset_class = DocumentTagFilterSet
+    ordering_fields = ['name', 'parts_count', 'updated_at']
 
     def get_queryset(self):
         return Document.objects.for_user(self.request.user).prefetch_related(
             Prefetch('valid_block_types', queryset=BlockType.objects.order_by('name')),
             Prefetch('valid_line_types', queryset=LineType.objects.order_by('name')),
-        )
+        ).annotate(parts_count=Count('parts', distinct=True))
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -308,6 +351,21 @@ class DocumentViewSet(ModelViewSet):
                    .prefetch_related('document_part')
                    .filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED,
                                                TaskReport.WORKFLOW_STATE_STARTED]))
+
+        if request.data.get("task_report"):
+            # If a task report PK is provided, try to locate it
+            task_report_pk = int(request.data.get("task_report"))
+            try:
+                TaskReport.objects.get(pk=task_report_pk)
+                # limit the canceled tasks to just the one with that pk
+                reports = reports.filter(pk=task_report_pk)
+            except TaskReport.DoesNotExist:
+                # otherwise there is an error here, so let's return a response
+                return Response({
+                    'status': 'error',
+                    'error': 'Could not cancel: the requested task could not be found.'
+                }, status=400)
+
         count = len(reports)  # evaluate query
         for report in reports:
             report.cancel(request.user.username)
@@ -438,6 +496,10 @@ class DocumentViewSet(ModelViewSet):
         return self.get_process_response(request, TranscribeSerializer)
 
     @action(detail=True, methods=['post'])
+    def align(self, request, pk=None):
+        return self.get_process_response(request, AlignSerializer)
+
+    @action(detail=True, methods=['post'])
     def forced_align(self, request, pk=None):
 
         document = self.get_object()
@@ -479,6 +541,17 @@ class DocumentViewSet(ModelViewSet):
         return Response({'status': 'success'}, status=status.HTTP_200_OK)
 
 
+class TaskReportViewSet(ModelViewSet):
+    queryset = TaskReport.objects.all().order_by("-queued_at", "-started_at", "-done_at")
+    serializer_class = TaskReportSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['document']
+
+    def get_queryset(self):
+        qs = super().get_queryset().filter(user=self.request.user)
+        return qs
+
+
 class DocumentPermissionMixin():
     def get_queryset(self):
         try:
@@ -494,6 +567,7 @@ class DocumentPermissionMixin():
 class DocumentMetadataViewSet(DocumentPermissionMixin, ModelViewSet):
     queryset = DocumentMetadata.objects.all().select_related('document')
     serializer_class = DocumentMetadataSerializer
+    pagination_class = LargeResultsSetPagination
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -520,7 +594,19 @@ class PartMetadataViewSet(DocumentPermissionMixin, ModelViewSet):
         return context
 
 
+class ImportViewSet(GenericViewSet, CreateModelMixin):
+    # queryset = DocumentPart.objects.all()
+    serializer_class = ImportSerializer
+
+    def create(self, request, document_pk=None):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'status': 'ok'}, status=status.HTTP_201_CREATED)
+
+
 class PartViewSet(DocumentPermissionMixin, ModelViewSet):
+    filter_backends = (OrderingFilter,)
     queryset = DocumentPart.objects.all().select_related('document')
 
     def get_queryset(self):
@@ -959,6 +1045,8 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
 
 class OcrModelViewSet(ModelViewSet):
     queryset = OcrModel.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['documents']
     serializer_class = OcrModelSerializer
 
     def get_queryset(self):

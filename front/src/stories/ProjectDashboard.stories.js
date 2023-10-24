@@ -1,6 +1,7 @@
 import axios from "axios";
 import MockAdapter from "axios-mock-adapter";
 import ProjectDashboard from "../../vue/pages/Project/Project.vue";
+import GlobalNavigation from "../../vue/components/GlobalNavigation/GlobalNavigation.vue";
 import {
     annotationTypes,
     blockTypes,
@@ -13,6 +14,8 @@ import {
     sorted,
     tags,
     users,
+    userGroups,
+    currentUser,
 } from "./util";
 
 export default {
@@ -103,26 +106,27 @@ const documents = [
     },
 ];
 
-const userGroups = [
-    ...groups,
-    {
-        pk: 4,
-        name: "Example group",
-    },
-    {
-        pk: 5,
-        name: "Group 2",
-    },
-];
-
 const newPk = Math.max(...tags.map((tag) => tag.pk)) + 1;
 const newTagPks = [newPk];
 const newDocumentTagPks = [newPk];
 
 const Template = (args, { argTypes }) => ({
     props: Object.keys(argTypes),
-    components: { ProjectDashboard },
-    template: '<ProjectDashboard v-bind="$props" />',
+    components: { ProjectDashboard, GlobalNavigation },
+    // mimic the real-world django template
+    template: `
+    <div class="escr-body escr-vue-enabled">
+        <div id="vue-global-nav">
+            <GlobalNavigation isAuthenticated="true" />
+        </div>
+        <main>
+            <section>
+                <div>
+                    <ProjectDashboard v-bind="$props" />
+                </div>
+            </section>
+        </main>
+    </div>`,
     setup() {
         // setup mocks for API requests
         const mock = new MockAdapter(axios);
@@ -141,6 +145,7 @@ const Template = (args, { argTypes }) => ({
         const scriptsEndpoint = "/scripts";
         const groupsEndpoint = "/groups";
         const shareEndpoint = new RegExp(/\/projects\/\d+\/share$/);
+        const currentUserEndpoint = "/users/current";
         // mock project page
         mock.onGet(projectEndpoint).reply(async function() {
             // wait for 100-300 ms to mimic server-side loading
@@ -341,6 +346,12 @@ const Template = (args, { argTypes }) => ({
                         "This is just a test environment, so you cannot delete a document.",
                 },
             ];
+        });
+        // mock get current user
+        mock.onGet(currentUserEndpoint).reply(async function() {
+            const timeout = Math.random() * 200 + 200;
+            await new Promise((r) => setTimeout(r, timeout));
+            return [200, currentUser];
         });
     },
 });

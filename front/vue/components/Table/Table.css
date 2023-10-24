@@ -48,6 +48,14 @@
 .escr-table tbody tr:hover {
     background-color: var(--background2);
 }
+.escr-table tr td.with-img img {
+    width: 50px;
+    height: 50px;
+    vertical-align: middle;
+}
+.escr-table tr td.with-img img ~ * {
+    vertical-align: middle;
+}
 /* sorting */
 .escr-table th button.escr-sort-button {
     cursor: pointer;
@@ -104,4 +112,10 @@
     align-items: center;
     justify-content: flex-end;
     margin-right: 18px;
+    position: relative;
+    z-index: var(--table-actions-z);
+}
+/* ensure tags dropdown above table row link */
+.escr-table .v-popper--theme-tags-dropdown {
+    z-index: var(--table-actions-z);
 }

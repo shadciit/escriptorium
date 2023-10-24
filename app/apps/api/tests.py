@@ -36,14 +36,14 @@ class UserViewSetTestCase(CoreFactoryTestCase):
     def test_simple_list(self):
         self.client.force_login(self.user)
         uri = reverse('api:user-list')
-        with self.assertNumQueries(4):
+        with self.assertNumQueries(6):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
     def test_simple_detail(self):
         self.client.force_login(self.user)
         uri = reverse('api:user-detail', kwargs={'pk': self.user.pk})
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(5):
             resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
 
@@ -83,6 +83,26 @@ class UserViewSetTestCase(CoreFactoryTestCase):
                 'color': '#123456'
             })
             self.assertEqual(resp.status_code, 201, resp.content)
+
+    def test_get_current_user(self):
+        uri = reverse('api:user-current')
+
+        # should respond with 401 unauthorized if not logged in
+        resp = self.client.get(uri)
+        self.assertEqual(resp.status_code, 401)
+
+        # should respond with the current user with status 200 when logged in
+        self.client.force_login(self.user)
+        resp = self.client.get(uri)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["pk"], self.user.pk)
+        self.assertEqual(resp.json()["is_staff"], False)
+
+        # should correctly respond for an admin user is_staff=True
+        self.client.force_login(self.admin)
+        resp = self.client.get(uri)
+        self.assertEqual(resp.json()["pk"], self.admin.pk)
+        self.assertEqual(resp.json()["is_staff"], True)
 
 
 class DocumentViewSetTestCase(CoreFactoryTestCase):
@@ -219,6 +239,30 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.content, b'{"status":"ok"}')
         # won't work with dummy model and image
         # self.assertEqual(LineTranscription.objects.filter(transcription=trans).count(), 2)
+
+    def test_align(self):
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:document-align', kwargs={'pk': self.doc.pk})
+
+        witness = self.factory.make_witness(owner=self.doc.owner)
+
+        resp = self.client.post(uri, data={
+            'parts': [self.part.pk, self.part2.pk],
+            'transcription': Transcription.objects.first().pk,
+
+            "existing_witness": witness.pk,
+            "n_gram": 2,
+            "max_offset": 20,
+            "merge": False,
+            "full_doc": True,
+            "threshold": 0.8,
+            "region_types": ["Orphan", "Undefined"],
+            "layer_name": "example",
+            # "beam_size": 10,
+            "gap": 1000000,
+        })
+
+        self.assertEqual(resp.status_code, 200, resp.content)
 
     def test_list_document_with_tasks(self):
         # Creating a new Document that self.doc.owner shouldn't see
@@ -553,8 +597,13 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['count'], 1)
         self.assertEqual(resp.json()['results'][0]['pk'], self.doc2.pk)
 
+        # test OR logic
         resp = self.client.get(uri + '?tags=' + str(tag1.pk) + '|' + str(tag2.pk))
         self.assertEqual(resp.json()['count'], 2)
+
+        # test AND logic
+        resp = self.client.get(uri + '?tags=' + str(tag1.pk) + ',' + str(tag2.pk))
+        self.assertEqual(resp.json()['count'], 1)
 
     def test_filter_no_tag(self):
         tag1 = self.factory.make_document_tag(project=self.doc.project)
@@ -1133,7 +1182,7 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
         tag = self.factory.make_project_tag(user=self.project.owner)
         self.client.force_login(self.project.owner)
         uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(11):
             resp = self.client.patch(uri, {
                 'tags': [tag.pk]
             }, content_type='application/json')
@@ -1148,7 +1197,7 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(self.project.tags.count(), 2)
         self.client.force_login(self.project.owner)
         uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
-        with self.assertNumQueries(10):
+        with self.assertNumQueries(11):
             resp = self.client.patch(uri, {
                 'tags': [tag2.pk]
             }, content_type='application/json')
@@ -1176,8 +1225,13 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.json()['count'], 1)
         self.assertEqual(resp.json()['results'][0]['id'], project2.pk)
 
+        # test OR logic
         resp = self.client.get(uri + '?tags=' + str(tag1.pk) + '|' + str(tag2.pk))
         self.assertEqual(resp.json()['count'], 2)
+
+        # test AND logic
+        resp = self.client.get(uri + '?tags=' + str(tag1.pk) + ',' + str(tag2.pk))
+        self.assertEqual(resp.json()['count'], 1)
 
     def test_filter_no_tag(self):
         tag1 = self.factory.make_project_tag(user=self.project.owner)

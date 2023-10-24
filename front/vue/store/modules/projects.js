@@ -12,7 +12,7 @@ import { tagColorToVariant } from "../util/color";
 const state = () => ({
     createModalOpen: false,
     deleteModalOpen: false,
-    loading: false,
+    loading: true,
     /**
      * If there are additional pages of results, the next one will go here
      */
@@ -84,13 +84,15 @@ const actions = {
                     },
                     { root: true },
                 );
-                // TODO: redirect to `/project/${data.slug}`
                 commit("setCreateModalOpen", false);
+                // redirect to project dashboard
+                window.location = `/project/${data.slug}`;
             } else {
                 commit("setLoading", false);
                 throw new Error("Unable to create project");
             }
         } catch (error) {
+            commit("setLoading", false);
             dispatch("alerts/addError", error, { root: true });
         }
         commit("setLoading", false);
@@ -112,8 +114,8 @@ const actions = {
                 commit("setTags", tags);
                 // select the new tag and reset the tag name add/search field
                 commit(
-                    "forms/selectTag",
-                    { form: "editProject", tag: data },
+                    "forms/addToArray",
+                    { form: "editProject", field: "tags", value: data.pk },
                     { root: true },
                 );
                 commit(
@@ -143,10 +145,11 @@ const actions = {
                 },
                 { root: true },
             );
-            commit("setDeleteModalOpen", false);
             // fetch projects list again
-            dispatch("fetchProjects");
+            await dispatch("fetchProjects");
+            commit("setDeleteModalOpen", false);
         } catch (error) {
+            commit("setLoading", false);
             dispatch("alerts/addError", error, { root: true });
         }
         commit("setLoading", false);
@@ -188,6 +191,8 @@ const actions = {
                 data.results.map((result) => ({
                     ...result,
                     tags: { tags: result.tags },
+                    // link to project dashboard
+                    href: `/project/${result.slug}`,
                 })),
             );
             commit("setNextPage", data.next);
@@ -206,8 +211,13 @@ const actions = {
         try {
             const { data } = await axios.get(state.nextPage);
             if (data?.results) {
-                data.results.forEach((project) => {
-                    commit("addProject", project);
+                data.results.forEach((result) => {
+                    commit("addProject", {
+                        ...result,
+                        tags: { tags: result.tags },
+                        // link to project dashboard
+                        href: `/project/${result.slug}`,
+                    });
                 });
                 commit("setNextPage", data.next);
             } else {
@@ -215,6 +225,7 @@ const actions = {
                 throw new Error("Unable to retrieve projects");
             }
         } catch (error) {
+            commit("setLoading", false);
             dispatch("alerts/addError", error, { root: true });
         }
         commit("setLoading", false);
@@ -242,6 +253,7 @@ const actions = {
         try {
             await dispatch("fetchProjects");
         } catch (error) {
+            commit("setLoading", false);
             dispatch("alerts/addError", error, { root: true });
         }
     },

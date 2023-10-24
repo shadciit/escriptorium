@@ -1,8 +1,9 @@
 import axios from "axios";
 import MockAdapter from "axios-mock-adapter";
 import ProjectsList from "../../vue/pages/ProjectsList/ProjectsList.vue";
+import GlobalNavigation from "../../vue/components/GlobalNavigation/GlobalNavigation.vue";
 
-import { filteredByTag, sorted, tags } from "./util";
+import { currentUser, filteredByTag, sorted, tags } from "./util";
 
 export default {
     title: "Pages/ProjectsList",
@@ -50,14 +51,28 @@ const newTagPks = [newPk];
 
 const PageTemplate = (args, { argTypes }) => ({
     props: Object.keys(argTypes),
-    components: { ProjectsList },
-    template: "<ProjectsList v-bind=\"$props\" />",
+    components: { ProjectsList, GlobalNavigation },
+    // mimic the real-world django template
+    template: `
+    <div class="escr-body escr-vue-enabled">
+        <div id="vue-global-nav">
+            <GlobalNavigation isAuthenticated="true" />
+        </div>
+        <main>
+            <section>
+                <div>
+                    <ProjectsList v-bind="$props" />
+                </div>
+            </section>
+        </main>
+    </div>`,
     setup() {
         // setup mocks for API requests
         const mock = new MockAdapter(axios);
         const projectsEndpoint = "/projects";
         const projectsTagsEndpoint = "/tags/project";
         const projectsIdEndpoint = new RegExp(`${projectsEndpoint}/*`);
+        const currentUserEndpoint = "/users/current";
         // mock projects list
         mock.onGet(projectsEndpoint).reply(async function(config) {
             // wait for 100-300 ms to mimic server-side loading
@@ -68,12 +83,9 @@ const PageTemplate = (args, { argTypes }) => ({
                 return [
                     200,
                     {
-                        results: sorted(
-                            filteredByTag(projects, tags),
-                            {
-                                ordering
-                            },
-                        ),
+                        results: sorted(filteredByTag(projects, tags), {
+                            ordering,
+                        }),
                         next: "fake-nextpage",
                     },
                 ];
@@ -139,9 +151,18 @@ const PageTemplate = (args, { argTypes }) => ({
                 },
             ];
         });
+        // mock get current user
+        mock.onGet(currentUserEndpoint).reply(async function() {
+            const timeout = Math.random() * 200 + 200;
+            await new Promise((r) => setTimeout(r, timeout));
+            return [200, currentUser];
+        });
     },
 });
 export const ProjectsListPage = PageTemplate.bind({});
+ProjectsListPage.parameters = {
+    layout: "fullscreen",
+};
 ProjectsListPage.args = {
     user: {
         first_name: "John",

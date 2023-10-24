@@ -27,7 +27,7 @@
     font-size: 10px;
     font-weight: 600;
     height: 74px;
-    background-color: var(--background1);
+    background-color: transparent;
     color: var(--text1);
     fill: var(--text1);
     transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out,
@@ -105,6 +105,8 @@
 /* variable content in a sidebar panel */
 .escr-selected-action .escr-action-panel {
     padding: 1rem;
+    overflow-y: auto;
+    max-height: calc(100% - 96px);
 }
 /* backdrop to prevent interactions with rest of page while sidebar panel open */
 .escr-sidebar-backdrop {

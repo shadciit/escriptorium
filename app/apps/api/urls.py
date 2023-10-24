@@ -14,6 +14,7 @@ from api.views import (
     DocumentViewSet,
     GroupViewSet,
     ImageAnnotationViewSet,
+    ImportViewSet,
     LineTranscriptionViewSet,
     LineTypeViewSet,
     LineViewSet,
@@ -24,14 +25,18 @@ from api.views import (
     ProjectViewSet,
     RegenerableAuthToken,
     ScriptViewSet,
+    TaskReportViewSet,
     TextAnnotationViewSet,
+    TextualWitnessViewSet,
     UserViewSet,
 )
 
 router = routers.DefaultRouter()
 router.register(r'scripts', ScriptViewSet)
+router.register(r'textual-witnesses', TextualWitnessViewSet)
 router.register(r'projects', ProjectViewSet)
 router.register(r'documents', DocumentViewSet)
+router.register(r'tasks', TaskReportViewSet)
 router.register(r'models', OcrModelViewSet)
 router.register(r'users', UserViewSet)
 router.register(r'groups', GroupViewSet)
@@ -50,6 +55,7 @@ documents_router.register(r'parts', PartViewSet, basename='part')
 documents_router.register(r'transcriptions', DocumentTranscriptionViewSet, basename='transcription')
 documents_router.register(r'taxonomies/annotations', AnnotationTaxonomyViewSet)
 documents_router.register(r'taxonomies/components', AnnotationComponentViewSet)
+documents_router.register(r'import', ImportViewSet, basename='import')
 
 parts_router = routers.NestedSimpleRouter(documents_router, r'parts', lookup='part')
 parts_router.register(r'blocks', BlockViewSet)

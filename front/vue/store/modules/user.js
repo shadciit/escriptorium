@@ -1,7 +1,9 @@
-import { retrieveGroups } from "../../../src/api";
+import { retrieveCurrentUser, retrieveGroups } from "../../../src/api";
 
 // initial state
 const state = () => ({
+    canInvite: false,
+    firstName: "",
     /**
      * groups: [{
      *     pk: Number,
@@ -17,11 +19,24 @@ const state = () => ({
      * }],
      */
     groups: [],
+    isStaff: false,
+    username: "",
 });
 
 const getters = {};
 
 const actions = {
+    async fetchCurrentUser({ commit, dispatch }) {
+        try {
+            const { data } = await retrieveCurrentUser();
+            commit("setCanInvite", data.can_invite);
+            commit("setIsStaff", data.is_staff);
+            commit("setFirstName", data.first_name);
+            commit("setUsername", data.username);
+        } catch (error) {
+            dispatch("alerts/addError", error, { root: true });
+        }
+    },
     async fetchGroups({ commit }) {
         const { data } = await retrieveGroups();
         if (data?.results) {
@@ -31,8 +46,20 @@ const actions = {
 };
 
 const mutations = {
+    setCanInvite(state, canInvite) {
+        state.canInvite = canInvite;
+    },
+    setFirstName(state, firstName) {
+        state.firstName = firstName;
+    },
     setGroups(state, groups) {
         state.groups = groups;
+    },
+    setIsStaff(state, isStaff) {
+        state.isStaff = isStaff;
+    },
+    setUsername(state, username) {
+        state.username = username;
     },
 };
 
