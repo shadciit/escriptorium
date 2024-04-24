@@ -779,11 +779,16 @@ export default Vue.extend({
       let region = this.segmenter.regions.find(
           (r) => r.context.pk == createdLine.region
       );
+
       const segmenterLine = this.segmenter.loadLine(createdLine, region);
 
       // update the segmenter pk
       segmenterLine.context.pk = createdLine.pk;
       data.createdLine = segmenterLine.get();
+
+      segmenterLine.type = this.$store.state.document.types.lines.find((e) => e.pk == createdLine.typology).name;
+      segmenterLine.refresh();
+
       this.$store.commit("lines/load", createdLine.pk);
       this.processDeleteResponse(data, deletedPKs, deletedLines);
     },

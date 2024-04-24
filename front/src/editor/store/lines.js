@@ -266,14 +266,14 @@ export const actions = {
             version_updated_at: null
         }
         if (createdLine.transcriptions) {
-            const tr = createdLine.transcriptions.find(t => t.transcription === transcription);
+            const tr = createdLine.transcriptions.find(t => t.transcription === transcription)
             if (tr) {
                 createdLine.currentTrans = tr
             }
         }
         commit('append', createdLine)
         if (state.autoOrder) {
-            await dispatch('recalculateOrdering');
+            await dispatch('recalculateOrdering')
         } else {
             commit('updateOrder', { lines: state.all, recalculate: true })
         }

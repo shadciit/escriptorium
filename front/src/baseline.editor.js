@@ -1495,7 +1495,7 @@ export class Segmenter {
             if (this.idField) context[this.idField] = line[this.idField];
             if (!line.baseline) this.toggleMasks(true);
             return this.createLine(null, line.baseline, line.mask,
-                                   region, line.type, context);
+                                   region, line.type, context, false);
         } else {
             console.log('EDITOR SKIPPING invalid line: ', line);
             return null;
@@ -1829,6 +1829,7 @@ export class Segmenter {
         for (let i=0; i<this.selection.lines.length; i++) {
             let line = this.selection.lines[i];
             if (line.type != value) {
+
                 line.type = value;
                 this.addToUpdateQueue({lines: line});
                 line.refresh();
