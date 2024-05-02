@@ -1991,6 +1991,7 @@ export class Segmenter {
                 region,
                 line.type,
                 context,
+                false
             );
         } else {
             console.log("EDITOR SKIPPING invalid line: ", line);
@@ -2386,6 +2387,7 @@ export class Segmenter {
         for (let i = 0; i < this.selection.lines.length; i++) {
             let line = this.selection.lines[i];
             if (line.type != value) {
+
                 line.type = value;
                 this.addToUpdateQueue({ lines: line });
                 line.refresh();

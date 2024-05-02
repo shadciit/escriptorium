@@ -35,7 +35,7 @@ export default Vue.extend({
     methods: {
         load() {
             this.segmenter = this.$parent.segmenter;
-            let segmenterObject = this.segmenter.lines.find((l)=>l.context.pk==this.line.pk)
+            let segmenterObject = this.segmenter.lines.find((l)=>l.context.pk==this.line.pk);
             if (segmenterObject === undefined) {
                 let region = this.line.region && this.segmenter.regions.find((l)=>l.context.pk==this.line.region) || null;
                 this.segmenterObject = this.segmenter.loadLine(this.line, region);
