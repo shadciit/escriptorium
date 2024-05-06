@@ -3,6 +3,8 @@
     background-color: var(--background1);
     color: var(--text1);
 }
+
+/* header */
 .escr-line-modal .escr-line-modal-header h2 {
     margin: 0 2rem 0 0;
 }
@@ -16,6 +18,7 @@
     flex: 1 0 auto;
     display: flex;
     justify-content: flex-end;
+    align-items: center;
 }
 .escr-line-modal-header .escr-vk-toggle:not(:active):not([class*="active"]):not(:hover) {
     background-color: transparent;
@@ -26,6 +29,44 @@
     align-items: center;
     margin-left: 0.5rem;
 }
+
+/* line type editor */
+.escr-line-modal-header .escr-line-type {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 3rem;
+}
+.escr-line-modal-header .escr-line-type span.label {
+    font-weight: bold;
+}
+.escr-line-modal-header .escr-line-type button.edit {
+    margin-left: 0.5rem;
+}
+.escr-line-modal-header .escr-line-type .line-type-editor {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.line-type-editor .dropdown {
+    background-color: var(--background);
+    color: var(--text1);
+    font-weight: normal;
+    justify-content: space-between;
+    min-width: 220px;
+}
+#type-select-menu li button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+#type-select-menu li button .type-color {
+    width: 22px;
+    height: 22px;
+    border-radius: 2px;
+}
+
+/* transcription comparison and history */
 .escr-line-modal details summary {
     display: flex;
     flex-flow: row nowrap;

@@ -43,6 +43,7 @@ export const mutations = {
             state.all[index].baseline = line.baseline;
         if (line.mask !== undefined) state.all[index].mask = line.mask;
         if (line.region !== undefined) state.all[index].region = line.region;
+        if (line.typology !== undefined) state.all[index].typology = line.typology;
 
         // Force reference update on the whole array
         // so that all components get a full refresh after an update
@@ -243,6 +244,10 @@ export const actions = {
                     hasToRecalculateOrdering = true;
                 commit("update", lineData);
                 updatedLines.push(line);
+                // also update line currently being edited on state
+                if (state.editedLine?.pk === line.pk) {
+                    commit("setEditedLine", line);
+                }
             }
         }
 

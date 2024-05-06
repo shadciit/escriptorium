@@ -117,6 +117,99 @@
                         </ToggleButton>
                     </div>
                     <div class="escr-line-modal-right">
+                        <!-- Line type display and editor -->
+                        <div class="escr-line-type">
+                            <span class="label">Line type:</span>
+                            <span v-if="!isEditingLineType">
+                                {{ lineTypeLabel }}
+                            </span>
+                            <EscrButton
+                                v-if="!isEditingLineType"
+                                class="edit"
+                                color="primary"
+                                :on-click="enableEditLineType"
+                                size="small"
+                                label="Edit"
+                            >
+                                <template #button-icon>
+                                    <PencilIcon />
+                                </template>
+                            </EscrButton>
+                            <!-- Line type editor -->
+                            <div
+                                v-else
+                                class="line-type-editor"
+                            >
+                                <VMenu
+                                    placement="bottom-start"
+                                    theme="modal-menu"
+                                    :distance="8"
+                                    :shown="isTypeMenuOpen"
+                                    :triggers="[]"
+                                    :auto-hide="true"
+                                    @apply-hide="closeTypeMenu"
+                                >
+                                    <EscrButton
+                                        aria-label="Change type"
+                                        class="dropdown"
+                                        :on-click="openTypeMenu"
+                                        color="text"
+                                        :label="formLineTypeLabel"
+                                    >
+                                        <template #button-icon-right>
+                                            <ChevronDownIcon />
+                                        </template>
+                                    </EscrButton>
+                                    <!-- Line type select menu -->
+                                    <template #popper>
+                                        <ul
+                                            id="type-select-menu"
+                                            class="escr-vertical-menu"
+                                        >
+                                            <li
+                                                v-for="item in typeOptions"
+                                                :key="item.pk"
+                                            >
+                                                <button
+                                                    :class="formLineType === item.pk
+                                                        ? 'preselected'
+                                                        : ''"
+                                                    @mousedown="() => clickSelectionType(item)"
+                                                >
+                                                    <span>
+                                                        {{ item.name }}
+                                                    </span>
+                                                    <div
+                                                        aria-hidden
+                                                        class="type-color"
+                                                        :style="{backgroundColor: item.color }"
+                                                    />
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </template>
+                                </VMenu>
+                                <EscrButton
+                                    color="text"
+                                    :on-click="saveLineType"
+                                    size="small"
+                                >
+                                    <template #button-icon>
+                                        <CheckCircleIcon />
+                                    </template>
+                                </EscrButton>
+                                <EscrButton
+                                    color="text"
+                                    :on-click="cancelEditLineType"
+                                    size="small"
+                                >
+                                    <template #button-icon>
+                                        <XCircleIcon />
+                                    </template>
+                                </EscrButton>
+                            </div>
+                        </div>
+                        <!-- Transcription modal close butotn -->
                         <EscrButton
                             color="text"
                             :on-click="() => close()"
@@ -438,31 +531,41 @@
 </template>
 
 <script>
-import { mapState } from "vuex";
+import { Menu as VMenu } from "floating-vue";
+import { mapActions, mapState } from "vuex";
 import ArrowCircleLeftIcon from "./Icons/ArrowCircleLeftIcon/ArrowCircleLeftIcon.vue";
 import ArrowCircleRightIcon from "./Icons/ArrowCircleRightIcon/ArrowCircleRightIcon.vue";
+import CheckCircleIcon from "./Icons/CheckCircleIcon/CheckCircleIcon.vue";
+import ChevronDownIcon from "./Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import EscrButton from "./Button/Button.vue";
+import HelpCompareTranscriptions from "./HelpCompareTranscriptions.vue";
+import HelpVersions from "./HelpVersions.vue";
 import KeyboardIcon from "./Icons/KeyboardIcon/KeyboardIcon.vue";
 import LineVersion from "./LineVersion.vue";
-import HelpVersions from "./HelpVersions.vue";
-import HelpCompareTranscriptions from "./HelpCompareTranscriptions.vue";
+import PencilIcon from "./Icons/PencilIcon/PencilIcon.vue";
 import ToggleButton from "./ToggleButton/ToggleButton.vue";
 import TranscriptionSelector from "./TranscriptionSelector/TranscriptionSelector.vue";
 import XIcon from "./Icons/XIcon/XIcon.vue";
+import XCircleIcon from "./Icons/XCircleIcon/XCircleIcon.vue";
 import "./TranscriptionModal.css";
 
 export default {
     components: {
         ArrowCircleLeftIcon,
         ArrowCircleRightIcon,
+        CheckCircleIcon,
+        ChevronDownIcon,
         EscrButton,
         KeyboardIcon,
-        LineVersion,
-        HelpVersions,
         HelpCompareTranscriptions,
+        HelpVersions,
+        LineVersion,
+        PencilIcon,
         ToggleButton,
         TranscriptionSelector,
+        VMenu,
         XIcon,
+        XCircleIcon,
     },
     props: {
         /**
@@ -475,7 +578,10 @@ export default {
     },
     data() {
         return {
-            isVKEnabled: false
+            formLineType: null,
+            isEditingLineType: false,
+            isVKEnabled: false,
+            isTypeMenuOpen: false,
         }
     },
     computed: {
@@ -487,6 +593,7 @@ export default {
             enabledVKs: (state) => state.document.enabledVKs,
             image: (state) => state.parts.image,
             line: (state) => state.lines.editedLine,
+            lineTypes: (state) => state.document.types.lines,
             mainTextDirection: (state) => state.document.mainTextDirection,
             readDirection: (state) => state.document.readDirection,
             selectedTranscription: (state) => state.transcriptions.selectedTranscription,
@@ -531,6 +638,43 @@ export default {
                     await this.$store.dispatch("transcriptions/updateLineTranscriptionVersion", { line: this.line, content: newValue });
                 }
             }
+        },
+        /**
+         * resolve the name of a line type
+         */
+        lineTypeLabel() {
+            if (this.line.typology) {
+                const type = this.lineTypes.find((t) => t.pk === this.line.typology);
+                return type?.name || "None";
+            }
+            return "None";
+        },
+        /**
+         * resolve the name of the line type on the form
+         */
+        formLineTypeLabel() {
+            const type = this.lineTypes.find((t) => t.pk === this.formLineType);
+            return type?.name || "None";
+        },
+        /**
+         * Current available types with "None" appended at the beginning
+         */
+        typeOptions() {
+            let options = [{ name: "None", pk: null }].concat(this.lineTypes);
+            if (this.colorSettings && this.colorSettings["color-directions"]) {
+                options = options.map((lineType) => ({
+                    ...lineType,
+                    color: this.colorSettings["color-directions"][lineType.name],
+                }))
+            }
+            return options;
+        },
+        /**
+         * Helper method to get color settings from user profile
+         */
+        colorSettings() {
+            // eslint-disable-next-line no-undef
+            return userProfile.get(`baseline-editor-${this.documentId}`) || {};
         },
     },
     watch: {
@@ -610,6 +754,7 @@ export default {
                 enableVirtualKeyboard(input);
     },
     methods: {
+        ...mapActions("lines", ["bulkUpdate"]),
         close() {
             $(this.$refs.transModal).modal("hide");
         },
@@ -910,7 +1055,56 @@ export default {
                     setTimeout(() => input.focus(), 200);
                 }
             }
-        }
+        },
+        /**
+         * Open the type editing options
+         */
+        enableEditLineType() {
+            this.formLineType = this.line.typology;
+            this.isEditingLineType = true;
+        },
+        /**
+         * Cancel edits to type
+         */
+        cancelEditLineType() {
+            this.formLineType = this.line.typology;
+            this.isEditingLineType = false;
+        },
+        /**
+         * Update the line with the API. Then, use a custom event to trigger
+         * the segmenter to update that line.
+         */
+        async saveLineType() {
+            let line = {
+                ...this.line,
+                type: this.formLineTypeLabel,
+            };
+            await this.bulkUpdate([line]);
+            this.isEditingLineType = false;
+            const evt = new CustomEvent("edited-line-type", {
+                detail: line,
+            });
+            document.dispatchEvent(evt);
+        },
+        /**
+         * Open the type menu
+         */
+        openTypeMenu() {
+            this.isTypeMenuOpen = true;
+        },
+        /**
+         * Close the type menu
+         */
+        closeTypeMenu() {
+            this.isTypeMenuOpen = false;
+        },
+        /**
+         * On click, call the callback for changing selection type and close the type menu
+         */
+        clickSelectionType(item) {
+            this.formLineType = item.pk;
+            this.closeTypeMenu();
+        },
     },
 }
 </script>

@@ -730,6 +730,8 @@ export default Vue.extend({
                 }
             }.bind(this)
         );
+
+        document.addEventListener("edited-line-type", this.updateOneLineType.bind(this));
     },
     methods: {
         ...mapActions("globalTools", ["setActiveTool", "toggleTool"]),
@@ -1201,9 +1203,14 @@ export default Vue.extend({
             if (!this.legacyModeEnabled)
                 this.toolbarDragging = false;
         },
+        /**
+         * Callback for updating a single line's type on the segmenter
+         */
+        updateOneLineType(e) {
+            let line = this.segmenter.lines.find((l) => l.context.pk == e.detail.pk);
+            line.type = e.detail.type;
+            line.refresh();
+        },
     },
 });
 </script>
-
-<style scoped>
-</style>
