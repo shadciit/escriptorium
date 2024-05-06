@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/no-v-html -->
 <template>
     <div
         id="trans-modal"
@@ -221,7 +222,11 @@
                                     @keyup="recomputeInputCharsScaleY()"
                                     @keyup.right="editLine('next')"
                                     @keyup.left="editLine('previous')"
-                                    @keyup.enter="cleanHTMLTags();recomputeInputCharsScaleY();editLine('next')"
+                                    @keyup.enter="() => {
+                                        cleanHTMLTags();
+                                        recomputeInputCharsScaleY();
+                                        editLine('next');
+                                    }"
                                     v-html="localTranscription"
                                 />
                             </div>
@@ -231,7 +236,10 @@
                             v-if="line.currentTrans && line.currentTrans.version_updated_at"
                             class="form-text text-muted"
                         >
-                            <span>by {{ line.currentTrans.version_author }} ({{ line.currentTrans.version_source }})</span>
+                            <span>
+                                by {{ line.currentTrans.version_author }}
+                                ({{ line.currentTrans.version_source }})
+                            </span>
                             <span>on {{ momentDate }}</span>
                         </small>
                     </div>
@@ -334,7 +342,10 @@
                                     >
                                         <small>
                                             {{ trans.name }}
-                                            <span v-if="trans.pk == selectedTranscription">(current)</span></small>
+                                            <span
+                                                v-if="trans.pk == selectedTranscription"
+                                            >(current)</span>
+                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -405,10 +416,12 @@
                             id="history"
                             class="history-show card-body collapse"
                         >
-                            <div class="d-table">
+                            <div
+                                v-if="line.currentTrans && line.currentTrans.versions"
+                                class="d-table"
+                            >
                                 <LineVersion
                                     v-for="(version, index) in line.currentTrans.versions"
-                                    v-if="line.currentTrans && line.currentTrans.versions"
                                     :key="version.revision"
                                     :previous="line.currentTrans.versions[index+1]"
                                     :version="version"
@@ -438,7 +451,7 @@ import TranscriptionSelector from "./TranscriptionSelector/TranscriptionSelector
 import XIcon from "./Icons/XIcon/XIcon.vue";
 import "./TranscriptionModal.css";
 
-export default Vue.extend({
+export default {
     components: {
         ArrowCircleLeftIcon,
         ArrowCircleRightIcon,
@@ -529,14 +542,16 @@ export default Vue.extend({
         }
     },
     created() {
-        $(document).on("hide.bs.modal", "#trans-modal", function(ev) {
+        $(document).on("hide.bs.modal", "#trans-modal", function() {
             if (this.localTranscription != this.$refs.transInput.value
                 && !confirm("You have unsaved data, are you sure you want to close the modal?")) {
                 return false;
             }
 
             if (this.isVKEnabled) {
-                for (const input of [...document.getElementsByClassName("display-virtual-keyboard")])
+                for (const input of [
+                    ...document.getElementsByClassName("display-virtual-keyboard")
+                ])
                     input.blur();
             }
             this.$store.dispatch("lines/toggleLineEdition", null);
@@ -545,7 +560,7 @@ export default Vue.extend({
             this.$store.commit("document/setBlockShortcuts", false);
         }.bind(this));
 
-        $(document).on("show.bs.modal", "#trans-modal", function(ev) {
+        $(document).on("show.bs.modal", "#trans-modal", function() {
             this.$store.commit("document/setBlockShortcuts", true);
         }.bind(this));
 
@@ -572,8 +587,9 @@ export default Vue.extend({
         // no need to make focus on hidden input with a ttb text
         if(this.mainTextDirection != "ttb"){
             input.focus();
-        }else{  // avoid some br or other html tag for a copied text on an editable input div (vertical_text_input):
-            //
+        }else{
+            // avoid some br or other html tag for a copied text on an editable input div
+            // (vertical_text_input):
             document.getElementById("vertical_text_input").addEventListener("paste", function(e) {
 
                 // cancel paste to treat its content before inserting it
@@ -590,6 +606,7 @@ export default Vue.extend({
         this.isVKEnabled = this.enabledVKs.indexOf(this.documentId) != -1 || false;
         if (this.isVKEnabled)
             for (const input of [...document.getElementsByClassName("display-virtual-keyboard")])
+                // eslint-disable-next-line no-undef
                 enableVirtualKeyboard(input);
     },
     methods: {
@@ -604,7 +621,9 @@ export default Vue.extend({
         },
 
         cleanHTMLTags(){
-            document.getElementById("vertical_text_input").innerHTML = document.getElementById("vertical_text_input").textContent;
+            document.getElementById(
+                "vertical_text_input"
+            ).innerHTML = document.getElementById("vertical_text_input").textContent;
         },
         recomputeInputCharsScaleY(){
 
@@ -614,7 +633,9 @@ export default Vue.extend({
 
             // to avoid input text outside the border box:
             if(inputHeight > wrapperHeight)
-                document.getElementById("vertical_text_input").style.transform = "scaleY("+textScaleY+")";
+                document.getElementById(
+                    "vertical_text_input"
+                ).style.transform = "scaleY("+textScaleY+")";
         },
         comparedContent(content) {
             if (!this.line.currentTrans) return;
@@ -758,7 +779,8 @@ export default Vue.extend({
             container.appendChild(ruler);
 
             let context = hContext*lineHeight;
-            let fontSize = Math.max(15, Math.round(lineHeight*0.7));  // Note could depend on the script
+            // NOTE: font size could depend on the script
+            let fontSize = Math.max(15, Math.round(lineHeight*0.7));
             ruler.style.fontSize = fontSize+"px";
 
             if(this.mainTextDirection != "ttb"){
@@ -840,7 +862,8 @@ export default Vue.extend({
                 }
             }else{ // permutation of sizes for ttb text
 
-                modalImgContainer.style.height=String(window.innerHeight-230) + "px";   //   needed to fix height or ratio is nulled
+                // needed to fix height or ratio is nulled
+                modalImgContainer.style.height=String(window.innerHeight-230) + "px";
                 ratio = modalImgContainer.clientHeight / (bbox.height + (2*bbox.width*hContext));
                 let MAX_WIDTH = 30;
                 lineHeight = Math.max(30, Math.round(bbox.width*ratio));
@@ -889,5 +912,5 @@ export default Vue.extend({
             }
         }
     },
-});
+}
 </script>
