@@ -612,7 +612,7 @@ def forced_align(instance_pk=None, model_pk=None, transcription_pk=None,
                 reorder = 'R'
             else:
                 reorder = 'L'
-            pred.logical_order(reorder)
+            pred = pred.logical_order(reorder)
 
             lt.graphs = [{
                 'c': letter,
