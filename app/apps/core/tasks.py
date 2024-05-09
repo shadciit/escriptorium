@@ -27,7 +27,7 @@ from kraken.containers import Segmentation, Region, BaselineLine
 from kraken.lib.arrow_dataset import build_binary_dataset
 from kraken.lib.default_specs import RECOGNITION_HYPER_PARAMS, SEGMENTATION_HYPER_PARAMS
 from kraken.lib.train import KrakenTrainer, RecognitionModel, SegmentationModel
-from pytorch_lightning.callbacks import Callback
+from lightning.pytorch.callbacks import Callback
 
 from core.search import (
     REGEX_SEARCH_MODE,
@@ -153,7 +153,7 @@ def make_recognition_segmentation(lines) -> List[Segmentation]:
     for lt in lines:
         lines_by_img[lt['image']].append(BaselineLine(id='foo',
                                                       baseline=lt['baseline'],
-                                                      boundary=lt['boundary'],
+                                                      boundary=lt['mask'],
                                                       text=lt['content']))
     segs = []
     for img, lines in lines_by_img.items():
@@ -176,7 +176,7 @@ def make_segmentation_training_data(parts) -> List[Segmentation]:
             if line.baseline:
                 blls.append(BaselineLine(id='foo',
                                          baseline=line['baseline'],
-                                         boundary=line['boundary'],
+                                         boundary=line['mask'],
                                          text=line['content'],
                                          tags={'type': line.typology and line.typology.name or 'default'}))
 
@@ -484,14 +484,14 @@ def train_(qs, document, transcription, model=None, user=None):
         logger.info(f'Compiling training dataset to {train_dir}/train.arrow')
         train_segs = make_recognition_segmentation(ground_truth[partition:])
         build_binary_dataset(train_segs,
-                             output_file=train_dir / 'train.arrow',
+                             output_file=str(train_dir / 'train.arrow'),
                              num_workers=LOAD_THREADS,
                              format_type=None)
 
         logger.info(f'Compiling validation dataset to {train_dir}/val.arrow')
         val_segs = make_recognition_segmentation(ground_truth[:partition])
         build_binary_dataset(val_segs,
-                             output_file=train_dir / 'val.arrow',
+                             output_file=str(train_dir / 'val.arrow'),
                              num_workers=LOAD_THREADS,
                              format_type=None)
 
@@ -522,8 +522,8 @@ def train_(qs, document, transcription, model=None, user=None):
                                         model=load,
                                         reorder=reorder,
                                         format_type='binary',
-                                        training_data=[train_dir / 'train.arrow'],
-                                        evaluation_data=[train_dir / 'val.arrow'],
+                                        training_data=[str(train_dir / 'train.arrow')],
+                                        evaluation_data=[str(train_dir / 'val.arrow')],
                                         partition=partition,
                                         num_workers=LOAD_THREADS,
                                         load_hyper_parameters=True,
