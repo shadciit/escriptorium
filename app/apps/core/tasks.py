@@ -175,9 +175,8 @@ def make_segmentation_training_data(parts) -> List[Segmentation]:
         for line in part.lines.only('baseline', 'typology'):
             if line.baseline:
                 blls.append(BaselineLine(id='foo',
-                                         baseline=line['baseline'],
-                                         boundary=line['mask'],
-                                         text=line['content'],
+                                         baseline=line.baseline,
+                                         boundary=line.mask,
                                          tags={'type': line.typology and line.typology.name or 'default'}))
 
         regions = {}
