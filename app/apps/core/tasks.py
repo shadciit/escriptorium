@@ -485,13 +485,15 @@ def train_(qs, document, transcription, model=None, user=None):
         train_segs = make_recognition_segmentation(ground_truth[partition:])
         build_binary_dataset(train_segs,
                              output_file=train_dir / 'train.arrow',
-                             num_workers=LOAD_THREADS)
+                             num_workers=LOAD_THREADS,
+                             format_type=None)
 
         logger.info(f'Compiling validation dataset to {train_dir}/val.arrow')
         val_segs = make_recognition_segmentation(ground_truth[:partition])
         build_binary_dataset(val_segs,
                              output_file=train_dir / 'val.arrow',
-                             num_workers=LOAD_THREADS)
+                             num_workers=LOAD_THREADS,
+                             format_type=None)
 
         load = None
         try:
