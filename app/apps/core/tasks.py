@@ -479,7 +479,7 @@ def train_(qs, document, transcription, model=None, user=None):
 
     with tempfile.TemporaryDirectory() as tmp_dir:
 
-        train_dir = Path(tmp_dir.name)
+        train_dir = Path(tmp_dir)
 
         logger.info(f'Compiling training dataset to {train_dir}/train.arrow')
         train_segs = make_recognition_segmentation(ground_truth[partition:])
