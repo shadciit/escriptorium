@@ -66,6 +66,7 @@ export const initialState = () => ({
 
     defaultTypes: {},
     loading: false,
+    segmentationOpened: false,
 });
 
 export const mutations = {
@@ -125,6 +126,9 @@ export const mutations = {
     },
     setProjectName(state, projectName) {
         state.projectName = projectName;
+    },
+    setSegmentationOpened(state) {
+        state.segmentationOpened = true;
     },
     switchEditorPanel(state, { index, panel }) {
         let editorPanels = structuredClone(state.editorPanels);
@@ -272,6 +276,13 @@ export const actions = {
         ) {
             // add to the end
             commit("addEditorPanel", panel);
+            if (panel === "segmentation") {
+                if (state.segmentationOpened) {
+                    window.location.reload();
+                } else {
+                    commit("setSegmentationOpened");
+                }
+            }
         } else if (state.editorPanels.length >= 3) {
             dispatch("alerts/addError", "Cannot view more than three panels", {
                 root: true,
@@ -553,8 +564,22 @@ export const actions = {
     /**
      * Switch an editor panel out for another one (new UI)
      */
-    switchEditorPanel({ commit }, { index, panel }) {
-        commit("switchEditorPanel", { index, panel });
+    switchEditorPanel({ commit, state }, { index, panel }) {
+        // handle switching out segmentation by reloading
+        if (
+            (panel === "segmentation" && state.segmentationOpened) ||
+            (state.editorPanels?.includes("segmentation") &&
+                (state.editorPanels[index] === "segmentation" ||
+                    panel === "segmentation"))
+        ) {
+            commit("switchEditorPanel", { index, panel });
+            window.location.reload();
+        } else {
+            commit("switchEditorPanel", { index, panel });
+            if (state.editorPanels.includes("segmentation")) {
+                commit("setSegmentationOpened");
+            }
+        }
     },
 
     /**
