@@ -18,7 +18,7 @@ drf-nested-routers~=0.91
 easy-thumbnails~=2.8.1
 elasticsearch==7.17.0
 kombu~=4.6.11
-kraken~=5.2
+kraken>=5.2.4
 oitei~=1.1.1
 # passim, "seriatim" branch
 git+https://github.com/dasmiq/passim.git@9ec8622981f2f4a4578af8f9354801893b01c17b#egg=passim
