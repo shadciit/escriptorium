@@ -211,6 +211,7 @@ class FrontendFeedback(Callback):
         self.es_model.refresh_from_db()
         self.es_model.training_epoch = trainer.current_epoch
         val_metric = float(trainer.logged_metrics['val_accuracy'])
+        logger.info(f'Epoch {trainer.current_epoch} finished.')
         self.es_model.training_accuracy = val_metric
         # model.training_total = chars
         # model.training_errors = error
