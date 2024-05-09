@@ -147,7 +147,7 @@ def binarize(instance_pk=None, user_pk=None, binarizer=None, threshold=None, **k
 def make_recognition_segmentation(lines) -> List[Segmentation]:
     """
     Groups training data by image for optimized compilation and returns a list
-    of Segmentations.
+    of Segmentation objects.
     """
     lines_by_img = defaultdict(list)
     for lt in lines:
