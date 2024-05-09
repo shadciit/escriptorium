@@ -150,6 +150,7 @@
                                     @apply-hide="closeTypeMenu"
                                 >
                                     <EscrButton
+                                        :disabled="loading"
                                         aria-label="Change type"
                                         class="dropdown"
                                         :on-click="openTypeMenu"
@@ -171,6 +172,7 @@
                                                 :key="item.pk"
                                             >
                                                 <button
+                                                    :disabled="loading"
                                                     :class="formLineType === item.pk
                                                         ? 'preselected'
                                                         : ''"
@@ -190,6 +192,7 @@
                                     </template>
                                 </VMenu>
                                 <EscrButton
+                                    :disabled="loading"
                                     color="text"
                                     :on-click="saveLineType"
                                     size="small"
@@ -199,6 +202,7 @@
                                     </template>
                                 </EscrButton>
                                 <EscrButton
+                                    :disabled="loading"
                                     color="text"
                                     :on-click="cancelEditLineType"
                                     size="small"
@@ -578,6 +582,7 @@ export default {
     },
     data() {
         return {
+            loading: false,
             formLineType: null,
             isEditingLineType: false,
             isVKEnabled: false,
@@ -1075,12 +1080,14 @@ export default {
          * the segmenter to update that line.
          */
         async saveLineType() {
+            this.loading = true;
             let line = {
                 ...this.line,
                 type: this.formLineTypeLabel,
             };
             await this.bulkUpdate([line]);
             this.isEditingLineType = false;
+            this.loading = false;
             const evt = new CustomEvent("edited-line-type", {
                 detail: line,
             });
