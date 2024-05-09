@@ -304,6 +304,11 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
         accelerator, device = _to_ptl_device(getattr(settings, 'KRAKEN_TRAINING_DEVICE', 'cpu'))
 
         LOAD_THREADS = getattr(settings, 'KRAKEN_TRAINING_LOAD_THREADS', 0)
+        AMP_MODE = getattr(settings, 'KRAKEN_TRAINING_PRECISION', '32')
+
+        logger.info(f'Starting segmentation training on {accelerator}/{device} '
+                    f'(precision: {AMP_MODE}, workers: {LOAD_THREADS}) with '
+                    f'{len(training_data)} files')
 
         kraken_model = SegmentationModel(SEGMENTATION_HYPER_PARAMS,
                                          output=os.path.join(model_dir, 'version'),
@@ -330,6 +335,7 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
                                 devices=device,
                                 # max_epochs=2,
                                 # min_epochs=5,
+                                precision=AMP_MODE,
                                 enable_summary=False,
                                 enable_progress_bar=False,
                                 val_check_interval=1.0,
@@ -481,6 +487,12 @@ def train_(qs, document, transcription, model=None, user=None):
 
     LOAD_THREADS = getattr(settings, 'KRAKEN_TRAINING_LOAD_THREADS', 0)
 
+    AMP_MODE = getattr(settings, 'KRAKEN_TRAINING_PRECISION', '32')
+
+    RECOGNITION_HYPER_PARAMS['batch_size'] = getattr(settings,
+                                                     'KRAKEN_TRAINING_BATCH_SIZE',
+                                                     RECOGNITION_HYPER_PARAMS['batch_size'])
+
     with tempfile.TemporaryDirectory() as tmp_dir:
 
         train_dir = Path(tmp_dir)
@@ -521,6 +533,10 @@ def train_(qs, document, transcription, model=None, user=None):
         else:
             reorder = 'L'
 
+        logger.info(f'Starting recognition training on {accelerator}/{device} '
+                    f'(precision: {AMP_MODE}, batch_size {RECOGNITION_HYPER_PARAMS["batch_size"]} '
+                    f', workers: {LOAD_THREADS}) with {len(ground_truth[partition:])} lines')
+
         kraken_model = RecognitionModel(hyper_params=RECOGNITION_HYPER_PARAMS,
                                         output=os.path.join(model_dir, 'version'),
                                         model=load,
@@ -535,6 +551,7 @@ def train_(qs, document, transcription, model=None, user=None):
 
         trainer = KrakenTrainer(accelerator=accelerator,
                                 devices=device,
+                                precision=AMP_MODE,
                                 enable_summary=False,
                                 enable_progress_bar=False,
                                 val_check_interval=1.0,
