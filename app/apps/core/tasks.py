@@ -329,6 +329,7 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
                                 devices=device,
                                 # max_epochs=2,
                                 # min_epochs=5,
+                                enable_summary=False,
                                 enable_progress_bar=False,
                                 val_check_interval=1.0,
                                 callbacks=[FrontendFeedback(model, model_dir, document_pk)])
@@ -336,14 +337,17 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
         trainer.fit(kraken_model)
 
         if kraken_model.best_epoch == -1:
+            logger.info(f'Model {os.path.split(model.file.path)[0]} did not improve.')
             raise DidNotConverge
 
         best_version = os.path.join(model_dir, kraken_model.best_model)
 
         try:
+            logger.info(f'Moving best model {best_version} (accuracy: {kraken_model.best_metric}) to {model.file.path}.')
             shutil.copy(best_version, model.file.path)  # os.path.join(model_dir, filename)
             model.training_accuracy = kraken_model.best_metric
         except FileNotFoundError:
+            logger.info(f'Model {os.path.split(model.file.path)[0]} did not improve.')
             user.notify(_("Training didn't get better results than base model!"),
                         id="seg-no-gain-error", level='warning')
             shutil.copy(load, model.file.path)
@@ -530,6 +534,7 @@ def train_(qs, document, transcription, model=None, user=None):
 
         trainer = KrakenTrainer(accelerator=accelerator,
                                 devices=device,
+                                enable_summary=False,
                                 enable_progress_bar=False,
                                 val_check_interval=1.0,
                                 callbacks=[FrontendFeedback(model, model_dir, document.pk)])
@@ -537,9 +542,11 @@ def train_(qs, document, transcription, model=None, user=None):
         trainer.fit(kraken_model)
 
     if kraken_model.best_epoch == -1:
+        logger.info(f'Model {os.path.split(model.file.path)[0]} did not improve.')
         raise DidNotConverge
     else:
         best_version = os.path.join(model_dir, kraken_model.best_model)
+        logger.info(f'Moving best model {best_version} (accuracy: {kraken_model.best_metric}) to {model.file.path}.')
         shutil.copy(best_version, model.file.path)
         model.training_accuracy = kraken_model.best_metric
 
