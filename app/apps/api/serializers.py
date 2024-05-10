@@ -415,13 +415,16 @@ class DocumentSerializer(serializers.ModelSerializer):
                                            queryset=Project.objects.all())
     project_name = serializers.SerializerMethodField()
     project_id = serializers.SerializerMethodField()
+    shared_with_users = UserSerializer(many=True, read_only=True)
+    shared_with_groups = GroupSerializer(many=True, read_only=True)
 
     class Meta:
         model = Document
         fields = ('pk', 'name', 'project', 'transcriptions',
                   'main_script', 'read_direction', 'line_offset', 'show_confidence_viz',
                   'valid_block_types', 'valid_line_types', 'valid_part_types',
-                  'parts_count', 'tags', 'created_at', 'updated_at', 'project_name', 'project_id')
+                  'parts_count', 'tags', 'created_at', 'updated_at', 'project_name', 'project_id',
+                  'shared_with_users', 'shared_with_groups')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -967,20 +970,21 @@ class SegmentSerializer(ProcessSerializerMixin, serializers.Serializer):
         model = self.validated_data.get('model')
         parts = self.validated_data.get('parts') or self.document.parts.all()
 
-        ocr_model_document, created = OcrModelDocument.objects.get_or_create(
-            document=self.document,
-            ocr_model=model,
-            defaults={'executed_on': timezone.now()}
-        )
-        if not created:
-            ocr_model_document.executed_on = timezone.now()
-            ocr_model_document.save()
+        if model:
+            ocr_model_document, created = OcrModelDocument.objects.get_or_create(
+                document=self.document,
+                ocr_model=model,
+                defaults={'executed_on': timezone.now()}
+            )
+            if not created:
+                ocr_model_document.executed_on = timezone.now()
+                ocr_model_document.save()
 
         for part in parts:
             part.chain_tasks(
                 segment.si(instance_pk=part.pk,
                            user_pk=self.user.pk,
-                           model_pk=model.pk,
+                           model_pk=model.pk if model else None,  # None means default model
                            steps=self.validated_data.get('steps'),
                            text_direction=self.validated_data.get('text_direction'),
                            override=self.validated_data.get('override'))
@@ -1034,11 +1038,11 @@ class SegTrainSerializer(ProcessSerializerMixin, serializers.Serializer):
         override = self.validated_data.get('override')
 
         if self.validated_data.get('model_name'):
-            file_ = model and model.file or None
+            file_ = model.file if model else None
             model = OcrModel.objects.create(
                 owner=self.user,
                 name=self.validated_data['model_name'],
-                job=OcrModel.MODEL_JOB_RECOGNIZE,
+                job=OcrModel.MODEL_JOB_SEGMENT,
                 file=file_,
                 file_size=file_.size if file_ else 0
             )
@@ -1115,7 +1119,7 @@ class TrainSerializer(ProcessSerializerMixin, serializers.Serializer):
         override = self.validated_data.get('override')
 
         if self.validated_data.get('model_name'):
-            file_ = model and model.file or None
+            file_ = model.file if model else None
             model = OcrModel.objects.create(
                 owner=self.user,
                 name=self.validated_data['model_name'],
