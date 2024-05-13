@@ -65,6 +65,7 @@ export default {
         metsUri: "",
         mode: "images",
         overwrite: false,
+        position: "",
         uploadFile: "",
     },
     moveImages: {

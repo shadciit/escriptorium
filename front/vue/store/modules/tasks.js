@@ -176,6 +176,10 @@ const actions = {
                 default:
                     return;
             }
+            if (rootState?.forms?.import?.position) {
+                // import images to specific position if present
+                params["position"] = rootState.forms.import.position;
+            }
             if (params["name"] && params["mode"] !== "mets") {
                 // first, create a transcription layer by POSTing the name to the endpoint
                 const { data } = await createTranscriptionLayer({

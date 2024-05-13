@@ -11,8 +11,24 @@
     overflow: auto;
 }
 .escr-import-modal .escr-modal .modal-actions {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
     align-self: flex-end;
     margin-top: 16px;
+}
+.escr-import-modal .escr-modal .img-position-field {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0;
+}
+.escr-import-modal .escr-modal .img-position-field span {
+    flex: 1 0 auto;
+}
+.escr-import-modal .escr-modal .img-position-field input {
+    margin: 0;
 }
 
 /* import mode selector */

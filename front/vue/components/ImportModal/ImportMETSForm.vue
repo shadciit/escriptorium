@@ -39,6 +39,25 @@
                 :value="layerName"
                 :on-input="handleLayerNameInput"
             />
+            <label
+                v-if="partsCount > 0"
+                class="escr-text-field escr-form-field img-position-field"
+            >
+                <span
+                    class="escr-field-label"
+                >
+                    Import images to position (optional):
+                </span>
+                <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    :max="partsCount"
+                    :placeholder="`Enter number from 0–${partsCount}`"
+                    :value="position"
+                    @change="handlePositionChange"
+                >
+            </label>
             <div class="escr-form-field escr-checkbox-field escr-overwrite-field">
                 <label>
                     <input
@@ -80,6 +99,8 @@ export default {
             metsType: (state) => state.forms.import.metsType,
             metsUri: (state) => state.forms.import.metsUri,
             overwrite: (state) => state.forms.import.overwrite,
+            partsCount: (state) => state.document.partsCount,
+            position: (state) => state.forms.import.position,
         }),
         metsOptions() {
             return [
@@ -117,6 +138,11 @@ export default {
         handleOverwriteChange(e) {
             this.handleGenericInput({
                 form: "import", field: "overwrite", value: e.target.checked
+            });
+        },
+        handlePositionChange(e) {
+            this.handleGenericInput({
+                form: "import", field: "position", value: e.target.value,
             });
         },
     },

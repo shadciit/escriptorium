@@ -474,6 +474,8 @@ class ImportSerializer(serializers.Serializer):
     mets_type = serializers.ChoiceField(choices=METS_TYPE_CHOICES, required=False)
     mets_uri = serializers.URLField(required=False)
 
+    position = serializers.IntegerField(required=False)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = self.context["view"].request.user
