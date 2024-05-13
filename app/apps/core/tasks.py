@@ -3,14 +3,12 @@ import os
 import os.path
 import shutil
 import tempfile
-import numpy as np
-
-from pathlib import Path
-from itertools import groupby
 from collections import defaultdict
-
+from itertools import groupby
+from pathlib import Path
 from typing import List
 
+import numpy as np
 from celery import shared_task
 from django.apps import apps
 from django.conf import settings
@@ -20,10 +18,8 @@ from django.utils.html import strip_tags
 from django.utils.text import slugify
 from django.utils.translation import gettext as _
 from easy_thumbnails.files import get_thumbnailer
-
+from kraken.containers import BaselineLine, Region, Segmentation
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
-from kraken.containers import Segmentation, Region, BaselineLine
-
 from kraken.lib.arrow_dataset import build_binary_dataset
 from kraken.lib.default_specs import RECOGNITION_HYPER_PARAMS, SEGMENTATION_HYPER_PARAMS
 from kraken.lib.train import KrakenTrainer, RecognitionModel, SegmentationModel
