@@ -6,11 +6,7 @@ from os.path import basename, splitext
 from bootstrap.forms import BootstrapFormMixin
 from django import forms
 from django.conf import settings
-from django.core.validators import (
-    FileExtensionValidator,
-    MaxValueValidator,
-    MinValueValidator,
-)
+from django.core.validators import FileExtensionValidator
 from django.db.models import Q
 from django.forms.models import BaseInlineFormSet, inlineformset_factory
 from django.utils import timezone
@@ -18,7 +14,6 @@ from django.utils.translation import gettext_lazy as _
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 from kraken.lib import vgsl
 from kraken.lib.exceptions import KrakenInvalidModelException
-from PIL import Image
 
 from core.models import (
     AnnotationComponent,
@@ -625,48 +620,6 @@ class DocumentProcessFormBase(forms.Form):
                 raise forms.ValidationError(_("You don't have any disk storage left."))
 
         return super().clean()
-
-
-class BinarizeForm(BootstrapFormMixin, DocumentProcessFormBase):
-    # binarizer = forms.ChoiceField(required=False,
-    #                               choices=BINARIZER_CHOICES,
-    #                               initial='kraken')
-
-    bw_image = forms.ImageField(required=False)
-    threshold = forms.FloatField(
-        required=False, initial=0.5,
-        validators=[MinValueValidator(0.1), MaxValueValidator(1)],
-        help_text=_('Increase it for low contrast documents, if the letters are not visible enough.'),
-        widget=forms.NumberInput(
-            attrs={'type': 'range', 'step': '0.05',
-                   'min': '0.1', 'max': '1'}))
-
-    def clean_bw_image(self):
-        img = self.cleaned_data.get('bw_image')
-        if not img:
-            return
-        if len(self.cleaned_data.get('parts')) != 1:
-            raise forms.ValidationError(_("Uploaded image with more than one selected image."))
-        # Beware: don't close the file here !
-        fh = Image.open(img)
-        if fh.mode not in ['1', 'L']:
-            raise forms.ValidationError(_("Uploaded image should be black and white."))
-        isize = (self.cleaned_data.get('parts')[0].image.width, self.parts[0].image.height)
-        if fh.size != isize:
-            raise forms.ValidationError(
-                _("Uploaded image should be the same size as original image {size}.").format(size=isize))
-        return img
-
-    def process(self):
-        parts = self.cleaned_data.get('parts')
-        if len(parts) == 1 and self.cleaned_data.get('bw_image'):
-            self.parts[0].bw_image = self.cleaned_data['bw_image']
-            self.parts[0].save()
-        else:
-            for part in parts:
-                part.task('binarize',
-                          user_pk=self.user.pk,
-                          threshold=self.cleaned_data.get('threshold'))
 
 
 class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
