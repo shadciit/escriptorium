@@ -57,6 +57,7 @@ from api.serializers import (
     ScriptSerializer,
     SegmentSerializer,
     SegTrainSerializer,
+    TaskGroupSerializer,
     TaskReportSerializer,
     TextAnnotationSerializer,
     TextualWitnessSerializer,
@@ -95,7 +96,7 @@ from core.models import (
 from core.tasks import recalculate_masks
 from imports.forms import ExportForm, ImportForm
 from imports.parsers import ParseError
-from reporting.models import TaskReport
+from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
 from users.models import Group, User
 from versioning.models import NoChangeException
@@ -736,6 +737,12 @@ class DocumentViewSet(ModelViewSet):
             'image_annotations': img_annotations,
             'text_annotations': text_annotations
         })
+
+
+class TaskGroupViewSet(ModelViewSet):
+    queryset = TaskGroup.objects.all().select_related('created_by')
+    serializer_class = TaskGroupSerializer
+    # filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
 
 
 class TaskReportViewSet(ModelViewSet):

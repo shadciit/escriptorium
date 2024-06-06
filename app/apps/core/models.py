@@ -2052,15 +2052,17 @@ class OcrModel(ExportModelOperationsMixin("OcrModel"), Versioned, models.Model):
 
         return model
 
-    def segtrain(self, document, parts_qs, user=None):
+    def segtrain(self, document, parts_qs, task_group_pk=None, user=None):
         segtrain.delay(model_pk=self.pk,
+                       task_group_pk=task_group_pk,
                        part_pks=list(parts_qs.values_list('pk', flat=True)),
                        document_pk=document.pk,
                        user_pk=user and user.pk or None)
 
-    def train(self, parts_qs, transcription, user=None):
+    def train(self, parts_qs, transcription, task_group_pk=None, user=None):
         train.delay(transcription_pk=transcription.pk,
                     model_pk=self.pk,
+                    task_group_pk=task_group_pk,
                     part_pks=list(parts_qs.values_list('pk', flat=True)),
                     user_pk=user and user.pk or None)
 
