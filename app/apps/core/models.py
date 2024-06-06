@@ -660,10 +660,7 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
         """Use subprocess call to Passim to align transcription with textual witness"""
         parts = DocumentPart.objects.filter(document=self, pk__in=part_pks)
 
-        for part in parts:
-            # set workflow state
-            part.workflow_state = part.WORKFLOW_STATE_ALIGNING
-        DocumentPart.objects.bulk_update(parts, ["workflow_state"])
+        parts.update(workflow_state=DocumentPart.WORKFLOW_STATE_ALIGNING)
 
         # set output directory
         outdir = path.join(
@@ -806,10 +803,7 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
         if not getattr(settings, "KEEP_ALIGNMENT_TEMPFILES", None):
             shutil.rmtree(outdir, ignore_errors=True)
 
-        for part in parts:
-            # set workflow state
-            part.workflow_state = part.WORKFLOW_STATE_ALIGNED
-        DocumentPart.objects.bulk_update(parts, ["workflow_state"])
+        parts.update(workflow_state=DocumentPart.WORKFLOW_STATE_ALIGNED)
 
     def queue_alignment(self, parts, **kwargs):
         if not self.tasks_finished():
@@ -843,8 +837,7 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
                 "status": "canceled",
                 "task_id": task_id,
             })
-            part.workflow_state = part.WORKFLOW_STATE_TRANSCRIBING
-        DocumentPart.objects.bulk_update(parts, ["workflow_state"])
+        parts.update(workflow_state=DocumentPart.WORKFLOW_STATE_TRANSCRIBING)
 
 
 def document_images_path(instance, filename):
