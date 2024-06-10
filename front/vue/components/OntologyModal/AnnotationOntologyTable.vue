@@ -236,6 +236,7 @@
                         form: 'addComponent', field: 'name', value: e.target.value
                     })"
                     :value="addComponentForm.name"
+                    :invalid="componentFormInvalid.name"
                     required
                 />
                 <TextField
@@ -247,6 +248,7 @@
                         form: 'addComponent', field: 'values', value: e.target.value
                     })"
                     :value="addComponentForm.values"
+                    :invalid="componentFormInvalid.values"
                     required
                 />
             </template>
@@ -343,6 +345,7 @@ export default {
         return {
             addComponentModalOpen: false,
             componentDropdownOpen: null,
+            componentFormInvalid: { name: false, values: false },
             componentToDelete: null,
             confirmDeleteComponentModalOpen: false,
             editComponentMode: "",
@@ -362,6 +365,7 @@ export default {
          */
         closeAddComponentModal() {
             this.addComponentModalOpen = false;
+            this.componentFormInvalid = { name: false, values: false };
             this.editComponentMode = "";
             this.clearForm("addComponent");
         },
@@ -410,15 +414,31 @@ export default {
          * Callback to create a new component
          */
         async onAddComponent() {
-            await this.createComponent();
-            this.closeAddComponentModal();
+            if (this.addComponentForm.name && this.addComponentForm.values) {
+                this.componentFormInvalid = { name: false, values: false };
+                await this.createComponent();
+                this.closeAddComponentModal();
+            } else {
+                this.componentFormInvalid = {
+                    name: !this.addComponentForm.name,
+                    values: !this.addComponentForm.values,
+                };
+            }
         },
         /**
          * Callback to save changes to a component
          */
         async onUpdateComponent() {
-            await this.updateComponent();
-            this.closeAddComponentModal();
+            if (this.addComponentForm.name && this.addComponentForm.values) {
+                this.componentFormInvalid = { name: false, values: false };
+                await this.updateComponent();
+                this.closeAddComponentModal();
+            } else {
+                this.componentFormInvalid = {
+                    name: !this.addComponentForm.name,
+                    values: !this.addComponentForm.values,
+                };
+            }
         },
         /**
          * Generic form fields event handler
