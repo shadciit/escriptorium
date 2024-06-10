@@ -57,7 +57,7 @@ documents_router.register(r'transcriptions', DocumentTranscriptionViewSet, basen
 documents_router.register(r'taxonomies/annotations', AnnotationTaxonomyViewSet)
 documents_router.register(r'taxonomies/components', AnnotationComponentViewSet)
 documents_router.register(r'import', ImportViewSet, basename='import')
-documents_router.register(r'task_groups', TaskGroupViewSet)
+documents_router.register(r'task_groups', TaskGroupViewSet, basename='task-group')
 
 parts_router = routers.NestedSimpleRouter(documents_router, r'parts', lookup='part')
 parts_router.register(r'blocks', BlockViewSet)
