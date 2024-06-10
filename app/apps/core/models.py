@@ -27,13 +27,14 @@ from django.db.models.functions import Coalesce, Length
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.forms import ValidationError
-from django.template.defaultfilters import slugify
 from django.utils.functional import cached_property
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 from easy_thumbnails.files import get_thumbnailer
 from kraken import blla, rpred
 from kraken.binarization import nlbin
+from kraken.containers import BaselineLine, Segmentation
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 from kraken.lib import models as kraken_models
 from kraken.lib import vgsl
@@ -380,8 +381,9 @@ class ProjectManager(models.Manager):
         # return the list of EDITABLE projects
         # allows to add documents to it
         return (
-            self.filter(Q(owner=user) | Q(shared_with_users=user))
-            #   | Q(shared_with_groups__user=user))
+            self.filter(Q(owner=user)
+                        | Q(shared_with_users=user)
+                        | Q(shared_with_groups__user=user))
             .distinct()
         )
 
@@ -391,7 +393,7 @@ class ProjectManager(models.Manager):
         return self.filter(
             Q(owner=user)
             | Q(shared_with_users=user)
-            #   | Q(shared_with_groups__user=user))
+            | Q(shared_with_groups__user=user)
             | (
                 Q(documents__shared_with_users=user)
                 | Q(documents__shared_with_groups__user=user)
@@ -433,7 +435,7 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
         return self.name
 
     def make_slug(self):
-        slug = slugify(self.name)
+        slug = slugify(self.name, allow_unicode=True)
         # check unicity
         exists = Project.objects.filter(slug=slug).count()
         if not exists:
@@ -442,7 +444,7 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
             self.slug = slug[:40] + hex(int(time.time()))[2:]
 
     def save(self, *args, **kwargs):
-        if not self.pk:
+        if not self.slug:
             self.make_slug()
         super().save(*args, **kwargs)
 
@@ -454,7 +456,7 @@ class DocumentManager(models.Manager):
                 Q(owner=user)
                 | Q(project__owner=user)
                 | Q(project__shared_with_users=user)
-                #   | Q(project__shared_with_groups__user=user))
+                | Q(project__shared_with_groups__user=user)
                 | (Q(shared_with_users=user) | Q(shared_with_groups__user=user))
             )
             .exclude(workflow_state=Document.WORKFLOW_STATE_ARCHIVED)
@@ -1330,7 +1332,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             res = blla.segment(im, **options)
 
             if steps in ["regions", "both"]:
-                for region_type, regions in res["regions"].items():
+                for region_type, regions in res.regions.items():
                     try:
                         typo, created = self.document.valid_block_types.get_or_create(
                             name=region_type)
@@ -1342,14 +1344,14 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                         Block.objects.create(
                             document_part=self,
                             typology=typo,
-                            box=region,
+                            box=region.boundary,
                         )
 
             regions = self.blocks.all()
             if steps in ["lines", "both"]:
-                for line in res["lines"]:
-                    mask = line["boundary"] if line["boundary"] is not None else None
-                    baseline = line["baseline"]
+                for line in res.lines:
+                    mask = line.boundary if line.boundary is not None else None
+                    baseline = line.baseline
 
                     # calculate if the center of the line is contained in one of the region
                     # (pick the first one that matches)
@@ -1359,11 +1361,11 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                     )
                     try:
                         typo, created = self.document.valid_line_types.get_or_create(
-                            name=line["tags"].get("type"))
+                            name=line.tags.get("type"))
                     except LineType.MultipleObjectsReturned:
                         # Note: this should not happen if the modelisation was alright
                         # but for now we hack
-                        typo = self.document.valid_line_types.filter(name=line["tags"].get("type"))[0]
+                        typo = self.document.valid_line_types.filter(name=line.tags.get("type"))[0]
                     Line.objects.create(
                         document_part=self,
                         typology=typo,
@@ -1402,24 +1404,20 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                     # bypass lines without baseline
                     continue
                 else:
-                    bounds = {
-                        "lines": [
-                            {
-                                "baseline": line.baseline,
-                                "boundary": line.mask,
-                                "text_direction": text_direction,
-                                "tags": {'type': line.typology and line.typology.name or 'default'},
-                            }
-                        ],  # self.document.main_script.name
-                        "type": "baselines",
-                        # 'selfcript_detection': True
-                    }
+                    bll = BaselineLine(id='foo',
+                                       baseline=line.baseline,
+                                       boundary=line.mask)
+                    seg = Segmentation(type='baselines',
+                                       imagename='/dummy.png',
+                                       text_direction=text_direction,
+                                       script_detection=False,
+                                       lines=[bll])
 
                 it = rpred.rpred(
                     model_,
                     im,
-                    bounds=bounds,
-                    pad=16,  # TODO: % of the image?
+                    bounds=seg,
+                    pad=16,
                     bidi_reordering=reorder
                 )
                 lt, created = LineTranscription.objects.get_or_create(

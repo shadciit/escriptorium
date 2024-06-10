@@ -108,8 +108,10 @@ class UserViewSetTestCase(CoreFactoryTestCase):
 class DocumentViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
         super().setUp()
-        self.doc = self.factory.make_document()
-        self.doc2 = self.factory.make_document(owner=self.doc.owner)
+        self.proj1 = self.factory.make_project(name='proj1')
+        self.proj2 = self.factory.make_project(name='proj2', owner=self.proj1.owner)
+        self.doc = self.factory.make_document(project=self.proj1, owner=self.proj1.owner)
+        self.doc2 = self.factory.make_document(project=self.proj2, owner=self.proj1.owner)
         self.part = self.factory.make_part(document=self.doc)
         self.part2 = self.factory.make_part(document=self.doc)
 
@@ -172,6 +174,35 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.json()['error'], {'parts': [
             'Segmentation training requires at least 2 images.']})
+
+    def test_share_group(self):
+        self.client.force_login(self.doc.owner)
+        group = self.factory.make_group(users=[self.doc.owner])
+
+        uri = reverse('api:document-share', kwargs={'pk': self.doc.pk})
+        resp = self.client.post(uri, {'group': group.pk})
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['shared_with_groups'][0]['pk'], group.pk)
+
+    def test_share_group_not_part_of(self):
+        self.client.force_login(self.doc.owner)
+        group = self.factory.make_group()  # owner is not part of the group
+
+        uri = reverse('api:document-share', kwargs={'pk': self.doc.pk})
+        resp = self.client.post(uri, {'group': group.pk})
+
+        self.assertEqual(resp.status_code, 400)
+
+    def test_share_user(self):
+        self.client.force_login(self.doc.owner)
+        user = self.factory.make_user()
+
+        uri = reverse('api:document-share', kwargs={'pk': self.doc.pk})
+        resp = self.client.post(uri, {'user': user.username})
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['shared_with_users'][0]['pk'], user.pk)
 
     @unittest.skip
     def test_segtrain_new_model(self):
@@ -621,6 +652,32 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         resp = self.client.get(uri + '?tags=none|' + str(tag1.pk))
         self.assertEqual(resp.json()['count'], 2)
 
+    def test_stats(self):
+        part = self.factory.make_part(document=self.doc)
+        transcription = self.factory.make_transcription(document=self.doc)
+        self.factory.make_content(part, transcription=transcription)
+        self.factory.make_img_annotations(part)
+        self.factory.make_text_annotations(part, transcription)
+
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:document-stats', kwargs={'pk': self.doc.pk})
+        with self.assertNumQueries(9):
+            resp = self.client.get(uri)
+            self.assertEqual(resp.status_code, 200)
+
+            self.assertEqual(resp.data["regions"][0]["typology_name"], "blocktype")
+            self.assertEqual(resp.data["regions"][0]["frequency"], 1)
+            self.assertEqual(resp.data["lines"][0]["typology_name"], "linetype0")
+            self.assertEqual(resp.data["lines"][0]["frequency"], 6)
+            self.assertEqual(resp.data["lines"][1]["typology_name"], "linetype1")
+            self.assertEqual(resp.data["lines"][1]["frequency"], 6)
+
+            self.assertEqual(resp.data["image_annotations"][0]["taxonomy_name"], "imgtaxo")
+            self.assertEqual(resp.data["image_annotations"][0]["frequency"], 3)
+
+            self.assertEqual(resp.data["text_annotations"][0]["taxonomy_name"], "texttaxo")
+            self.assertEqual(resp.data["text_annotations"][0]["frequency"], 3)
+
 
 class PartViewSetTestCase(CoreFactoryTestCase):
     def setUp(self):
@@ -939,25 +996,39 @@ class TranscriptionViewSetTestCase(CoreFactoryTestCase):
         self.user = self.part.document.owner
         self.transcription = self.factory.make_transcription(document=self.part.document)
 
-    def test_characters_frequency(self):
+    def test_stats(self):
         self.factory.make_content(self.part, transcription=self.transcription)
         self.client.force_login(self.user)
-        uri = reverse('api:transcription-characters', kwargs={
+        uri = reverse('api:transcription-stats', kwargs={
             'document_pk': self.part.document.pk,
             'pk': self.transcription.pk
         })
 
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(6):
             resp = self.client.get(uri)
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.data[0]['char'], ' ')
-            self.assertEqual(resp.data[0]['frequency'], 191)
-            self.assertEqual(resp.data[1]['char'], 'e')
-            self.assertEqual(resp.data[1]['frequency'], 44)
-            self.assertEqual(resp.data[2]['char'], 'M')
-            self.assertEqual(resp.data[2]['frequency'], 43)
-            self.assertEqual(resp.data[-1]['char'], 'I')
-            self.assertEqual(resp.data[-1]['frequency'], 20)
+            self.assertEqual(resp.data['characters'][0]['char'], ' ')
+            self.assertEqual(resp.data['characters'][0]['frequency'], 191)
+            self.assertEqual(resp.data['characters'][1]['char'], 'e')
+            self.assertEqual(resp.data['characters'][1]['frequency'], 44)
+            self.assertEqual(resp.data['characters'][2]['char'], 'M')
+            self.assertEqual(resp.data['characters'][2]['frequency'], 43)
+            self.assertEqual(resp.data['characters'][-1]['char'], 'I')
+            self.assertEqual(resp.data['characters'][-1]['frequency'], 20)
+
+            self.assertEqual(resp.data['line_count'], 30)
+
+    def test_stats_ordering(self):
+        self.factory.make_content(self.part, transcription=self.transcription)
+        self.client.force_login(self.user)
+        uri = reverse('api:transcription-stats', kwargs={
+            'document_pk': self.part.document.pk,
+            'pk': self.transcription.pk
+        }) + '?ordering=char'
+        resp = self.client.get(uri)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['characters'][0]['char'], ' ')
+        self.assertEqual(resp.data['characters'][-1]['char'], 'Z')
 
 
 class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
@@ -1236,7 +1307,8 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
     def test_filter_no_tag(self):
         tag1 = self.factory.make_project_tag(user=self.project.owner)
         self.project.tags.add(tag1)
-        project_without_tag = self.factory.make_project(owner=self.project.owner)
+        project_without_tag = self.factory.make_project(name="proj without tags",
+                                                        owner=self.project.owner)
 
         self.client.force_login(self.project.owner)
         uri = reverse('api:project-list')
@@ -1250,6 +1322,35 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
 
         resp = self.client.get(uri + '?tags=none|' + str(tag1.pk))
         self.assertEqual(resp.json()['count'], 2)
+
+    def test_share_group(self):
+        self.client.force_login(self.project.owner)
+        group = self.factory.make_group(users=[self.project.owner])
+
+        uri = reverse('api:project-share', kwargs={'pk': self.project.pk})
+        resp = self.client.post(uri, {'group': group.pk})
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['shared_with_groups'][0]['pk'], group.pk)
+
+    def test_share_group_not_part_of(self):
+        self.client.force_login(self.project.owner)
+        group = self.factory.make_group()  # owner is not part of the group
+
+        uri = reverse('api:project-share', kwargs={'pk': self.project.pk})
+        resp = self.client.post(uri, {'group': group.pk})
+
+        self.assertEqual(resp.status_code, 400)
+
+    def test_share_user(self):
+        self.client.force_login(self.project.owner)
+        user = self.factory.make_user()
+
+        uri = reverse('api:project-share', kwargs={'pk': self.project.pk})
+        resp = self.client.post(uri, {'user': user.username})
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['shared_with_users'][0]['pk'], user.pk)
 
 
 class DocumentPartMetadataTestCase(CoreFactoryTestCase):
