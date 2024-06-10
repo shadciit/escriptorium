@@ -32,7 +32,7 @@
             </thead>
             <tbody>
                 <tr
-                    v-for="item in types"
+                    v-for="item, idx in types"
                     :key="item.pk"
                 >
                     <!-- name -->
@@ -62,13 +62,13 @@
                             placement="bottom-end"
                             theme="modal-menu"
                             :distance="8"
-                            :shown="componentDropdownOpen === item.pk"
+                            :shown="componentDropdownOpen === idx"
                             :triggers="[]"
                             :auto-hide="true"
-                            @apply-hide="() => closeComponentDropdown(item.pk)"
+                            @apply-hide="() => closeComponentDropdown(idx)"
                         >
                             <EscrButton
-                                :on-click="() => openComponentDropdown(item.pk)"
+                                :on-click="() => openComponentDropdown(idx)"
                                 :class="{
                                     ['escr-component-dropdown']: true,
                                     placeholder: !(item.components && item.components.length)
@@ -368,8 +368,8 @@ export default {
         /**
          * Close the component selector dropdown
          */
-        closeComponentDropdown(pk) {
-            if (this.componentDropdownOpen === pk) {
+        closeComponentDropdown(idx) {
+            if (this.componentDropdownOpen === idx) {
                 this.componentDropdownOpen = null;
             }
         },
@@ -447,8 +447,8 @@ export default {
         /**
          * Open the component selector dropdown for a specific item
          */
-        openComponentDropdown(pk) {
-            this.componentDropdownOpen = pk;
+        openComponentDropdown(idx) {
+            this.componentDropdownOpen = idx;
         },
         /**
          * Open the "add new component" modal
