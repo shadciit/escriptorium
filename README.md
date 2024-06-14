@@ -19,7 +19,7 @@ Two options,
 - [install with Docker](https://gitlab.com/scripta/escriptorium/-/wikis/docker-install), or a
 - [full local install](https://gitlab.com/scripta/escriptorium/-/wikis/full-install).
 
-eScriptorium needs either Linux, Mac OS or (WSL on windows).
+eScriptorium needs either Linux, macOS or Windows (with WSL).
 
 
 ## Contributing
