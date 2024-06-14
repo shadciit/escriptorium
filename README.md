@@ -8,7 +8,7 @@ The eScriptorium app itself is at the 'center'. It is a work in progress but wil
 - [daphne](https://github.com/django/daphne) (channel server for websockets)
 - [celery](http://www.celeryproject.org/)
 - postgres
-- [elasticsearch](https://www.elastic.co/) (integration not started yet)
+- [elasticsearch](https://www.elastic.co/)
 - redis (cache, celery broker, other disposable data)
 - [kraken](http://kraken.re)
 - [docker](https://www.docker.com/) (deployment)
