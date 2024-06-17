@@ -5,7 +5,7 @@ import os.path
 import bleach
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Min, Q
 from django.db.utils import IntegrityError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -598,19 +598,26 @@ class DocumentTasksSerializer(serializers.ModelSerializer):
 class TaskGroupSerializer(serializers.ModelSerializer):
     created_by = serializers.SerializerMethodField()
     tasks = serializers.SerializerMethodField()
+    method = serializers.SerializerMethodField()
 
     class Meta:
         model = TaskGroup
-        fields = ('pk', 'created_at', 'created_by', 'tasks')
+        fields = ('pk', 'method', 'created_at', 'created_by', 'tasks')
 
     def get_created_by(self, task_group):
         return task_group.created_by.username if task_group.created_by else None
 
     def get_tasks(self, task_group):
-        data = task_group.taskreport_set.values('workflow_state').annotate(count=Count('*'))
+        data = task_group.taskreport_set.values('workflow_state').annotate(queued_at=Min('queued_at'),
+                                                                           started_at=Min('started_at'),
+                                                                           done_at=Max('done_at'),
+                                                                           count=Count('*'))
         for state in data:
             state['workflow_state'] = dict(TaskReport.WORKFLOW_STATE_CHOICES)[state['workflow_state']]
         return data
+
+    def get_method(self, task_group):
+        return task_group.taskreport_set.values_list('method').first()[0]
 
 
 class TaskReportSerializer(serializers.ModelSerializer):

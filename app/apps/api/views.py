@@ -742,14 +742,13 @@ class DocumentViewSet(ModelViewSet):
 class TaskGroupViewSet(ModelViewSet):
     queryset = TaskGroup.objects.all().select_related('created_by')
     serializer_class = TaskGroupSerializer
-    # filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
 
 
 class TaskReportViewSet(ModelViewSet):
     queryset = TaskReport.objects.all()
     serializer_class = TaskReportSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['document']
+    filterset_fields = ['document', 'group']
     ordering_fields = ['queued_at', 'started_at', 'done_at']
     ordering = ['-queued_at', '-started_at', '-done_at']
 

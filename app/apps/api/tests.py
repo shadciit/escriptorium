@@ -628,6 +628,7 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:task-group-list', kwargs={'document_pk': self.doc.pk})
         resp = self.client.get(uri)
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'][0]['method'], "core.tasks.train")
         data = {t['workflow_state']: t['count'] for t in resp.json()['results'][0]['tasks']}
         self.assertEqual(data['Queued'], 1)
         self.assertEqual(data['Running'], 1)
