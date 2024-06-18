@@ -743,6 +743,11 @@ class TaskGroupViewSet(ModelViewSet):
     queryset = TaskGroup.objects.all().select_related('created_by')
     serializer_class = TaskGroupSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(document=self.kwargs.get('document_pk'))
+        return qs
+
 
 class TaskReportViewSet(ModelViewSet):
     queryset = TaskReport.objects.all()
