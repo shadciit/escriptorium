@@ -619,11 +619,12 @@ class Document(ExportModelOperationsMixin("Document"), models.Model):
 
     def tasks_finished(self):
         """Return False if alignment or other tasks are still happening"""
-        return (TaskReport.objects
-                .filter(Q(document=self) | Q(document_part__document=self))
-                .filter(Q(workflow_state=TaskReport.WORKFLOW_STATE_QUEUED)
-                        | Q(workflow_state=TaskReport.WORKFLOW_STATE_STARTED))
-                )
+        return not (TaskReport.objects
+                    .filter(Q(document=self) | Q(document_part__document=self))
+                    .filter(Q(workflow_state=TaskReport.WORKFLOW_STATE_QUEUED)
+                            | Q(workflow_state=TaskReport.WORKFLOW_STATE_STARTED))
+                    .exists()
+                    )
 
     def recoverable(self):
         try:
