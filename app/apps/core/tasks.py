@@ -104,42 +104,6 @@ def lossless_compression(instance_pk=None, user_pk=None, **kwargs):
     part.compress()
 
 
-@shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
-def binarize(instance_pk=None, user_pk=None, binarizer=None, threshold=None, **kwargs):
-    try:
-        DocumentPart = apps.get_model('core', 'DocumentPart')
-        part = DocumentPart.objects.get(pk=instance_pk)
-    except DocumentPart.DoesNotExist:
-        logger.error('Trying to binarize non-existent DocumentPart : %d', instance_pk)
-        return
-
-    if user_pk:
-        try:
-            user = User.objects.get(pk=user_pk)
-            # If quotas are enforced, assert that the user still has free CPU minutes
-            if not settings.DISABLE_QUOTAS and user.cpu_minutes_limit() is not None:
-                assert user.has_free_cpu_minutes(), f"User {user.id} doesn't have any CPU minutes left"
-        except User.DoesNotExist:
-            user = None
-    else:
-        user = None
-
-    try:
-        part.binarize(threshold=threshold)
-    except Exception as e:
-        if user:
-            user.notify(_("Something went wrong during the binarization!"),
-                        id="binarization-error", level='danger')
-        part.workflow_state = part.WORKFLOW_STATE_CREATED
-        part.save()
-        logger.exception(e)
-        raise e
-    else:
-        if user:
-            user.notify(_("Binarization done!"),
-                        id="binarization-success", level='success')
-
-
 def make_recognition_segmentation(lines) -> List[Segmentation]:
     """
     Groups training data by image for optimized compilation and returns a list

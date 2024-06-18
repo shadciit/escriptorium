@@ -680,7 +680,6 @@ class PartSerializer(serializers.ModelSerializer):
     image = ImageField(required=False, thumbnails=['card', 'large'])
     image_file_size = serializers.IntegerField(required=False)
     filename = serializers.CharField(read_only=True)
-    bw_image = ImageField(thumbnails=['large'], required=False)
     workflow = serializers.JSONField(read_only=True)
     transcription_progress = serializers.IntegerField(read_only=True)
 
@@ -695,7 +694,6 @@ class PartSerializer(serializers.ModelSerializer):
             'image',
             'image_file_size',
             'original_filename',
-            'bw_image',
             'workflow',
             'order',
             'recoverable',
