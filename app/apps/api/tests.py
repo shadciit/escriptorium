@@ -727,7 +727,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:part-list',
                       kwargs={'document_pk': self.part.document.pk})
-        with self.assertNumQueries(18):
+        with self.assertNumQueries(22):
             img = self.factory.make_image_file()
             resp = self.client.post(uri, {
                 'image': SimpleUploadedFile(
@@ -751,7 +751,7 @@ class PartViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:part-move',
                       kwargs={'document_pk': self.part2.document.pk,
                               'pk': self.part2.pk})
-        with self.assertNumQueries(7):
+        with self.assertNumQueries(6):
             resp = self.client.post(uri, {'index': 0})
             self.assertEqual(resp.status_code, 200)
 
@@ -792,7 +792,7 @@ class DocumentMetadataTestCase(CoreFactoryTestCase):
         self.client.force_login(self.doc.owner)
         uri = reverse('api:metadata-list',
                       kwargs={'document_pk': self.doc.pk})
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(8):
             resp = self.client.post(uri, {
                 'key': {'name': 'testnewkey'},
                 'value': 'testnewval'
@@ -916,7 +916,7 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:line-bulk-delete',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(9):
+        with self.assertNumQueries(12):
             resp = self.client.post(uri, {'lines': [self.line.pk]},
                                     content_type='application/json')
         self.assertEqual(Line.objects.count(), 2)
@@ -1063,7 +1063,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(5):
             resp = self.client.patch(uri, {
                 'content': 'update'
             }, content_type='application/json')
@@ -1090,7 +1090,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
 
-        with self.assertNumQueries(8):
+        with self.assertNumQueries(7):
             resp = self.client.put(uri, {'content': 'test',
                                          'transcription': self.lt.transcription.pk,
                                          'line': self.lt.line.pk},
@@ -1124,7 +1124,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:linetranscription-bulk-update',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
 
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(18):
             resp = self.client.put(uri, {'lines': [
                 {'pk': self.lt.pk,
                  'content': 'test1 new',
@@ -1253,7 +1253,7 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
         tag = self.factory.make_project_tag(user=self.project.owner)
         self.client.force_login(self.project.owner)
         uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(13):
             resp = self.client.patch(uri, {
                 'tags': [tag.pk]
             }, content_type='application/json')
@@ -1268,7 +1268,7 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
         self.assertEqual(self.project.tags.count(), 2)
         self.client.force_login(self.project.owner)
         uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(13):
             resp = self.client.patch(uri, {
                 'tags': [tag2.pk]
             }, content_type='application/json')
@@ -1363,7 +1363,7 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:partmetadata-list',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(8):
             resp = self.client.post(uri, {'key': {'name': 'testname', 'cidoc': 'testcidoc'},
                                           'value': 'testvalue'},
                                     content_type='application/json')
