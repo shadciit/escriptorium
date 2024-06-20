@@ -92,7 +92,7 @@ export const createComponentTaxonomy = async ({
 }) =>
     await axios.post(`/documents/${documentId}/taxonomies/components/`, {
         name,
-        allowed_values: allowedValues,
+        allowed_values: allowedValues || [],
     });
 
 // update an annotation component
@@ -104,7 +104,7 @@ export const updateComponentTaxonomy = async ({
 }) =>
     await axios.patch(`/documents/${documentId}/taxonomies/components/${pk}/`, {
         name,
-        allowed_values: allowedValues,
+        allowed_values: allowedValues || [],
     });
 
 // delete an annotation component

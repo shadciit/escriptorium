@@ -247,7 +247,6 @@
                         form: 'addComponent', field: 'values', value: e.target.value
                     })"
                     :value="addComponentForm.values"
-                    required
                 />
             </template>
             <template #modal-actions>
