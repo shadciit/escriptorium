@@ -478,11 +478,11 @@ export default {
                     // if it's a number, and in the range of indices, select the type at that index
                     if (!isNaN(num) && num < types.length) {
                         this.clickSelectionType(types[num]);
-                    } else if (evt.key === "t") {
+                    } else if (evt.key.toLowerCase() === "t") {
                         this.closeTypeMenu();
                     }
                 } else {
-                    if (evt.key === "t" && this.hasSelection) {
+                    if (evt.key.toLowerCase() === "t" && this.hasSelection) {
                         this.openTypeMenu();
                     }
                 }
