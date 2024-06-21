@@ -154,36 +154,40 @@
                         <div class="escr-card-header">
                             <h2>Total Lines</h2>
                         </div>
+                        <EscrLoader
+                            v-if="!lineCount ||
+                                (transcriptionLoading && transcriptionLoading.characterCount)
+                            "
+                            class="escr-stat"
+                            :loading="transcriptionLoading && transcriptionLoading.characterCount"
+                            no-data-message="-"
+                        />
                         <span
-                            v-if="lineCount"
+                            v-else-if="lineCount"
                             class="escr-stat"
                         >
                             {{ lineCount.toLocaleString() }}
                         </span>
-                        <EscrLoader
-                            v-else
-                            class="escr-stat"
-                            :loading="loading && loading.document"
-                            no-data-message="-"
-                        />
                     </div>
                     <!-- Document total characters card -->
                     <div class="escr-card escr-card-padding chars-stats">
                         <div class="escr-card-header">
                             <h2>Total Characters</h2>
                         </div>
-                        <span
-                            v-if="charCount"
-                            class="escr-stat"
-                        >
-                            {{ charCount.toLocaleString() }}
-                        </span>
                         <EscrLoader
-                            v-else
+                            v-if="!charCount ||
+                                (transcriptionLoading && transcriptionLoading.characterCount)
+                            "
                             class="escr-stat"
                             :loading="transcriptionLoading && transcriptionLoading.characterCount"
                             no-data-message="-"
                         />
+                        <span
+                            v-else-if="charCount"
+                            class="escr-stat"
+                        >
+                            {{ charCount.toLocaleString() }}
+                        </span>
                     </div>
                     <!-- Document transcription status card -->
                     <div class="escr-card escr-card-padding transcription-status">
@@ -208,12 +212,7 @@
                         class="escr-document-ontology"
                         context="Document"
                         compact
-                        :items="ontology"
-                        :loading="ontologyLoading"
-                        :on-view="() => openOntologyModal"
-                        :on-select-category="changeOntologyCategory"
-                        :on-sort="sortOntology"
-                        :selected-category="ontologyCategory"
+                        :loading="loading && loading.document"
                     />
                 </div>
                 <!-- delete document modal -->
@@ -231,7 +230,7 @@
                 <ShareModal
                     v-if="shareModalOpen"
                     :groups="groups"
-                    :disabled="loading && (loading.document || loading.user)"
+                    :disabled="loading && loading.document"
                     :on-cancel="closeShareModal"
                     :on-submit="shareDocument"
                 />
@@ -455,9 +454,6 @@ export default {
             mainScript: (state) => state.document.mainScript,
             models: (state) => state.document.models,
             nextPage: (state) => state.document.nextPage,
-            ontology: (state) => state.ontology.ontology,
-            ontologyCategory: (state) => state.ontology.category,
-            ontologyLoading: (state) => state.ontology.loading,
             parts: (state) => state.document.parts,
             partsCount: (state) => state.document.partsCount,
             projectId: (state) => state.document.projectId,
@@ -618,23 +614,15 @@ export default {
         // handle document-related websocket events
         msgSocket.addEventListener("message", this.websocketTaskListener);
         try {
+            await this.fetchGroups();
             await this.fetchDocument();
         } catch (error) {
             this.setLoading({ key: "document", loading: false });
             this.addError(error);
         }
-        try {
-            this.setLoading({ key: "user", loading: true });
-            await this.fetchGroups();
-            this.setLoading({ key: "user", loading: false });
-        } catch(error) {
-            this.setLoading({ key: "user", loading: false });
-            this.addError(error);
-        }
     },
     methods: {
         ...mapActions("document", [
-            "changeOntologyCategory",
             "changeSelectedTranscription",
             "closeDeleteModal",
             "closeDocumentMenu",
@@ -656,7 +644,6 @@ export default {
             "openDeleteModal",
             "openDocumentMenu",
             "openEditModal",
-            "openOntologyModal",
             "openShareModal",
             "openTagsModal",
             "saveDocument",
@@ -665,7 +652,6 @@ export default {
             "setLoading",
             "shareDocument",
             "sortCharacters",
-            "sortOntology",
             "viewTasks",
         ]),
         ...mapActions("alerts", ["addError"]),

@@ -7,12 +7,11 @@ import {
     retrieveDocument,
     retrieveDocumentMetadata,
     retrieveDocumentModels,
-    retrieveDocumentOntology,
     retrieveDocumentParts,
+    retrieveDocumentStats,
     retrieveDocumentTasks,
     retrieveTextualWitnesses,
-    retrieveTranscriptionCharacters,
-    retrieveTranscriptionCharCount,
+    retrieveTranscriptionStats,
     shareDocument,
     updateDocumentMetadata,
 } from "../../../src/api";
@@ -31,11 +30,11 @@ const state = () => ({
     lastModified: "",
     linePosition: null,
     loading: {
-        document: false,
-        models: false,
-        parts: false,
-        tasks: false,
-        user: false,
+        document: true,
+        models: true,
+        parts: true,
+        tasks: true,
+        user: true,
     },
     mainScript: "",
     menuOpen: false,
@@ -144,26 +143,12 @@ const state = () => ({
      * }]
      */
     transcriptions: [],
+    types: [],
 });
 
 const getters = {};
 
 const actions = {
-    /**
-     * Change the ontology table category and fetch the selected ontology.
-     */
-    async changeOntologyCategory({ commit, dispatch }, category) {
-        commit("ontology/setCategory", category, { root: true });
-        try {
-            commit("ontology/setLoading", true, { root: true });
-            await dispatch("fetchDocumentOntology");
-            commit("ontology/setLoading", false, { root: true });
-        } catch (error) {
-            commit("ontology/setOntology", [], { root: true });
-            commit("ontology/setLoading", false, { root: true });
-            dispatch("alerts/addError", error, { root: true });
-        }
-    },
     /**
      * Change the selected transcription and fetch its ontology/characters.
      */
@@ -190,9 +175,7 @@ const actions = {
                 { key: "characterCount", loading: true },
                 { root: true },
             );
-            await dispatch("fetchTranscriptionCharacters");
-            // TODO: Uncomment below when character count backend implemented
-            // dispatch("fetchTranscriptionCharCount");
+            await dispatch("fetchTranscriptionStats");
             commit("characters/setLoading", false, { root: true });
             commit(
                 "transcription/setLoading",
@@ -342,7 +325,6 @@ const actions = {
         Object.keys(state.loading).map((key) =>
             commit("setLoading", { key, loading: true }),
         );
-        commit("ontology/setLoading", true, { root: true });
         commit("characters/setLoading", true, { root: true });
         // fetch document
         const { data } = await retrieveDocument(state.id);
@@ -421,6 +403,17 @@ const actions = {
                 },
                 { root: true },
             );
+
+            // kick off the document statistics fetching
+            try {
+                commit("ontology/setLoading", true, { root: true });
+                await dispatch("fetchDocumentStats");
+                commit("ontology/setLoading", false, { root: true });
+            } catch (error) {
+                commit("ontology/setLoading", false, { root: true });
+                dispatch("alerts/addError", error, { root: true });
+            }
+
             if (data.parts_count > 0) {
                 // kickoff parts fetch
                 try {
@@ -452,23 +445,20 @@ const actions = {
                         root: true,
                     });
                 }
-                // kick off the characters and ontology fetching
+
+                // kick off the transcription statistics fetching
                 try {
-                    await dispatch("fetchTranscriptionCharacters");
                     commit(
                         "transcription/setLoading",
                         { key: "characterCount", loading: true },
                         { root: true },
                     );
-                    // TODO: Uncomment below when character count backend implemented
-                    // dispatch("fetchTranscriptionCharCount");
+                    await dispatch("fetchTranscriptionStats");
                     commit(
                         "transcription/setLoading",
                         { key: "characterCount", loading: false },
                         { root: true },
                     );
-                    await dispatch("fetchDocumentOntology");
-                    commit("ontology/setLoading", false, { root: true });
                     commit("characters/setLoading", false, { root: true });
                 } catch (error) {
                     commit(
@@ -476,7 +466,6 @@ const actions = {
                         { key: "characterCount", loading: false },
                         { root: true },
                     );
-                    commit("ontology/setLoading", false, { root: true });
                     commit("characters/setLoading", false, { root: true });
                     dispatch("alerts/addError", error, { root: true });
                 }
@@ -537,7 +526,8 @@ const actions = {
         commit("setLoading", { key: "models", loading: true });
         let models = [];
         const { data } = await retrieveDocumentModels(state.id);
-        if (!data?.results) throw new Error("Unable to retrieve document models");
+        if (!data?.results)
+            throw new Error("Unable to retrieve document models");
         models = data.results;
         let nextPage = data.next;
         while (nextPage) {
@@ -607,58 +597,53 @@ const actions = {
      * Fetch the current transcription's characters, given this document's id from state,
      * plus sorting params from characters Vuex store.
      */
-    async fetchTranscriptionCharacters({ commit, state, rootState }) {
-        const { data } = await retrieveTranscriptionCharacters({
+    async fetchTranscriptionStats({ commit, state, rootState }) {
+        const { data } = await retrieveTranscriptionStats({
             documentId: state.id,
             transcriptionId: rootState.transcription.selectedTranscription,
             field: rootState.characters.sortState?.field,
             direction: rootState.characters.sortState?.direction,
         });
-        commit("characters/setCharacters", data, { root: true });
+        let { characters, line_count } = data;
+        commit("characters/setCharacters", characters, { root: true });
+        commit("transcription/setLineCount", line_count, { root: true });
+        commit(
+            "transcription/setCharacterCount",
+            characters.reduce((accumulator, c) => accumulator + c.frequency, 0),
+            { root: true },
+        );
     },
     /**
-     * Fetch the number of characters on the currently selected transcription level.
+     * Retrieve statistics about the document ontology
      */
-    async fetchTranscriptionCharCount({ commit, state, rootState }) {
-        const { data } = await retrieveTranscriptionCharCount({
+    async fetchDocumentStats({ commit, rootState, state }) {
+        const { data } = await retrieveDocumentStats({
             documentId: state.id,
-            transcriptionId: rootState.transcription.selectedTranscription,
+            sortField: rootState.ontology.sortState?.field,
+            sortDirection: rootState.ontology.sortState?.direction,
         });
-        if (data?.count) {
-            commit("transcription/setCharacterCount", data.count, {
-                root: true,
+        if (data) {
+            commit("setTypes", {
+                regions: data.regions.map((r) => (
+                    {...r, name: r.typology_name || "None" }
+                )),
+                lines: data.lines.map((l) => (
+                    {...l, name: l.typology_name || "None" }
+                )),
+                text: data.text_annotations.map((t) => (
+                    {...t, name: t.taxonomy_name || "None"}
+                )),
+                image: data.image_annotations.map((i) => (
+                    {...i, name: i.taxonomy_name || "None"}
+                )),
             });
         } else {
-            throw new Error(
-                "Unable to retrieve character count for the selected transcription.",
-            );
+            throw new Error("Unable to retrieve ontology");
         }
     },
     /**
-     * Fetch the current document's ontology, given this document's id from
-     * state, plus ontology category and sorting params from ontology Vuex store.
+     * Refresh images and transcriptions when import is complete
      */
-    async fetchDocumentOntology({ commit, state, rootState }) {
-        // TODO: Remove this check once regions and lines ontology
-        // endpoints have been written.
-        if (!["regions", "lines"].includes(rootState.ontology.category)) {
-            const { data } = await retrieveDocumentOntology({
-                documentId: state.id,
-                category: rootState.ontology.category,
-                sortField: rootState.ontology.sortState?.field,
-                sortDirection: rootState.ontology.sortState?.direction,
-            });
-            if (data?.results) {
-                commit("ontology/setOntology", data.results, { root: true });
-            } else {
-                throw new Error(
-                    `Unable to retrieve ${rootState.ontology.category} ontology`,
-                );
-            }
-        } else {
-            commit("ontology/setOntology", [], { root: true });
-        }
-    },
     async handleImportDone({ commit, dispatch }) {
         try {
             // refresh images on import:done
@@ -1019,12 +1004,11 @@ const actions = {
     async shareDocument({ commit, dispatch, state, rootState }) {
         commit("setLoading", { key: "document", loading: true });
         const { user, group } = rootState.forms.share;
+        const params = { documentId: state.id };
+        if (user) params["user"] = user;
+        else if (group) params["group"] = group;
         try {
-            const { data } = await shareDocument({
-                documentId: state.id,
-                user,
-                group,
-            });
+            const { data } = await shareDocument(params);
             if (data) {
                 // show toast alert on success
                 dispatch(
@@ -1061,25 +1045,10 @@ const actions = {
         commit("characters/setSortState", { field, direction }, { root: true });
         try {
             commit("characters/setLoading", true, { root: true });
-            await dispatch("fetchTranscriptionCharacters");
+            await dispatch("fetchTranscriptionStats");
             commit("characters/setLoading", false, { root: true });
         } catch (error) {
             commit("characters/setLoading", false, { root: true });
-            dispatch("alerts/addError", error, { root: true });
-        }
-    },
-    /**
-     * Event handler for sorting the ontology table; sets the sort state on the
-     * ontology Vuex store, then makes a call to fetch ontology based on current state.
-     */
-    async sortOntology({ commit, dispatch }, { field, direction }) {
-        commit("ontology/setSortState", { field, direction }, { root: true });
-        try {
-            commit("ontology/setLoading", true, { root: true });
-            await dispatch("fetchDocumentOntology");
-            commit("ontology/setLoading", false, { root: true });
-        } catch (error) {
-            commit("ontology/setLoading", false, { root: true });
             dispatch("alerts/addError", error, { root: true });
         }
     },
@@ -1197,6 +1166,9 @@ const mutations = {
     },
     setTranscriptions(state, transcriptions) {
         state.transcriptions = transcriptions;
+    },
+    setTypes(state, types) {
+        state.types = types;
     },
     updateMetadatum(state, metadatumToUpdate) {
         const metadata = structuredClone(state.metadata).map((m) => {
