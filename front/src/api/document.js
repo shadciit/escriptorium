@@ -357,11 +357,7 @@ export const queueImport = async ({ documentId, params }) => {
 
 // retrieve latest tasks for a document
 export const retrieveDocumentTasks = async ({ documentId }) =>
-    await axios.get("/tasks/", {
-        params: {
-            document: documentId,
-        },
-    });
+    await axios.get(`/documents/${documentId}/task_groups/`);
 
 // cancel a task on a document by pk
 export const cancelTask = async ({ documentId, taskReportId }) =>
