@@ -201,7 +201,7 @@ def _to_ptl_device(device: str):
 
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
-def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwargs):
+def segtrain(model_pk=None, part_pks=[], document_pk=None, task_group_pk=None, user_pk=None, **kwargs):
     # # Note hack to circumvent AssertionError: daemonic processes are not allowed to have children
     from multiprocessing import current_process
     current_process().daemon = False
@@ -355,7 +355,7 @@ def segtrain(model_pk=None, part_pks=[], document_pk=None, user_pk=None, **kwarg
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=5 * 60)
 def segment(instance_pk=None, user_pk=None, model_pk=None,
             steps=None, text_direction=None, override=None,
-            **kwargs):
+            task_group_pk=None, **kwargs):
     """
     steps can be either 'regions', 'lines' or 'both'
     """
@@ -530,7 +530,8 @@ def train_(qs, document, transcription, model=None, user=None):
 
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=60 * 60)
-def train(transcription_pk=None, model_pk=None, part_pks=None, user_pk=None, **kwargs):
+def train(transcription_pk=None, model_pk=None, task_group_pk=None,
+          part_pks=None, user_pk=None, **kwargs):
     if user_pk:
         try:
             user = User.objects.get(pk=user_pk)
@@ -658,7 +659,8 @@ def forced_align(instance_pk=None, model_pk=None, transcription_pk=None,
 
 @shared_task(autoretry_for=(MemoryError,), default_retry_delay=10 * 60)
 def transcribe(instance_pk=None, model_pk=None, user_pk=None,
-               transcription_pk=None, text_direction=None, **kwargs):
+               transcription_pk=None, text_direction=None, task_group_pk=None,
+               **kwargs):
 
     try:
         DocumentPart = apps.get_model('core', 'DocumentPart')
@@ -708,6 +710,7 @@ def align(
     document_pk=None,
     part_pks=[],
     user_pk=None,
+    task_group_pk=None,
     transcription_pk=None,
     witness_pk=None,
     n_gram=25,

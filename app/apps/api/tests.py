@@ -23,6 +23,7 @@ from core.models import (
     Transcription,
 )
 from core.tests.factory import CoreFactoryTestCase
+from reporting.models import TaskGroup
 
 
 class UserViewSetTestCase(CoreFactoryTestCase):
@@ -598,6 +599,65 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         }])
         model.refresh_from_db()
         self.assertEqual(model.training, False)
+
+    def test_task_group(self):
+        # make fake reports
+        group = TaskGroup.objects.create(created_by=self.doc.owner, document=self.doc)
+
+        # pending
+        self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                task_id="11111", method="core.tasks.train")
+        # running
+        report2 = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                          task_id="22222", method="core.tasks.train")
+        report2.start()
+        # canceled
+        report3 = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                          task_id="33333", method="core.tasks.train")
+        report3.cancel(self.doc.owner)
+        # error
+        report4 = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                          task_id="44444", method="core.tasks.train")
+        report4.error("Something terrible happened.")
+        # finished
+        report5 = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                          task_id="55555", method="core.tasks.train")
+        report5.end()
+        report6 = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                          task_id="66666", method="core.tasks.train")
+        report6.end()
+
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:task-group-list', kwargs={'document_pk': self.doc.pk})
+        resp = self.client.get(uri)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'][0]['method'], "core.tasks.train")
+        data = {t['workflow_state']: t['count'] for t in resp.json()['results'][0]['tasks']}
+        self.assertEqual(data['Queued'], 1)
+        self.assertEqual(data['Running'], 1)
+        self.assertEqual(data['Crashed'], 1)
+        self.assertEqual(data['Finished'], 2)
+        self.assertEqual(data['Canceled'], 1)
+
+    def test_unrelated_task_group(self):
+        group = TaskGroup.objects.create(created_by=self.doc.owner, document=self.doc)
+        # unrelated group
+        group2 = TaskGroup.objects.create(created_by=self.doc.owner, document=self.doc2)
+
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                         task_id="111111", method="core.tasks.train")
+        report.end()
+        report2 = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group2,
+                                          task_id="222222", method="core.tasks.train")
+        report2.end()
+
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:task-group-list', kwargs={'document_pk': self.doc.pk})
+        resp = self.client.get(uri)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['count'], 1)
+        data = {t['workflow_state']: t['count'] for t in resp.json()['results'][0]['tasks']}
+        self.assertEqual(data['Finished'], 1)
 
     def test_filter_project(self):
         self.client.force_login(self.doc.owner)

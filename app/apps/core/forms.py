@@ -40,6 +40,7 @@ from core.search import (
     search_content_psql_regex,
     search_content_psql_word,
 )
+from reporting.models import TaskGroup
 from users.models import User
 
 logger = logging.getLogger(__name__)
@@ -597,6 +598,7 @@ class RegionTypesFormMixin(forms.Form):
 
 
 class DocumentProcessFormBase(forms.Form):
+    PROCESS_NAME = 'Not Implemented'
     CHECK_GPU_QUOTA = False
     CHECK_DISK_QUOTA = False
 
@@ -621,8 +623,16 @@ class DocumentProcessFormBase(forms.Form):
 
         return super().clean()
 
+    def process(self):
+        self.task_group = TaskGroup.objects.create(
+            task=self.PROCESS_NAME,
+            created_by=self.user,
+            document=self.document)
+
 
 class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'segmentation'
+
     model = forms.ModelChoiceField(
         queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_SEGMENT),
         label=_("Model"),
@@ -666,6 +676,7 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
         ).distinct()
 
     def process(self):
+        super().process()
         model = self.cleaned_data.get('model')
 
         if model:
@@ -681,6 +692,7 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
         for part in self.cleaned_data.get('parts'):
             part.task('segment',
                       user_pk=self.user.pk,
+                      task_group_pk=self.task_group.pk,
                       steps=self.cleaned_data.get('segmentation_steps'),
                       text_direction=self.cleaned_data.get('text_direction'),
                       model_pk=model and model.pk or None,  # None means default model
@@ -688,6 +700,8 @@ class SegmentForm(BootstrapFormMixin, DocumentProcessFormBase):
 
 
 class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'recognition'
+
     model = forms.ModelChoiceField(
         queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_RECOGNIZE))
     transcription = forms.ModelChoiceField(
@@ -710,6 +724,7 @@ class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
         )
 
     def process(self):
+        super().process()
         model = self.cleaned_data.get('model')
         transcription = self.cleaned_data.get('transcription')
 
@@ -737,12 +752,15 @@ class TranscribeForm(BootstrapFormMixin, DocumentProcessFormBase):
         for part in self.cleaned_data.get('parts'):
             part.task('transcribe',
                       user_pk=self.user.pk,
+                      task_group_pk=self.task_group.pk,
                       model_pk=model.pk,
                       transcription_pk=transcription and transcription.pk or None)
 
 
 class AlignForm(BootstrapFormMixin, DocumentProcessFormBase, RegionTypesFormMixin):
     """Form to perform text alignment by passing a transcription and textual witness"""
+    PROCESS_NAME = 'alignment'
+
     transcription = forms.ModelChoiceField(
         queryset=Transcription.objects.filter(archived=False),
         required=True,
@@ -871,6 +889,8 @@ class AlignForm(BootstrapFormMixin, DocumentProcessFormBase, RegionTypesFormMixi
 
     def process(self):
         """Instantiate or set the witness to use, then enqueue the task(s)"""
+        super().process()
+
         transcription = self.cleaned_data.get("transcription")
         witness_file = self.cleaned_data.get("witness_file")
         existing_witness = self.cleaned_data.get("existing_witness")
@@ -899,6 +919,7 @@ class AlignForm(BootstrapFormMixin, DocumentProcessFormBase, RegionTypesFormMixi
         document.queue_alignment(
             parts=parts,
             user_pk=self.user.pk,
+            task_group_pk=self.task_group.pk,
             transcription_pk=transcription.pk,
             witness_pk=witness.pk,
             # handle empty strings, NoneType; allow some values that could be false
@@ -960,6 +981,8 @@ class TrainMixin():
         return cleaned_data
 
     def process(self):
+        super().process()
+
         model = self.cleaned_data['model']
         if not model:
             model = OcrModel.objects.create(
@@ -984,6 +1007,8 @@ class TrainMixin():
 
 
 class SegTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'segmentation training'
+
     model_name = forms.CharField(required=False)
     model = forms.ModelChoiceField(queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_SEGMENT),
                                    required=False)
@@ -1004,10 +1029,13 @@ class SegTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
         model = super().process()
         model.segtrain(self.document,
                        self.cleaned_data.get('parts'),
+                       task_group_pk=self.task_group.pk,
                        user=self.user)
 
 
 class RecTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
+    PROCESS_NAME = 'recognition training'
+
     model_name = forms.CharField(required=False)
     model = forms.ModelChoiceField(queryset=OcrModel.objects.filter(job=OcrModel.MODEL_JOB_RECOGNIZE),
                                    required=False)
@@ -1026,6 +1054,7 @@ class RecTrainForm(BootstrapFormMixin, TrainMixin, DocumentProcessFormBase):
         model = super().process()
         model.train(self.cleaned_data.get('parts'),
                     self.cleaned_data['transcription'],
+                    task_group_pk=self.task_group.pk,
                     user=self.user)
 
     def clean(self):
