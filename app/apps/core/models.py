@@ -27,18 +27,17 @@ from django.db.models.functions import Coalesce, Length
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.forms import ValidationError
-from django.template.defaultfilters import slugify
 from django.utils.functional import cached_property
+from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django_prometheus.models import ExportModelOperationsMixin
 from easy_thumbnails.files import get_thumbnailer
 from kraken import blla, rpred
-from kraken.binarization import nlbin
+from kraken.containers import BaselineLine, Segmentation
 from kraken.kraken import SEGMENTATION_DEFAULT_MODEL
 from kraken.lib import models as kraken_models
 from kraken.lib import vgsl
 from kraken.lib.segmentation import calculate_polygonal_environment
-from kraken.lib.util import is_bitonal
 from ordered_model.models import OrderedModel, OrderedModelManager
 from PIL import Image
 from shapely import affinity
@@ -49,7 +48,6 @@ from sklearn.cluster import DBSCAN
 
 from core.tasks import (
     align,
-    binarize,
     convert,
     generate_part_thumbnails,
     lossless_compression,
@@ -380,8 +378,9 @@ class ProjectManager(models.Manager):
         # return the list of EDITABLE projects
         # allows to add documents to it
         return (
-            self.filter(Q(owner=user) | Q(shared_with_users=user))
-            #   | Q(shared_with_groups__user=user))
+            self.filter(Q(owner=user)
+                        | Q(shared_with_users=user)
+                        | Q(shared_with_groups__user=user))
             .distinct()
         )
 
@@ -391,7 +390,7 @@ class ProjectManager(models.Manager):
         return self.filter(
             Q(owner=user)
             | Q(shared_with_users=user)
-            #   | Q(shared_with_groups__user=user))
+            | Q(shared_with_groups__user=user)
             | (
                 Q(documents__shared_with_users=user)
                 | Q(documents__shared_with_groups__user=user)
@@ -433,7 +432,7 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
         return self.name
 
     def make_slug(self):
-        slug = slugify(self.name)
+        slug = slugify(self.name, allow_unicode=True)
         # check unicity
         exists = Project.objects.filter(slug=slug).count()
         if not exists:
@@ -442,7 +441,7 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
             self.slug = slug[:40] + hex(int(time.time()))[2:]
 
     def save(self, *args, **kwargs):
-        if not self.pk:
+        if not self.slug:
             self.make_slug()
         super().save(*args, **kwargs)
 
@@ -454,7 +453,7 @@ class DocumentManager(models.Manager):
                 Q(owner=user)
                 | Q(project__owner=user)
                 | Q(project__shared_with_users=user)
-                #   | Q(project__shared_with_groups__user=user))
+                | Q(project__shared_with_groups__user=user)
                 | (Q(shared_with_users=user) | Q(shared_with_groups__user=user))
             )
             .exclude(workflow_state=Document.WORKFLOW_STATE_ARCHIVED)
@@ -859,13 +858,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
     original_filename = models.CharField(max_length=1024, blank=True)
     image_file_size = models.BigIntegerField()
     source = models.CharField(max_length=1024, blank=True)
-    bw_backend = models.CharField(max_length=128, default="kraken")
-    bw_image = models.ImageField(
-        upload_to=document_images_path,
-        null=True,
-        blank=True,
-        help_text=_("Binarized image needs to be the same size as original image."),
-    )
     typology = models.ForeignKey(
         DocumentPartType, null=True, blank=True, on_delete=models.SET_NULL
     )
@@ -923,16 +915,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
     @property
     def converted(self):
         return self.workflow_state >= self.WORKFLOW_STATE_CONVERTED
-
-    @property
-    def binarized(self):
-        try:
-            self.bw_image.file
-        except ValueError:
-            # catches ValueError: The 'bw_image' attribute has no file associated with it.
-            return False
-        else:
-            return True
 
     @property
     def segmented(self):
@@ -1116,7 +1098,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
         if self.workflow_state == self.WORKFLOW_STATE_ALIGNED:
             w["align"] = "done"
 
-        for report in self.reports.filter(method__in=["core.tasks.binarize", "core.tasks.segment", "core.tasks.transcribe", "core.tasks.align"]):
+        for report in self.reports.filter(method__in=["core.tasks.segment", "core.tasks.transcribe", "core.tasks.align"]):
             # Only the last registered state for each group of tasks will be kept
             short_name = report.method.split(".")[-1]
             if report.workflow_state == TaskReport.WORKFLOW_STATE_QUEUED:
@@ -1230,10 +1212,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
         if self.workflow_state < self.WORKFLOW_STATE_CONVERTED:
             self.workflow_state = self.WORKFLOW_STATE_CONVERTED
 
-        with Image.open(self.image.path) as im:
-            if is_bitonal(im):
-                self.bw_image = self.image
-
         self.save()
 
     def compress(self):
@@ -1254,29 +1232,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             os.rename(opti_name, self.image.file.name)
             self.image_file_size = self.image.size
             self.save()
-
-    def binarize(self, threshold=None):
-        fname = os.path.basename(self.image.file.name)
-        # should be formatted to png already by lossless_compression but better safe than sorry
-        form = None
-        f_, ext = os.path.splitext(self.image.file.name)
-        if ext[1] in [".jpg", ".jpeg", ".JPG", ".JPEG", ""]:
-            if ext:
-                logger.warning("jpeg does not support 1bpp images. Forcing to png.")
-            form = "png"
-            fname = "%s.%s" % (f_, form)
-        bw_file_name = "bw_" + fname
-        bw_file = os.path.join(os.path.dirname(self.image.file.name), bw_file_name)
-        with Image.open(self.image.path) as im:
-            # threshold, zoom, escale, border, perc, range, low, high
-            if threshold is not None:
-                res = nlbin(im, threshold)
-            else:
-                res = nlbin(im)
-            res.save(bw_file, format=form)
-
-        self.bw_image = document_images_path(self, bw_file_name)
-        self.save()
 
     def segment(
         self,
@@ -1302,16 +1257,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
         #    &  seg_type [None, 'bbox', 'baselines']
 
         im = Image.open(self.image.file.name)
-        # will be fixed sometime in the future
-        # if model_.one_channel_mode == '1':
-        #     # TODO: need to binarize, probably not live...
-        #     if not self.bw_image:
-        #         self.binarize()
-        #     im = Image.open(self.bw_image.file.name)
-        # elif model_.one_channel_mode == 'L':
-        #     im = Image.open(self.image.file.name).convert('L')
-        # else:
-        #     im = Image.open(self.image.file.name)
 
         options = {
             "device": "cpu",
@@ -1330,7 +1275,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             res = blla.segment(im, **options)
 
             if steps in ["regions", "both"]:
-                for region_type, regions in res["regions"].items():
+                for region_type, regions in res.regions.items():
                     try:
                         typo, created = self.document.valid_block_types.get_or_create(
                             name=region_type)
@@ -1342,14 +1287,14 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                         Block.objects.create(
                             document_part=self,
                             typology=typo,
-                            box=region,
+                            box=region.boundary,
                         )
 
             regions = self.blocks.all()
             if steps in ["lines", "both"]:
-                for line in res["lines"]:
-                    mask = line["boundary"] if line["boundary"] is not None else None
-                    baseline = line["baseline"]
+                for line in res.lines:
+                    mask = line.boundary if line.boundary is not None else None
+                    baseline = line.baseline
 
                     # calculate if the center of the line is contained in one of the region
                     # (pick the first one that matches)
@@ -1359,11 +1304,11 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                     )
                     try:
                         typo, created = self.document.valid_line_types.get_or_create(
-                            name=line["tags"].get("type"))
+                            name=line.tags.get("type"))
                     except LineType.MultipleObjectsReturned:
                         # Note: this should not happen if the modelisation was alright
                         # but for now we hack
-                        typo = self.document.valid_line_types.filter(name=line["tags"].get("type"))[0]
+                        typo = self.document.valid_line_types.filter(name=line.tags.get("type"))[0]
                     Line.objects.create(
                         document_part=self,
                         typology=typo,
@@ -1402,24 +1347,20 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
                     # bypass lines without baseline
                     continue
                 else:
-                    bounds = {
-                        "lines": [
-                            {
-                                "baseline": line.baseline,
-                                "boundary": line.mask,
-                                "text_direction": text_direction,
-                                "tags": {'type': line.typology and line.typology.name or 'default'},
-                            }
-                        ],  # self.document.main_script.name
-                        "type": "baselines",
-                        # 'selfcript_detection': True
-                    }
+                    bll = BaselineLine(id='foo',
+                                       baseline=line.baseline,
+                                       boundary=line.mask)
+                    seg = Segmentation(type='baselines',
+                                       imagename='/dummy.png',
+                                       text_direction=text_direction,
+                                       script_detection=False,
+                                       lines=[bll])
 
                 it = rpred.rpred(
                     model_,
                     im,
-                    bounds=bounds,
-                    pad=16,  # TODO: % of the image?
+                    bounds=seg,
+                    pad=16,
                     bidi_reordering=reorder
                 )
                 lt, created = LineTranscription.objects.get_or_create(
@@ -1487,11 +1428,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             else:
                 sig.link(lossless_compression.si(instance_pk=self.pk, **kwargs))
             tasks.append(sig)
-
-        if task_name == 'binarize':
-            tasks.append(binarize.si(instance_pk=self.pk,
-                                     report_label='Binarize in %s' % self.document.name,
-                                     **kwargs))
 
         if (task_name == 'segment'):
             tasks.append(segment.si(instance_pk=self.pk,
@@ -1587,14 +1523,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             # save the updated file name in db
             self.image = update_name(self.image.name)
 
-        # rotate bw image
-        if self.bw_image:
-            with Image.open(self.bw_image.file.name) as im:
-                rim = im.rotate(360 - angle, expand=True)
-                rim.save(update_name(self.bw_image.file.name))
-                rim.close()
-                self.bw_image = update_name(self.bw_image.name)
-
         self.save()
 
         # we need this one right away
@@ -1647,12 +1575,6 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), OrderedModel):
             cim = im.crop((x1, y1, x2, y2))
             cim.save(self.image.file.name)
             cim.close()
-
-        if self.bw_image:
-            with Image.open(self.image.file.name) as im:
-                cim = im.crop((x1, y1, x2, y2))
-                cim.save(self.image.file.name)
-                cim.close()
 
         for line in self.lines.all():
             if line.baseline:
@@ -2054,15 +1976,17 @@ class OcrModel(ExportModelOperationsMixin("OcrModel"), Versioned, models.Model):
 
         return model
 
-    def segtrain(self, document, parts_qs, user=None):
+    def segtrain(self, document, parts_qs, task_group_pk=None, user=None):
         segtrain.delay(model_pk=self.pk,
+                       task_group_pk=task_group_pk,
                        part_pks=list(parts_qs.values_list('pk', flat=True)),
                        document_pk=document.pk,
                        user_pk=user and user.pk or None)
 
-    def train(self, parts_qs, transcription, user=None):
+    def train(self, parts_qs, transcription, task_group_pk=None, user=None):
         train.delay(transcription_pk=transcription.pk,
                     model_pk=self.pk,
+                    task_group_pk=task_group_pk,
                     part_pks=list(parts_qs.values_list('pk', flat=True)),
                     user_pk=user and user.pk or None)
 
@@ -2184,6 +2108,4 @@ class TextualWitness(models.Model):
 @receiver(pre_delete, sender=DocumentPart, dispatch_uid="thumbnails_delete_signal")
 def delete_thumbnails(sender, instance, using, **kwargs):
     thumbnailer = get_thumbnailer(instance.image)
-    thumbnailer.delete()
-    thumbnailer = get_thumbnailer(instance.bw_image)
     thumbnailer.delete()

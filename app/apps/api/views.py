@@ -4,7 +4,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import connection, transaction
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -57,6 +57,7 @@ from api.serializers import (
     ScriptSerializer,
     SegmentSerializer,
     SegTrainSerializer,
+    TaskGroupSerializer,
     TaskReportSerializer,
     TextAnnotationSerializer,
     TextualWitnessSerializer,
@@ -95,7 +96,7 @@ from core.models import (
 from core.tasks import recalculate_masks
 from imports.forms import ExportForm, ImportForm
 from imports.parsers import ParseError
-from reporting.models import TaskReport
+from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
 from users.models import Group, User
 from versioning.models import NoChangeException
@@ -236,6 +237,35 @@ class ProjectViewSet(ModelViewSet):
                     filter=~Q(documents__workflow_state=Document.WORKFLOW_STATE_ARCHIVED),
                     distinct=True))
                 .select_related('owner'))
+
+    @action(detail=True, methods=['post'])
+    def share(self, request, pk=None):
+        project = self.get_object()
+        if 'group' in request.data:
+            try:
+                target = (Group.objects
+                          .filter(user=request.user)
+                          .get(pk=request.data['group']))
+            except Group.DoesNotExist:
+                return Response({'error': 'invalid group.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                project.shared_with_groups.add(target)
+        elif 'user' in request.data:
+            try:
+                target = User.objects.get(username=request.data['user'])
+            except User.DoesNotExist:
+                return Response({'error': 'invalid username.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                project.shared_with_users.add(target)
+        else:
+            return Response({'error': 'Please provide either a group(pk) or user(username).'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # re-instantiate serializer to use updated data
+        serializer = ProjectSerializer(project)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProjectTagViewSet(ModelViewSet):
@@ -626,12 +656,104 @@ class DocumentViewSet(ModelViewSet):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'])
+    def share(self, request, pk=None):
+        document = self.get_object()
+        if 'group' in request.data:
+            try:
+                target = (Group.objects
+                          .filter(user=request.user)
+                          .get(pk=request.data['group']))
+            except Group.DoesNotExist:
+                return Response({'error': 'invalid group.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                document.shared_with_groups.add(target)
+        elif 'user' in request.data:
+            try:
+                target = User.objects.get(username=request.data['user'])
+            except User.DoesNotExist:
+                return Response({'error': 'invalid username.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            else:
+                document.shared_with_users.add(target)
+        else:
+            return Response({'error': 'Please provide either a group(pk) or user(username).'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # re-instantiate serializer to use updated data
+        serializer = DocumentSerializer(document, context={'user': request.user})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @method_decorator(cache_page(60 * 60))  # one hour
+    @action(detail=True, methods=['get'])
+    def stats(self, request, pk=None):
+        document = self.get_object()
+        order_param = self.request.query_params.get('ordering')
+
+        if order_param in ['frequency', '-frequency']:
+            order_by = order_param
+        elif order_param in ['typology', '-typology']:
+            order_by = order_param + '__name'
+        else:
+            order_by = '-frequency'
+
+        regions = (Block.objects
+                   .filter(document_part__document=document)
+                   .values('typology_id')
+                   .annotate(typology_name=F('typology__name'),
+                             frequency=Count('*'))
+                   .order_by(order_by))
+
+        lines = (Line.objects
+                 .filter(document_part__document=document)
+                 .values('typology_id')
+                 .annotate(typology_name=F('typology__name'),
+                           frequency=Count('*'))
+                 .order_by(order_by))
+
+        if order_param in ['typology', '-typology']:
+            order_by = '-frequency'
+        elif order_param in ['taxonomy', '-taxonomy']:
+            order_by = order_param + '__name'
+
+        text_annotations = (TextAnnotation.objects
+                            .filter(part__document=document)
+                            .values('taxonomy_id')
+                            .annotate(taxonomy_name=F('taxonomy__name'),
+                                      frequency=Count('*'))
+                            .order_by(order_by))
+
+        img_annotations = (ImageAnnotation.objects
+                           .filter(part__document=document)
+                           .values('taxonomy_id')
+                           .annotate(taxonomy_name=F('taxonomy__name'),
+                                     frequency=Count('*'))
+                           .order_by(order_by))
+
+        return Response({
+            'regions': regions,
+            'lines': lines,
+            'image_annotations': img_annotations,
+            'text_annotations': text_annotations
+        })
+
+
+class TaskGroupViewSet(ModelViewSet):
+    queryset = TaskGroup.objects.all().select_related('created_by')
+    serializer_class = TaskGroupSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(document=self.kwargs.get('document_pk'))
+        return qs
+
 
 class TaskReportViewSet(ModelViewSet):
     queryset = TaskReport.objects.all()
     serializer_class = TaskReportSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    filterset_fields = ['document']
+    filterset_fields = ['document', 'group']
     ordering_fields = ['queued_at', 'started_at', 'done_at']
     ordering = ['-queued_at', '-started_at', '-done_at']
 
@@ -811,10 +933,18 @@ class DocumentTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
             self.get_object().archive()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ProtectedObjectException:
-            return Response("This object can not be deleted.", status=400)
+            return Response("This transcription can not be deleted.", status=400)
 
-    def characters_query(self, order_by):
-        transcription = self.get_object()
+    def characters_query(self, transcription, order_param):
+        if order_param == 'frequency':
+            order_by = "frequency ASC"
+        elif order_param == 'char':
+            order_by = "char ASC"
+        elif order_param == '-char':
+            order_by = "char DESC"
+        else:
+            order_by = "frequency DESC"
+
         with connection.cursor() as cursor:
             cursor.execute('''
             SELECT char, count(*) as frequency
@@ -826,17 +956,22 @@ class DocumentTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
             ''' + order_by + ';', [self.document.pk, transcription.pk])
             all_ = cursor.fetchall()
             data = [{'char': char, 'frequency': freq} for char, freq in all_]
-        return Response(data)
+
+        return data
 
     @method_decorator(cache_page(60 * 60))  # one hour
     @action(detail=True, methods=['GET'])
-    def characters(self, request, document_pk=None, pk=None):
-        return self.characters_query("frequency DESC")
+    def stats(self, request, document_pk=None, pk=None):
+        transcription = self.get_object()
+        # Note: we don't have access to OrderingFilter goodies in an @action
+        order_param = self.request.query_params.get('ordering')
+        chars = self.characters_query(transcription, order_param)
+        line_count = transcription.linetranscription_set.exclude(content='').count()
 
-    @method_decorator(cache_page(60 * 60))  # one hour
-    @action(detail=True, methods=['GET'])
-    def characters_by_char(self, request, document_pk=None, pk=None):
-        return self.characters_query("char ASC")
+        return Response({
+            'line_count': line_count,
+            'characters': chars
+        })
 
 
 class TypologyViewSet(ModelViewSet):

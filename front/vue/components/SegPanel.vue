@@ -725,8 +725,8 @@ export default Vue.extend({
             "keyup",
             function (ev) {
                 if (!this.blockShortcuts && ev.ctrlKey) {
-                    if (ev.key == "z") this.undo();
-                    if (ev.key == "y") this.redo();
+                    if (ev.key.toLowerCase() == "z") this.undo();
+                    if (ev.key.toLowerCase() == "y") this.redo();
                 }
             }.bind(this)
         );

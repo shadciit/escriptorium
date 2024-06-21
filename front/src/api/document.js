@@ -26,9 +26,8 @@ export const retrieveDocument = async (documentId) =>
     await axios.get(`/documents/${documentId}/`);
 
 // retrieve types list for a document
-export const retrieveDocumentOntology = async ({
+export const retrieveDocumentStats = async ({
     documentId,
-    category,
     sortField,
     sortDirection,
 }) => {
@@ -39,11 +38,8 @@ export const retrieveDocumentOntology = async ({
             direction: sortDirection,
         });
     }
-    if (["image", "text"].includes(category)) {
-        params.target = category;
-    }
     return await axios.get(
-        `/documents/${documentId}/${ontologyMap[category]}/`,
+        `/documents/${documentId}/stats/`,
         { params },
     );
 };
@@ -96,11 +92,27 @@ export const createComponentTaxonomy = async ({
 }) =>
     await axios.post(`/documents/${documentId}/taxonomies/components/`, {
         name,
-        allowed_values: allowedValues,
+        allowed_values: allowedValues || [],
     });
 
+// update an annotation component
+export const updateComponentTaxonomy = async ({
+    documentId,
+    name,
+    allowedValues,
+    pk,
+}) =>
+    await axios.patch(`/documents/${documentId}/taxonomies/components/${pk}/`, {
+        name,
+        allowed_values: allowedValues || [],
+    });
+
+// delete an annotation component
+export const deleteComponentTaxonomy = async ({ documentId, pk }) =>
+    await axios.delete(`/documents/${documentId}/taxonomies/components/${pk}/`);
+
 // retrieve characters, sorted by character or frequency, for a specific transcription on a document
-export const retrieveTranscriptionCharacters = async ({
+export const retrieveTranscriptionStats = async ({
     documentId,
     transcriptionId,
     field,
@@ -110,15 +122,10 @@ export const retrieveTranscriptionCharacters = async ({
     if (field && direction) {
         ordering = getSortParam({ field, direction });
     }
-    if (ordering === "char") {
-        return await axios.get(
-            `/documents/${documentId}/transcriptions/${transcriptionId}/characters_by_char/`,
-        );
-    } else {
-        return await axios.get(
-            `/documents/${documentId}/transcriptions/${transcriptionId}/characters/`,
-        );
-    }
+    return await axios.get(
+        // eslint-disable-next-line max-len
+        `/documents/${documentId}/transcriptions/${transcriptionId}/stats/?ordering=${ordering}`,
+    );
 };
 
 // retrieve the total number of characters in a specific transcription level on a document
@@ -350,11 +357,7 @@ export const queueImport = async ({ documentId, params }) => {
 
 // retrieve latest tasks for a document
 export const retrieveDocumentTasks = async ({ documentId }) =>
-    await axios.get("/tasks/", {
-        params: {
-            document: documentId,
-        },
-    });
+    await axios.get(`/documents/${documentId}/task_groups/`);
 
 // cancel a task on a document by pk
 export const cancelTask = async ({ documentId, taskReportId }) =>

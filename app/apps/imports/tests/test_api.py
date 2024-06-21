@@ -81,7 +81,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_single.alto'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(60):
+            with self.assertNumQueries(62):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -105,7 +105,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_single_baselines.alto'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(44):
+            with self.assertNumQueries(46):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -129,7 +129,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test.zip'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(77):
+            with self.assertNumQueries(81):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -154,7 +154,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_composedblock.alto'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(86):
+            with self.assertNumQueries(88):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -346,12 +346,12 @@ class XmlImportTestCase(CoreFactoryTestCase):
         self.assertEqual(line.mask, [[150.3, 64], [0, 60], [425, 81], [460, 60], [616, 64], [621, 5]])
         self.assertEqual(line.baseline, [[155.0, 55.0], [180.0, 55.0], [0, 55.0], [231.3, 55.0]])
 
-    def test_parse_pagexml_ziped_file(self):
+    def test_parse_pagexml_zipped_file(self):
         uri = reverse('api:document-imports', kwargs={'pk': self.document.pk})
         filename = 'test_pagexml.zip'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(412):  # there's a lot of lines in there
+            with self.assertNumQueries(418):  # there's a lot of lines in there
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -383,7 +383,7 @@ class XmlImportTestCase(CoreFactoryTestCase):
         filename = 'test_pagexml_types.xml'
         mock_path = os.path.join(os.path.dirname(__file__), 'mocks', filename)
         with open(mock_path, 'rb') as fh:
-            with self.assertNumQueries(92):
+            with self.assertNumQueries(94):
                 response = self.client.post(uri, {
                     'upload_file': SimpleUploadedFile(filename, fh.read())
                 })
@@ -441,13 +441,13 @@ class XmlImportTestCase(CoreFactoryTestCase):
             # mock the image grabbing
             mock_resp = mock.Mock(content=fh.read(), status_code=200)
             with mock.patch('requests.get', return_value=mock_resp):
-                for part in imp.process():  # exaust the generator
+                for part in imp.process():  # exhaust the generator
                     pass
 
         self.assertEqual(imp.workflow_state, imp.WORKFLOW_STATE_DONE)
         self.assertEqual(imp.processed, 5)
 
-        # +2 from factory # change 7 by 8 i addedpart 3 manuallly
+        # +2 from factory # change 7 by 8 i addedpart 3 manually
         self.assertEqual(self.document.parts.count(), 8)
 
     def test_cancel(self):
@@ -631,11 +631,11 @@ class DocumentExportTestCase(CoreFactoryTestCase):
                     transcription=self.trans,
                     content='line %d:%d' % (i, j))
         self.client.force_login(self.user)
-        with self.assertNumQueries(22):
+        with self.assertNumQueries(32):
             response = self.client.post(reverse('api:document-export',
                                                 kwargs={'pk': self.trans.document.pk}),
                                         {'transcription': self.trans.pk,
-                                         'file_format': 'text',
+                                         'file_format': 'alto',
                                          'parts': [str(p.pk) for p in self.parts],
                                          'region_types': self.region_types_choices})
             self.assertEqual(response.status_code, 200)
