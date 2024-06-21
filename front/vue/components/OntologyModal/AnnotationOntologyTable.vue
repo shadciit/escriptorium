@@ -236,7 +236,7 @@
                         form: 'addComponent', field: 'name', value: e.target.value
                     })"
                     :value="addComponentForm.name"
-                    :invalid="componentFormInvalid.name"
+                    :invalid="componentFormInvalid"
                     required
                 />
                 <TextField
@@ -248,8 +248,6 @@
                         form: 'addComponent', field: 'values', value: e.target.value
                     })"
                     :value="addComponentForm.values"
-                    :invalid="componentFormInvalid.values"
-                    required
                 />
             </template>
             <template #modal-actions>
@@ -345,7 +343,7 @@ export default {
         return {
             addComponentModalOpen: false,
             componentDropdownOpen: null,
-            componentFormInvalid: { name: false, values: false },
+            componentFormInvalid: false,
             componentToDelete: null,
             confirmDeleteComponentModalOpen: false,
             editComponentMode: "",
@@ -365,7 +363,7 @@ export default {
          */
         closeAddComponentModal() {
             this.addComponentModalOpen = false;
-            this.componentFormInvalid = { name: false, values: false };
+            this.componentFormInvalid = false;
             this.editComponentMode = "";
             this.clearForm("addComponent");
         },
@@ -414,30 +412,24 @@ export default {
          * Callback to create a new component
          */
         async onAddComponent() {
-            if (this.addComponentForm.name && this.addComponentForm.values) {
-                this.componentFormInvalid = { name: false, values: false };
+            if (this.addComponentForm.name) {
+                this.componentFormInvalid = false;
                 await this.createComponent();
                 this.closeAddComponentModal();
             } else {
-                this.componentFormInvalid = {
-                    name: !this.addComponentForm.name,
-                    values: !this.addComponentForm.values,
-                };
+                this.componentFormInvalid = true;
             }
         },
         /**
          * Callback to save changes to a component
          */
         async onUpdateComponent() {
-            if (this.addComponentForm.name && this.addComponentForm.values) {
-                this.componentFormInvalid = { name: false, values: false };
+            if (this.addComponentForm.name) {
+                this.componentFormInvalid = false;
                 await this.updateComponent();
                 this.closeAddComponentModal();
             } else {
-                this.componentFormInvalid = {
-                    name: !this.addComponentForm.name,
-                    values: !this.addComponentForm.values,
-                };
+                this.componentFormInvalid = true;
             }
         },
         /**
