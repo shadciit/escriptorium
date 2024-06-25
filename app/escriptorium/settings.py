@@ -451,6 +451,10 @@ EXPORT_OPENITI_MARKDOWN_ENABLED = os.getenv('EXPORT_OPENITI_MARKDOWN', "False").
 # Boolean used to enable the OpenITI TEI XML export mode
 EXPORT_TEI_XML_ENABLED = os.getenv('EXPORT_TEI_XML', "False").lower() not in ("false", "0")
 
+# catch-all exceptions, add them to report and skip the erroring files
+# set to True in a dev environment
+EXPORT_STRICT = False
+
 # Boolean used to enable text alignment with Passim
 TEXT_ALIGNMENT_ENABLED = os.getenv('TEXT_ALIGNMENT', "False").lower() not in ("false", "0")
 
