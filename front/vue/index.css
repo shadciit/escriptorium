@@ -463,6 +463,9 @@ nav.escr-editor-nav .new-section.with-separator {
     margin-bottom: 0;
     display: inline-block !important;
 }
+p.additional:empty {
+    display: none !important;
+}
 .alert a {
     display: block;
     border: 1px solid var(--text1);
