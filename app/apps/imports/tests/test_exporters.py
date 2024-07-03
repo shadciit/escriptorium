@@ -41,9 +41,7 @@ xml_parser = etree.XMLParser(remove_blank_text=True)
 
 
 def get_xml_str(file_content):
-    st = etree.tostring(etree.XML(file_content, parser=xml_parser))
-    print(st)
-    return st
+    return etree.tostring(etree.XML(file_content, parser=xml_parser))
 
 
 def format_xml_contents(generated_content, expected_filename):
@@ -170,9 +168,14 @@ class ExportersTestCase(CoreFactoryTestCase):
         char_width = round(baseline_w / len(content), 1)
         return [{
             'c': char,
-            'poly': baseline_x + index * char_width,
+            'poly': [
+                [round(baseline_x + index * char_width), baseline_y],
+                [round(baseline_x + index * char_width), baseline_y + line_h],
+                [round(baseline_x + index * char_width + baseline_w), baseline_y],
+                [round(baseline_x + index * char_width + baseline_w), baseline_y + line_h]
+            ],
             'confidence': 1.0
-        } for index, char in enumerate(content.split(''))]
+        } for index, char in enumerate(content)]
 
     def test_text_exporter_render(self, timezone_mock):
         exporter = TextExporter(

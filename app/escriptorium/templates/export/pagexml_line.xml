@@ -9,6 +9,7 @@
         {% if line.transcription.0.graphs and include_characters %}
 
         {% for segment in line.transcription.0.graphs|group_by_word %}
+        {% if not segment|is_whitespace %}
         <Word id="word_{{ forloop.counter0 }}">
           <Coords points="{% pagexml_points segment.polygon %}"/>
           {% for char in segment.graphs %}
@@ -20,6 +21,7 @@
           </Glyph>
           {% endfor %}
         </Word>
+        {% endif %}
         {% endfor %}
 
         {% endif %}

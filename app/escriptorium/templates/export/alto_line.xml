@@ -25,26 +25,22 @@
                     WIDTH="{{ segment.width }}"
                     HEIGHT="{{ segment.height }}"
                     WC="{{ segment.confidence|floatformat:4 }}">
-                {% if segment.boundary %}
-                <Shape>
-                   <Polygon POINTS="{{ segment.polygon|join:' ' }}"/>
-                </Shape>
-                {% endif %}
-                {% for char in segment.graphs %}
-                <Glyph ID="char_{{ forloop.counter0 }}"
-                       CONTENT="{{ char.c }}"
-                       HPOS="{{ char.box.0 }}"
-                       VPOS="{{ char.box.1 }}"
-                       WIDTH="{{ char.box.2|subtract:char.box.0 }}"
-                       HEIGHT="{{ char.box.3|subtract:char.box.1 }}"
-                       GC="{{ char.confidence|floatformat:4 }}">
-                    {% if char.boundary %}
-                    <Shape>
-                        <Polygon POINTS="{{ char.poly|join:' ' }}"/>
-                    </Shape>
-                    {% endif %}
-                </Glyph>
-                {% endfor %}
+              {% if segment.boundary %}
+              <Shape>
+                <Polygon POINTS="{{ segment.polygon|join:' ' }}"/>
+              </Shape>
+              {% endif %}
+              {% for char in segment.graphs %}
+              <Glyph ID="char_{{ forloop.counter0 }}"
+                     CONTENT="{{ char.c }}"
+                     HPOS="{{ char.box.0 }}"
+                     VPOS="{{ char.box.1 }}"
+                     WIDTH="{{ char.box.2|subtract:char.box.0 }}"
+                     HEIGHT="{{ char.box.3|subtract:char.box.1 }}"
+                     GC="{{ char.confidence|floatformat:4 }}">
+                {% if char.poly %}<Shape><Polygon POINTS="{% alto_points char.poly %}"/></Shape>{% endif %}
+              </Glyph>
+              {% endfor %}
             </String>
             {% endif %}
             {% endfor %}
